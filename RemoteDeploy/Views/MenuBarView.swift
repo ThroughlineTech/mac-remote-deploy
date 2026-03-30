@@ -36,6 +36,7 @@ class AppState: ObservableObject {
 /// and navigation to settings/setup.
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var serviceContainer: ServiceContainer
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -59,6 +60,15 @@ struct MenuBarView: View {
         }
         .padding(8)
         .frame(width: 300)
+        .sheet(isPresented: $appState.showSetupAssistant) {
+            SetupAssistantView(appState: appState, onDismiss: {
+                appState.showSetupAssistant = false
+            })
+            .frame(minWidth: 500, minHeight: 400)
+        }
+        .sheet(isPresented: $appState.showBuildLog) {
+            BuildLogView(appState: appState)
+        }
     }
 
     // MARK: - Header Section
@@ -111,7 +121,7 @@ struct MenuBarView: View {
                         NSPasteboard.general.setString(appState.serverURL, forType: .string)
                     }
                     .font(.caption)
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -140,13 +150,13 @@ struct MenuBarView: View {
             }
 
             // Add project button
-            Button {
-                appState.showSettings = true
-            } label: {
+            Button(action: openSettings) {
                 Label("Add Project...", systemImage: "plus")
                     .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
             .padding(.top, 2)
         }
     }
@@ -177,7 +187,7 @@ struct MenuBarView: View {
 
             // Build & Deploy button -- disabled when no project is selected or build is in progress
             Button {
-                // Build action handled by the app coordinator
+                performBuild()
             } label: {
                 HStack {
                     if case .building = appState.buildStatus {
@@ -206,13 +216,13 @@ struct MenuBarView: View {
             }
 
             // View build log button
-            Button {
-                appState.showBuildLog = true
-            } label: {
+            Button(action: { appState.showBuildLog = true }) {
                 Label("View Build Log", systemImage: "doc.text")
                     .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
             .disabled(appState.buildLog.isEmpty)
         }
     }
@@ -222,39 +232,141 @@ struct MenuBarView: View {
     /// Import, setup, settings, and quit buttons.
     private var utilitySection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Button {
-                // Import IPA via NSOpenPanel
-            } label: {
+            Button(action: importIPA) {
                 Label("Import IPA...", systemImage: "square.and.arrow.down")
                     .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
 
-            Button {
-                appState.showSetupAssistant = true
-            } label: {
+            Button(action: { appState.showSetupAssistant = true }) {
                 Label("Setup Guide", systemImage: "questionmark.circle")
                     .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
 
-            Button {
-                appState.showSettings = true
-            } label: {
+            Button(action: openSettings) {
                 Label("Settings...", systemImage: "gear")
                     .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
 
             Divider().padding(.vertical, 2)
 
-            Button {
-                NSApplication.shared.terminate(nil)
-            } label: {
+            Button(action: { NSApplication.shared.terminate(nil) }) {
                 Label("Quit", systemImage: "power")
                     .font(.subheadline)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Actions
+
+    /// Opens the macOS Settings window for this app.
+    private func openSettings() {
+        // Use the modern API on macOS 14+
+        if #available(macOS 14.0, *) {
+            NSApp.activate()
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        } else {
+            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        }
+    }
+
+    /// Kicks off a build for the currently selected project.
+    private func performBuild() {
+        guard let project = appState.selectedProject else { return }
+
+        // Update the project's build configuration from the picker
+        var buildProject = project
+        buildProject.buildConfiguration = appState.buildConfiguration
+
+        Task {
+            appState.buildStatus = .building(progress: "Starting build...")
+            appState.buildLog = ""
+
+            // Post build-started notification
+            serviceContainer.notificationManager.notifyBuildStarted(projectName: project.name)
+
+            let startTime = Date()
+
+            do {
+                let ipaPath = try await serviceContainer.buildEngine.build(project: buildProject)
+                let endTime = Date()
+                appState.buildStatus = .success(ipaPath: ipaPath)
+                appState.lastBuildResult = BuildResult(
+                    id: UUID(),
+                    projectID: project.id,
+                    success: true,
+                    ipaPath: ipaPath,
+                    errorSummary: nil,
+                    buildLog: appState.buildLog,
+                    startTime: startTime,
+                    endTime: endTime,
+                    version: nil,
+                    buildNumber: nil
+                )
+
+                // Post success notification
+                serviceContainer.notificationManager.notifyBuildSuccess(
+                    projectName: project.name,
+                    installURL: appState.serverURL + "/" + project.urlSlug + "/"
+                )
+            } catch {
+                let endTime = Date()
+                appState.buildStatus = .failure(error: error.localizedDescription)
+                appState.lastBuildResult = BuildResult(
+                    id: UUID(),
+                    projectID: project.id,
+                    success: false,
+                    ipaPath: nil,
+                    errorSummary: error.localizedDescription,
+                    buildLog: appState.buildLog,
+                    startTime: startTime,
+                    endTime: endTime,
+                    version: nil,
+                    buildNumber: nil
+                )
+
+                // Post failure notification
+                serviceContainer.notificationManager.notifyBuildFailure(
+                    projectName: project.name,
+                    error: error.localizedDescription
+                )
+            }
+        }
+    }
+
+    /// Opens a file picker to import a pre-built .ipa file.
+    private func importIPA() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "ipa")!]
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.message = "Select an .ipa file to serve"
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        // If we have a selected project, import into its slug directory
+        let slug = appState.selectedProject?.urlSlug ?? "imported"
+        let serveDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("RemoteDeploy/serve").path
+
+        do {
+            let importer = IPAImporter()
+            let info = try importer.importIPA(from: url, to: slug, serveDirectory: serveDir)
+            appState.buildStatus = .success(ipaPath: "\(serveDir)/\(slug)/app.ipa")
+            print("Imported IPA: \(info.bundleID) v\(info.version)")
+        } catch {
+            appState.buildStatus = .failure(error: "Import failed: \(error.localizedDescription)")
         }
     }
 
