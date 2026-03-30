@@ -1,0 +1,68 @@
+name: RemoteDeploy
+options:
+  bundleIdPrefix: com.remotedeploy
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+packages:
+  swift-nio:
+    url: https://github.com/apple/swift-nio.git
+    from: "2.65.0"
+  swift-nio-ssl:
+    url: https://github.com/apple/swift-nio-ssl.git
+    from: "2.26.0"
+
+targets:
+  RemoteDeploy:
+    type: application
+    platform: macOS
+    deploymentTarget:
+      macOS: "14.0"
+    sources:
+      - RemoteDeploy
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.remotedeploy.app
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_VERSION: "5.10"
+        INFOPLIST_FILE: RemoteDeploy/Info.plist
+        CODE_SIGN_ENTITLEMENTS: RemoteDeploy/RemoteDeploy.entitlements
+        PRODUCT_NAME: RemoteDeploy
+        COMBINE_HIDPI_IMAGES: true
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path/../Frameworks"
+    dependencies:
+      - package: swift-nio
+        product: NIO
+      - package: swift-nio
+        product: NIOHTTP1
+      - package: swift-nio
+        product: NIOFoundationCompat
+      - package: swift-nio-ssl
+        product: NIOSSL
+
+  RemoteDeployTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - RemoteDeployTests
+    dependencies:
+      - target: RemoteDeploy
+    settings:
+      base:
+        SWIFT_VERSION: "5.10"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+  RemoteDeployIntegrationTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - RemoteDeployIntegrationTests
+    dependencies:
+      - target: RemoteDeploy
+    settings:
+      base:
+        SWIFT_VERSION: "5.10"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
