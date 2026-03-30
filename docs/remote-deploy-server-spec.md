@@ -18,6 +18,8 @@ This document is the single source of truth for building RemoteDeploy. If you ar
 5. **Commit frequently** with descriptive messages. No AI/Claude references in commit messages.
 6. **Comment all functions** with what goes in, what comes out, and what the function is supposed to do. Write for humans reading the code for the first time.
 7. **Run all tests** before presenting work for review.
+8. **Components are not enough.** Every component must be wired into the app lifecycle. If you build a service, you must also write the code that calls it at the right time (launch, user action, timer, etc.). A service that exists but is never invoked is a bug. The "App Lifecycle" section below defines exactly what happens and when — follow it.
+9. **Manually verify the app runs** after building. Launch it, confirm the UI reflects real state (Tailscale status, loaded projects, etc.), and fix anything that doesn't work before presenting.
 
 ---
 
@@ -71,6 +73,70 @@ Required protocols and their concrete implementations:
 - **After setup**, everything works remotely over Tailscale — that's the whole point.
 - The iPhone side is just Safari. Open the URL, tap install.
 - You can SSH into the Mac to launch/manage the app remotely after initial setup.
+
+---
+
+## App Lifecycle — What Happens and When
+
+This section is critical. It defines how components are wired together at runtime. Every service must be called at the right time — a service that exists but is never invoked is a bug.
+
+### On Launch (app entry point, runs once)
+
+These steps execute in order when the app starts:
+
+1. **Request notification permissions** — Call `NotificationManager.shared.requestPermission()` so macOS notifications work from the first build.
+2. **Load saved projects** — Call `projectStore.loadProjects()` and populate `appState.projects`. Select the first project as `selectedProjectID`.
+3. **Check Tailscale status** — Call `tailscaleProvider.isConnected()`. If connected, call `tailscaleProvider.detectHostname()` and set `appState.serverURL` to `https://<hostname>:<port>`. Update `appState.tailscaleConnected`.
+4. **Show setup assistant** — If `appState.projects` is empty after loading, set `appState.showSetupAssistant = true`.
+5. **Start status polling** — Start a 30-second timer that re-checks Tailscale connection status and updates the UI.
+
+### On "Build & Deploy" (user clicks button)
+
+1. **Update build status** — Set `appState.buildStatus = .building("Starting...")`.
+2. **Send build-started notifications** — Post macOS notification and push notifications (if configured).
+3. **Run build** — Call `buildEngine.build(project:)` for the selected project. Stream `buildLogStream` into `appState.buildLog` in real time.
+4. **On success:**
+   - Set `appState.buildStatus = .success(ipaPath:)`.
+   - Generate manifest and install page for the project.
+   - Register the project with the deploy server if not already registered.
+   - Start the HTTPS server if not already running (call `deployServer.start(port:certPath:keyPath:)`).
+   - Create a `BuildResult` and set `appState.lastBuildResult`.
+   - Post success notifications (macOS + push with install URL).
+5. **On failure:**
+   - Set `appState.buildStatus = .failure(error:)`.
+   - Create a `BuildResult` with the error.
+   - Post failure notifications (macOS + push with error summary).
+
+### On IPA Download (server callback)
+
+1. **Record install** — The deploy server's `onIPADownload` callback fires with `(slug, sourceIP, userAgent)`. Call `installTracker.recordInstall(...)`.
+2. **Update UI** — Fetch the latest install record and set `appState.lastInstall`.
+
+### On "Import IPA" (user selects file)
+
+1. **Import** — Call `IPAImporter.importIPA(from:to:serveDirectory:)`.
+2. **Generate manifest** — Create manifest for the imported IPA.
+3. **Register with server** — Add the project slug to the deploy server.
+4. **Start server** if not running.
+
+### On Settings Change
+
+- **Projects added/edited/deleted:** Save via `projectStore.save(project:)` or `delete(projectID:)`. Update `appState.projects`.
+- **Push notification config changed:** Call `serviceContainer.configurePushNotifiers(from:)`.
+- **Server port changed:** Stop and restart the deploy server on the new port.
+- **Cert paths changed:** Reload certs, restart server.
+
+### Data Flow Summary
+
+```
+projectStore.loadProjects() ──→ appState.projects ──→ MenuBarView (project list)
+tailscaleProvider.isConnected() ──→ appState.tailscaleConnected ──→ MenuBarView (status dot)
+tailscaleProvider.detectHostname() ──→ appState.serverURL ──→ MenuBarView (URL display)
+buildEngine.build() ──→ appState.buildStatus ──→ MenuBarView (build button state)
+buildEngine.buildLogStream ──→ appState.buildLog ──→ BuildLogView (real-time output)
+installTracker.recentInstalls() ──→ appState.lastInstall ──→ MenuBarView (last install info)
+deployServer.onIPADownload ──→ installTracker.recordInstall() ──→ appState.lastInstall
+```
 
 ---
 
