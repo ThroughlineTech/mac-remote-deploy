@@ -84,7 +84,7 @@ actor ServerInstallTracker: InstallTracking {
         do {
             let data = try Data(contentsOf: storageURL)
             let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
+            decoder.dateDecodingStrategy = .secondsSince1970
             return try decoder.decode([InstallRecord].self, from: data)
         } catch {
             return []
@@ -97,7 +97,7 @@ actor ServerInstallTracker: InstallTracking {
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            encoder.dateEncodingStrategy = .iso8601
+            encoder.dateEncodingStrategy = .secondsSince1970
             let data = try encoder.encode(records)
             try data.write(to: storageURL, options: .atomic)
         } catch {

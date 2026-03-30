@@ -49,10 +49,10 @@ final class InstallTrackerTests: XCTestCase {
 
     func testRecentInstallsReturnedNewestFirst() async {
         await sut.recordInstall(projectName: "First", sourceIP: "1.1.1.1", userAgent: "UA")
-        // Small delay to ensure different timestamps
-        try? await Task.sleep(nanoseconds: 10_000_000) // 10ms
+        // Use longer delays to guarantee different timestamps
+        try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
         await sut.recordInstall(projectName: "Second", sourceIP: "2.2.2.2", userAgent: "UA")
-        try? await Task.sleep(nanoseconds: 10_000_000)
+        try? await Task.sleep(nanoseconds: 100_000_000)
         await sut.recordInstall(projectName: "Third", sourceIP: "3.3.3.3", userAgent: "UA")
 
         let records = await sut.recentInstalls(limit: 10)

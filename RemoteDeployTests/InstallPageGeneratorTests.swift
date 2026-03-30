@@ -75,7 +75,7 @@ final class InstallPageGeneratorTests: XCTestCase {
             manifestURL: manifestURL
         )
 
-        let expectedLink = "itms-services://?action=download-manifest&amp;url=\(manifestURL)"
+        let expectedLink = "itms-services://?action=download-manifest&url=\(manifestURL)"
         XCTAssertTrue(html.contains(expectedLink), "Page should contain itms-services link with manifest URL. Got: \(html)")
     }
 
