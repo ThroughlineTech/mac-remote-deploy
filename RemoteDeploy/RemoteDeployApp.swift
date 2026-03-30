@@ -15,6 +15,7 @@ struct RemoteDeployApp: App {
             MenuBarView()
                 .environmentObject(appState)
                 .environmentObject(serviceContainer)
+                .task { await performStartup() }
         } label: {
             Label("RemoteDeploy", systemImage: appState.menuBarIconName)
         }
@@ -25,6 +26,65 @@ struct RemoteDeployApp: App {
             SettingsView()
                 .environmentObject(appState)
                 .environmentObject(serviceContainer)
+        }
+    }
+
+    /// Runs once at launch: checks Tailscale, loads saved projects, and starts periodic status polling.
+    private func performStartup() async {
+        // Request notification permissions
+        serviceContainer.notificationManager.requestPermission()
+
+        // Load saved projects from disk
+        loadSavedProjects()
+
+        // Check Tailscale status and detect hostname
+        await checkTailscaleStatus()
+
+        // Show setup assistant if no projects are configured
+        if appState.projects.isEmpty {
+            appState.showSetupAssistant = true
+        }
+
+        // Start periodic Tailscale status polling (every 30 seconds)
+        startStatusPolling()
+    }
+
+    /// Loads projects from the persistent store into app state.
+    private func loadSavedProjects() {
+        do {
+            let projects = try serviceContainer.projectStore.loadProjects()
+            appState.projects = projects
+            if let first = projects.first {
+                appState.selectedProjectID = first.id
+            }
+        } catch {
+            print("Failed to load projects: \(error.localizedDescription)")
+        }
+    }
+
+    /// Queries Tailscale CLI to update connection status and hostname.
+    private func checkTailscaleStatus() async {
+        do {
+            let connected = await serviceContainer.tailscaleProvider.isConnected()
+            appState.tailscaleConnected = connected
+
+            if connected {
+                let hostname = try await serviceContainer.tailscaleProvider.detectHostname()
+                let port = appState.serverPort
+                appState.serverURL = "https://\(hostname):\(port)"
+            }
+        } catch {
+            appState.tailscaleConnected = false
+            print("Tailscale check failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// Polls Tailscale status every 30 seconds to keep the UI current.
+    private func startStatusPolling() {
+        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+            Task { @MainActor in
+                await checkTailscaleStatus()
+            }
         }
     }
 }
