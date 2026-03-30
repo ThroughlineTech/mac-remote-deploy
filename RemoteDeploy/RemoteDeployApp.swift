@@ -9,13 +9,42 @@ struct RemoteDeployApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var serviceContainer = ServiceContainer()
 
+    /// Tracks whether performStartup() has already been called.
+    @State private var hasLaunched = false
+
+    /// The directory where settings.json is stored.
+    private static var settingsDirectory: String {
+        let appSupport = FileManager.default.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first!.path
+        return "\(appSupport)/RemoteDeploy"
+    }
+
+    /// Full path to the settings JSON file.
+    private static var settingsFilePath: String {
+        "\(settingsDirectory)/settings.json"
+    }
+
     var body: some Scene {
         // Menu bar item — the primary (and only) UI entry point
         MenuBarExtra {
             MenuBarView()
                 .environmentObject(appState)
                 .environmentObject(serviceContainer)
-                .task { await performStartup() }
+                .task {
+                    // Guard ensures startup runs only once across popover open/close cycles
+                    guard !hasLaunched else { return }
+                    hasLaunched = true
+                    await performStartup()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .startServerRequested)) { _ in
+                    saveSettings()
+                    startServer()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: .saveSettingsRequested)) { _ in
+                    saveSettings()
+                }
         } label: {
             Label("RemoteDeploy", systemImage: appState.menuBarIconName)
         }
@@ -29,16 +58,28 @@ struct RemoteDeployApp: App {
         }
     }
 
-    /// Runs once at launch: checks Tailscale, loads saved projects, and starts periodic status polling.
+    // MARK: - Startup
+
+    /// Runs once at launch: loads settings, checks Tailscale, loads projects,
+    /// starts the server if configured, and begins periodic status polling.
     private func performStartup() async {
         // Request notification permissions
         serviceContainer.notificationManager.requestPermission()
 
+        // Load persisted settings (cert paths, hostname, push config, etc.)
+        loadSettings()
+
         // Load saved projects from disk
         loadSavedProjects()
 
+        // Configure push notifiers from saved config
+        serviceContainer.configurePushNotifiers(from: appState.pushNotificationConfig)
+
         // Check Tailscale status and detect hostname
         await checkTailscaleStatus()
+
+        // Start the HTTPS server if certificates are already configured
+        startServer()
 
         // Show setup assistant if no projects are configured
         if appState.projects.isEmpty {
@@ -70,6 +111,7 @@ struct RemoteDeployApp: App {
 
             if connected {
                 let hostname = try await serviceContainer.tailscaleProvider.detectHostname()
+                appState.hostname = hostname
                 let port = appState.serverPort
                 appState.serverURL = "https://\(hostname):\(port)"
             }
@@ -79,11 +121,105 @@ struct RemoteDeployApp: App {
         }
     }
 
-    /// Polls Tailscale status every 30 seconds to keep the UI current.
+    /// Polls Tailscale status every 30 seconds using an async Task loop.
     private func startStatusPolling() {
-        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
-            Task { @MainActor in
+        Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
                 await checkTailscaleStatus()
+            }
+        }
+    }
+
+    // MARK: - Settings Persistence
+
+    /// Loads settings from the JSON file on disk and applies them to AppState.
+    private func loadSettings() {
+        let path = Self.settingsFilePath
+        guard FileManager.default.fileExists(atPath: path),
+              let data = FileManager.default.contents(atPath: path) else {
+            return
+        }
+        do {
+            let settings = try JSONDecoder().decode(SettingsData.self, from: data)
+            appState.serverPort = settings.serverPort
+            appState.hostname = settings.hostname
+            appState.certPath = settings.certPath
+            appState.keyPath = settings.keyPath
+            appState.pushNotificationConfig = settings.pushNotificationConfig
+            if !settings.hostname.isEmpty {
+                appState.serverURL = "https://\(settings.hostname):\(settings.serverPort)"
+            }
+        } catch {
+            print("Failed to load settings: \(error.localizedDescription)")
+        }
+    }
+
+    /// Persists current AppState settings to the JSON file on disk.
+    func saveSettings() {
+        let settings = SettingsData(
+            serverPort: appState.serverPort,
+            hostname: appState.hostname,
+            certPath: appState.certPath,
+            keyPath: appState.keyPath,
+            pushNotificationConfig: appState.pushNotificationConfig
+        )
+        do {
+            let dir = Self.settingsDirectory
+            try FileManager.default.createDirectory(
+                atPath: dir,
+                withIntermediateDirectories: true
+            )
+            let data = try JSONEncoder().encode(settings)
+            try data.write(to: URL(fileURLWithPath: Self.settingsFilePath))
+        } catch {
+            print("Failed to save settings: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Server Lifecycle
+
+    /// Starts the HTTPS deploy server if certificates are configured and the server is not already running.
+    /// Registers all known projects and wires up the IPA download callback for install tracking.
+    func startServer() {
+        guard !appState.certPath.isEmpty, !appState.keyPath.isEmpty else { return }
+        guard !appState.serverRunning else { return }
+
+        let server = serviceContainer.deployServer as! NIODeployServer
+
+        // Register all known projects so their routes are available
+        for project in appState.projects {
+            server.registerProject(project)
+        }
+        server.setBaseURL(appState.serverURL)
+
+        // Wire up IPA download callback for install tracking
+        server.onIPADownload = { [weak appState, serviceContainer] slug, ip, ua in
+            Task {
+                await serviceContainer.installTracker.recordInstall(
+                    projectName: slug,
+                    sourceIP: ip,
+                    userAgent: ua
+                )
+                let installs = await serviceContainer.installTracker.recentInstalls(limit: 1)
+                await MainActor.run {
+                    appState?.lastInstall = installs.first
+                }
+            }
+        }
+
+        Task {
+            do {
+                try await server.start(
+                    port: appState.serverPort,
+                    certPath: appState.certPath,
+                    keyPath: appState.keyPath
+                )
+                await MainActor.run {
+                    appState.serverRunning = true
+                }
+            } catch {
+                print("Server failed to start: \(error)")
             }
         }
     }
@@ -202,4 +338,14 @@ extension AppState {
         }
         return "shippingbox"
     }
+}
+
+// MARK: - Notification Names
+
+extension Notification.Name {
+    /// Posted when the setup wizard or other UI requests that the server be started
+    /// and settings be saved. Handled by RemoteDeployApp.
+    static let startServerRequested = Notification.Name("RemoteDeploy.startServerRequested")
+    /// Posted when settings have been changed and need to be persisted.
+    static let saveSettingsRequested = Notification.Name("RemoteDeploy.saveSettingsRequested")
 }

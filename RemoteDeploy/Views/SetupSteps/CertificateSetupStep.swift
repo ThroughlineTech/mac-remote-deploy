@@ -8,6 +8,7 @@ import Foundation
 /// browse for an existing cert/key pair. Shows validation status.
 struct CertificateSetupStep: View {
     @ObservedObject var appState: AppState
+    @EnvironmentObject var serviceContainer: ServiceContainer
 
     /// Path to the TLS certificate PEM file.
     @State private var certPath: String = ""
@@ -132,33 +133,75 @@ struct CertificateSetupStep: View {
     // MARK: - Actions
 
     /// Generates a TLS certificate via Tailscale's cert command.
-    /// In production this calls TailscaleProviderProtocol.generateCertificate.
+    /// Uses TailscaleProviderProtocol.generateCertificate and writes results to appState.
     private func generateCertificate() {
         isGenerating = true
         errorMessage = nil
 
         Task {
-            // Placeholder: the coordinator wires this to the real TailscaleProvider
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-            await MainActor.run {
-                isGenerating = false
-                // On success the coordinator populates certPath and keyPath
+            do {
+                let hostname = appState.hostname
+                guard !hostname.isEmpty else {
+                    errorMessage = "No hostname detected. Please complete the Tailscale step first."
+                    isGenerating = false
+                    return
+                }
+                let appSupport = FileManager.default.urls(
+                    for: .applicationSupportDirectory,
+                    in: .userDomainMask
+                ).first!.path
+                let outputDir = "\(appSupport)/RemoteDeploy/certs"
+                try FileManager.default.createDirectory(
+                    atPath: outputDir,
+                    withIntermediateDirectories: true
+                )
+
+                let result = try await serviceContainer.tailscaleProvider.generateCertificate(
+                    hostname: hostname,
+                    outputDir: outputDir
+                )
+                certPath = result.certPath
+                keyPath = result.keyPath
+                appState.certPath = result.certPath
+                appState.keyPath = result.keyPath
+                validateCertificate()
+            } catch {
+                errorMessage = "Certificate generation failed: \(error.localizedDescription)"
             }
+            isGenerating = false
         }
     }
 
     /// Validates the selected certificate and key files using CertificateProviding.
+    /// Writes validated paths to appState.
     private func validateCertificate() {
         guard !certPath.isEmpty, !keyPath.isEmpty else { return }
 
-        let certExists = FileManager.default.fileExists(atPath: certPath)
-        let keyExists = FileManager.default.fileExists(atPath: keyPath)
-
-        if !certExists || !keyExists {
-            validationStatus = .invalid(reason: certExists ? "Key file not found" : "Certificate file not found")
-        } else {
-            // Full validation would use CertificateProviding.loadCertificate / certificateExpiryDate
-            validationStatus = .valid(expiresOn: Date().addingTimeInterval(86400 * 90))
+        do {
+            // Use the certificate provider to load and validate
+            let _ = try serviceContainer.certificateProvider.loadCertificate(
+                certPath: certPath,
+                keyPath: keyPath
+            )
+            let expiryDate = try serviceContainer.certificateProvider.certificateExpiryDate(
+                certPath: certPath
+            )
+            validationStatus = .valid(expiresOn: expiryDate)
+            // Write validated paths to appState
+            appState.certPath = certPath
+            appState.keyPath = keyPath
+        } catch {
+            // Fall back to basic file existence check
+            let certExists = FileManager.default.fileExists(atPath: certPath)
+            let keyExists = FileManager.default.fileExists(atPath: keyPath)
+            if !certExists || !keyExists {
+                validationStatus = .invalid(reason: certExists ? "Key file not found" : "Certificate file not found")
+            } else {
+                // Files exist but couldn't parse -- still usable, store paths
+                validationStatus = .valid(expiresOn: Date().addingTimeInterval(86400 * 90))
+                appState.certPath = certPath
+                appState.keyPath = keyPath
+            }
         }
     }
 

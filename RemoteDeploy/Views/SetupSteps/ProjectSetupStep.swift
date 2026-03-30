@@ -8,6 +8,7 @@ import Foundation
 /// bundle ID and team ID.
 struct ProjectSetupStep: View {
     @ObservedObject var appState: AppState
+    @EnvironmentObject var serviceContainer: ServiceContainer
 
     /// The project path selected by the user.
     @State private var projectPath: String = ""
@@ -46,6 +47,10 @@ struct ProjectSetupStep: View {
             }
 
             Spacer()
+        }
+        .onDisappear {
+            // Save the project when the user navigates away from this step
+            saveProject()
         }
     }
 
@@ -185,18 +190,52 @@ struct ProjectSetupStep: View {
     }
 
     /// Runs scheme detection via BuildEngineProtocol.detectSchemes.
-    /// In production the coordinator provides the real build engine.
+    /// Uses the injected build engine from serviceContainer.
     private func detectSchemes() {
         isDetectingSchemes = true
         detectedSchemes = []
 
         Task {
-            // Placeholder: real implementation calls BuildEngineProtocol.detectSchemes(at:)
-            try? await Task.sleep(nanoseconds: 500_000_000)
-            await MainActor.run {
-                isDetectingSchemes = false
-                // Coordinator populates detectedSchemes after async detection
+            do {
+                let schemes = try await serviceContainer.buildEngine.detectSchemes(at: projectPath)
+                await MainActor.run {
+                    detectedSchemes = schemes
+                    if let first = schemes.first, selectedScheme.isEmpty {
+                        selectedScheme = first
+                    }
+                    isDetectingSchemes = false
+                }
+            } catch {
+                await MainActor.run {
+                    isDetectingSchemes = false
+                }
+                print("Scheme detection failed: \(error.localizedDescription)")
             }
+        }
+    }
+
+    /// Saves the configured project to the project store and appState.
+    /// Called automatically when the user navigates forward from this step.
+    func saveProject() {
+        guard !projectName.isEmpty, !projectPath.isEmpty else { return }
+
+        var project = ProjectConfig(name: projectName, projectPath: projectPath)
+        project.scheme = selectedScheme
+        project.bundleID = bundleID
+        project.teamID = teamID
+
+        do {
+            try serviceContainer.projectStore.save(project: project)
+        } catch {
+            print("Failed to save project: \(error.localizedDescription)")
+        }
+
+        // Add to appState if not already present
+        if !appState.projects.contains(where: { $0.id == project.id }) {
+            appState.projects.append(project)
+        }
+        if appState.selectedProjectID == nil {
+            appState.selectedProjectID = project.id
         }
     }
 }

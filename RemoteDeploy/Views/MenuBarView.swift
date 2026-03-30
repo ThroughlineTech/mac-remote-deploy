@@ -22,6 +22,14 @@ class AppState: ObservableObject {
     @Published var showSettings = false
     @Published var showBuildLog = false
     @Published var buildConfiguration: String = "Release"
+    /// Absolute path to the TLS certificate PEM file.
+    @Published var certPath: String = ""
+    /// Absolute path to the TLS private key PEM file.
+    @Published var keyPath: String = ""
+    /// The Tailscale MagicDNS hostname for this machine.
+    @Published var hostname: String = ""
+    /// Push notification provider configuration.
+    @Published var pushNotificationConfig = PushNotificationConfig()
 
     /// Returns the currently selected project, if any.
     var selectedProject: ProjectConfig? {
@@ -61,9 +69,17 @@ struct MenuBarView: View {
         .padding(8)
         .frame(width: 300)
         .sheet(isPresented: $appState.showSetupAssistant) {
-            SetupAssistantView(appState: appState, onDismiss: {
-                appState.showSetupAssistant = false
-            })
+            SetupAssistantView(
+                appState: appState,
+                onDismiss: {
+                    appState.showSetupAssistant = false
+                },
+                onStartServer: {
+                    // Delegate to the app-level startServer via notification
+                    NotificationCenter.default.post(name: .startServerRequested, object: nil)
+                }
+            )
+            .environmentObject(serviceContainer)
             .frame(minWidth: 500, minHeight: 400)
         }
         .sheet(isPresented: $appState.showBuildLog) {
@@ -293,14 +309,25 @@ struct MenuBarView: View {
             appState.buildStatus = .building(progress: "Starting build...")
             appState.buildLog = ""
 
+            // Consume build log stream in a background task
+            let logTask = Task {
+                for await line in serviceContainer.buildEngine.buildLogStream {
+                    await MainActor.run {
+                        appState.buildLog += line + "\n"
+                    }
+                }
+            }
+
             // Post build-started notification
             serviceContainer.notificationManager.notifyBuildStarted(projectName: project.name)
 
             let startTime = Date()
+            let installURL = appState.serverURL + "/" + project.urlSlug + "/"
 
             do {
                 let ipaPath = try await serviceContainer.buildEngine.build(project: buildProject)
                 let endTime = Date()
+                logTask.cancel()
                 appState.buildStatus = .success(ipaPath: ipaPath)
                 appState.lastBuildResult = BuildResult(
                     id: UUID(),
@@ -315,13 +342,39 @@ struct MenuBarView: View {
                     buildNumber: nil
                 )
 
-                // Post success notification
+                // Register project with deploy server and start server if needed
+                let server = serviceContainer.deployServer as! NIODeployServer
+                server.registerProject(buildProject)
+                server.setBaseURL(appState.serverURL)
+                if !appState.serverRunning, !appState.certPath.isEmpty, !appState.keyPath.isEmpty {
+                    do {
+                        try await serviceContainer.deployServer.start(
+                            port: appState.serverPort,
+                            certPath: appState.certPath,
+                            keyPath: appState.keyPath
+                        )
+                        appState.serverRunning = true
+                    } catch {
+                        print("Server failed to start after build: \(error)")
+                    }
+                }
+
+                // Post success notification (local)
                 serviceContainer.notificationManager.notifyBuildSuccess(
                     projectName: project.name,
-                    installURL: appState.serverURL + "/" + project.urlSlug + "/"
+                    installURL: installURL
+                )
+
+                // Send push notifications to configured providers
+                await serviceContainer.sendPushNotification(
+                    title: "Build Succeeded",
+                    message: "\(project.name) is ready to install",
+                    priority: .normal,
+                    url: installURL
                 )
             } catch {
                 let endTime = Date()
+                logTask.cancel()
                 appState.buildStatus = .failure(error: error.localizedDescription)
                 appState.lastBuildResult = BuildResult(
                     id: UUID(),
@@ -336,10 +389,18 @@ struct MenuBarView: View {
                     buildNumber: nil
                 )
 
-                // Post failure notification
+                // Post failure notification (local)
                 serviceContainer.notificationManager.notifyBuildFailure(
                     projectName: project.name,
                     error: error.localizedDescription
+                )
+
+                // Send push notifications for failure
+                await serviceContainer.sendPushNotification(
+                    title: "Build Failed",
+                    message: "\(project.name): \(error.localizedDescription)",
+                    priority: .high,
+                    url: nil
                 )
             }
         }

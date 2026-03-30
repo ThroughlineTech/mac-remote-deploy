@@ -8,6 +8,9 @@ import Foundation
 /// a brief explanation of next steps.
 struct SetupCompleteStep: View {
     @ObservedObject var appState: AppState
+    @EnvironmentObject var serviceContainer: ServiceContainer
+    /// Called when the user taps Done to save settings and start the server.
+    var onStartServer: () -> Void
 
     /// Tracks the "Copied!" confirmation flash.
     @State private var showCopiedConfirmation = false

@@ -9,8 +9,13 @@ import Foundation
 /// The "Skip" action is prominently available via the parent navigation.
 struct PushNotifSetupStep: View {
     @ObservedObject var appState: AppState
+    @EnvironmentObject var serviceContainer: ServiceContainer
 
     @State private var config = PushNotificationConfig()
+    /// Error message from a failed test notification.
+    @State private var testError: String?
+    /// Whether a test notification is in progress.
+    @State private var isSendingTest = false
 
     /// Tracks which provider section is currently expanded.
     @State private var expandedProvider: PushProvider?
@@ -71,6 +76,59 @@ struct PushNotifSetupStep: View {
                     }
                 }
             }
+
+            // Display test error if any
+            if let testError {
+                Text(testError)
+                    .font(.caption)
+                    .foregroundColor(.red)
+            }
+        }
+        .onAppear {
+            // Load config from appState on appear
+            config = appState.pushNotificationConfig
+        }
+        .onChange(of: config.prowlEnabled) { _ in syncConfigToAppState() }
+        .onChange(of: config.prowlAPIKey) { _ in syncConfigToAppState() }
+        .onChange(of: config.pushoverEnabled) { _ in syncConfigToAppState() }
+        .onChange(of: config.pushoverAppToken) { _ in syncConfigToAppState() }
+        .onChange(of: config.pushoverUserKey) { _ in syncConfigToAppState() }
+        .onChange(of: config.ntfyEnabled) { _ in syncConfigToAppState() }
+        .onChange(of: config.ntfyServerURL) { _ in syncConfigToAppState() }
+        .onChange(of: config.ntfyTopic) { _ in syncConfigToAppState() }
+    }
+
+    /// Syncs the local config state back to appState.
+    private func syncConfigToAppState() {
+        appState.pushNotificationConfig = config
+    }
+
+    /// Sends a test notification for the given provider type.
+    private func sendTestNotification(for providerType: PushProvider) {
+        isSendingTest = true
+        testError = nil
+
+        // Configure notifiers from the current config before testing
+        serviceContainer.configurePushNotifiers(from: config)
+
+        Task {
+            do {
+                // Find the matching notifier and send test
+                switch providerType {
+                case .prowl:
+                    let notifier = ProwlNotifier(apiKey: config.prowlAPIKey)
+                    try await notifier.sendTest()
+                case .pushover:
+                    let notifier = PushoverNotifier(appToken: config.pushoverAppToken, userKey: config.pushoverUserKey)
+                    try await notifier.sendTest()
+                case .ntfy:
+                    let notifier = NtfyNotifier(serverURL: config.ntfyServerURL, topic: config.ntfyTopic)
+                    try await notifier.sendTest()
+                }
+            } catch {
+                testError = "Test failed: \(error.localizedDescription)"
+            }
+            isSendingTest = false
         }
     }
 
@@ -117,9 +175,9 @@ struct PushNotifSetupStep: View {
                     HStack {
                         // Send test notification button
                         Button("Send Test") {
-                            // Wired to PushNotifying.sendTest() by the coordinator
+                            sendTestNotification(for: type)
                         }
-                        .disabled(!enabled.wrappedValue)
+                        .disabled(!enabled.wrappedValue || isSendingTest)
 
                         Spacer()
 
