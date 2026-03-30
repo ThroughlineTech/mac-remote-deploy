@@ -35,7 +35,7 @@ class AppState: ObservableObject {
 /// Provides a consolidated view of server status, project list, build controls,
 /// and navigation to settings/setup.
 struct MenuBarView: View {
-    @ObservedObject var appState: AppState
+    @EnvironmentObject var appState: AppState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

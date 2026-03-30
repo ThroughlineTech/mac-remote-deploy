@@ -3,16 +3,6 @@
 // is created so the user can see who installed what and when.
 import Foundation
 
-/// A single recorded install event. Captures the project name, the requesting
-/// device's IP, their user-agent string, and the timestamp.
-struct InstallRecord: Codable, Sendable, Identifiable {
-    let id: UUID
-    let projectName: String
-    let sourceIP: String
-    let userAgent: String
-    let timestamp: Date
-}
-
 protocol InstallTracking: Sendable {
 
     /// Records that a device downloaded an IPA from the deploy server.

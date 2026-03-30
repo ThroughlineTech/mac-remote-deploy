@@ -13,7 +13,7 @@ struct PushNotifSetupStep: View {
     @State private var config = PushNotificationConfig()
 
     /// Tracks which provider section is currently expanded.
-    @State private var expandedProvider: PushProviderType?
+    @State private var expandedProvider: PushProvider?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -79,7 +79,7 @@ struct PushNotifSetupStep: View {
     /// An expandable section for a single push provider with enable toggle,
     /// config fields, and test button.
     private func providerDisclosure<Content: View>(
-        type: PushProviderType,
+        type: PushProvider,
         name: String,
         description: String,
         enabled: Binding<Bool>,

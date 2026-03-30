@@ -28,17 +28,17 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
 
     /// The registered project configurations, keyed by URL slug.
     /// Used to determine which slugs are valid and to look up project metadata.
-    private var projectsBySlug: [String: ProjectConfig] = [:]
+    fileprivate var projectsBySlug: [String: ProjectConfig] = [:]
 
     /// Generator for OTA manifest.plist responses.
-    private let manifestGenerator: ManifestGenerating
+    fileprivate let manifestGenerator: ManifestGenerating
 
     /// Generator for HTML install page responses.
-    private let installPageGenerator: InstallPageGenerating
+    fileprivate let installPageGenerator: InstallPageGenerating
 
     /// The base HTTPS URL (e.g. "https://macbook.tail1234.ts.net:8443") used to construct
     /// absolute URLs in manifests and install pages.
-    private var baseURL: String = ""
+    fileprivate var baseURL: String = ""
 
     /// Callback invoked when an IPA is downloaded. Arguments: (projectSlug, sourceIP, userAgent).
     var onIPADownload: ((String, String, String) -> Void)?

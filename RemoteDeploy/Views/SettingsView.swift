@@ -7,7 +7,7 @@ import Foundation
 /// Covers server configuration, project management, push notification providers,
 /// and general preferences.
 struct SettingsView: View {
-    @ObservedObject var appState: AppState
+    @EnvironmentObject var appState: AppState
 
     var body: some View {
         TabView {
@@ -120,7 +120,7 @@ struct ProjectsSettingsTab: View {
     @ObservedObject var appState: AppState
 
     /// Tracks the project currently being edited in the sheet.
-    @State private var editingProject: ProjectConfig?
+    @State private var editingProject: ProjectConfig = ProjectConfig(name: "", projectPath: "")
     /// Controls whether the add/edit sheet is shown.
     @State private var showingProjectForm = false
 
@@ -154,7 +154,7 @@ struct ProjectsSettingsTab: View {
             // Bottom toolbar with add and remove buttons
             HStack {
                 Button {
-                    editingProject = nil
+                    editingProject = ProjectConfig(name: "", projectPath: "")
                     showingProjectForm = true
                 } label: {
                     Label("Add Project", systemImage: "plus")
@@ -166,7 +166,7 @@ struct ProjectsSettingsTab: View {
         }
         .sheet(isPresented: $showingProjectForm) {
             ProjectFormView(
-                project: editingProject,
+                project: $editingProject,
                 onSave: { savedProject in
                     if let index = appState.projects.firstIndex(where: { $0.id == savedProject.id }) {
                         appState.projects[index] = savedProject
@@ -247,7 +247,7 @@ struct PushSettingsTab: View {
 /// a "Send Test" button, and a "?" help popover.
 struct PushProviderSection<Content: View>: View {
     let providerName: String
-    let providerType: PushProviderType
+    let providerType: PushProvider
     @Binding var enabled: Bool
     @ViewBuilder var content: Content
 
@@ -270,7 +270,7 @@ struct PushProviderSection<Content: View>: View {
                 }
                 .buttonStyle(.borderless)
                 .popover(isPresented: $showHelp) {
-                    PushNotifHelpPopover(providerType: providerType)
+                    PushNotifHelpPopover(provider: providerType)
                 }
 
                 // Send test notification button
