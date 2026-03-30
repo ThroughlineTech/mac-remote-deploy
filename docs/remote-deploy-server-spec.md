@@ -20,6 +20,9 @@ This document is the single source of truth for building RemoteDeploy. If you ar
 7. **Run all tests** before presenting work for review.
 8. **Components are not enough.** Every component must be wired into the app lifecycle. If you build a service, you must also write the code that calls it at the right time (launch, user action, timer, etc.). A service that exists but is never invoked is a bug. The "App Lifecycle" section below defines exactly what happens and when — follow it.
 9. **Manually verify the app runs** after building. Launch it, confirm the UI reflects real state (Tailscale status, loaded projects, etc.), and fix anything that doesn't work before presenting.
+10. **Every button must have a real action.** Empty closures `{}`, placeholder comments, and "coordinator will handle this" are bugs. If a button exists in the UI, the code behind it must do real work — call a service, open a panel, save data. Walk through every button in every view and verify it does something. A button that does nothing is worse than no button at all.
+11. **Views must use ServiceContainer.** Every view that performs an action (build, save, detect, test) must have `@EnvironmentObject var serviceContainer: ServiceContainer`. Views must never create their own service instances or use placeholder logic. If a view collects data (setup wizard, settings), that data must be persisted — written to AppState AND saved to disk. `@State` variables that are never synced back are data loss bugs.
+12. **Settings must persist.** All user-configurable values (cert paths, hostname, port, push config, projects) must survive app restart. Use `SettingsData` JSON for app settings and `ProjectStore` for projects. Load on launch, save on every change.
 
 ---
 
