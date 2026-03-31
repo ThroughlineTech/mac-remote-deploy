@@ -12,14 +12,15 @@ final class NotificationManager: NSObject, Sendable {
 
     /// Requests notification permission from the user.
     /// Call this at app launch so the system can prompt for authorization.
+    /// Fails silently if the app is unsigned or notifications are disabled —
+    /// macOS notifications are a convenience, not a requirement.
+    /// Push notifications (Prowl/Pushover/ntfy) work independently of this.
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(
             options: [.alert, .sound, .badge]
-        ) { granted, error in
-            if let error {
-                print("NotificationManager: permission request failed – \(error.localizedDescription)")
-            } else if !granted {
-                print("NotificationManager: notification permission denied by user")
+        ) { granted, _ in
+            if !granted {
+                print("NotificationManager: macOS notifications unavailable (enable in System Settings > Notifications)")
             }
         }
     }
