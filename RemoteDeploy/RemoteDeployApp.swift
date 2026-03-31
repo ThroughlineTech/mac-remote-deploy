@@ -56,6 +56,31 @@ struct RemoteDeployApp: App {
                 .environmentObject(appState)
                 .environmentObject(serviceContainer)
         }
+
+        // Setup assistant — opens as a standalone window (not a sheet)
+        Window("Setup Assistant", id: "setup-assistant") {
+            SetupAssistantView(
+                appState: appState,
+                onDismiss: {
+                    // Close the window by toggling the flag
+                    appState.showSetupAssistant = false
+                },
+                onStartServer: {
+                    NotificationCenter.default.post(name: .startServerRequested, object: nil)
+                }
+            )
+            .environmentObject(serviceContainer)
+        }
+        .windowResizability(.contentSize)
+        .defaultSize(width: 560, height: 480)
+
+        // Build log — opens as a standalone window
+        Window("Build Log", id: "build-log") {
+            BuildLogView(appState: appState)
+                .environmentObject(serviceContainer)
+        }
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: 600, height: 400)
     }
 
     // MARK: - Startup
@@ -81,9 +106,10 @@ struct RemoteDeployApp: App {
         // Start the HTTPS server if certificates are already configured
         startServer()
 
-        // Show setup assistant if no projects are configured
+        // Show setup assistant if no projects are configured.
+        // Post a notification so the MenuBarView can call openWindow(id:).
         if appState.projects.isEmpty {
-            appState.showSetupAssistant = true
+            NotificationCenter.default.post(name: .openSetupAssistant, object: nil)
         }
 
         // Start periodic Tailscale status polling (every 30 seconds)
@@ -348,4 +374,6 @@ extension Notification.Name {
     static let startServerRequested = Notification.Name("RemoteDeploy.startServerRequested")
     /// Posted when settings have been changed and need to be persisted.
     static let saveSettingsRequested = Notification.Name("RemoteDeploy.saveSettingsRequested")
+    /// Posted at launch to open the setup assistant window when no projects exist.
+    static let openSetupAssistant = Notification.Name("RemoteDeploy.openSetupAssistant")
 }

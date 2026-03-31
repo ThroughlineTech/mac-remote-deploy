@@ -45,6 +45,7 @@ class AppState: ObservableObject {
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var serviceContainer: ServiceContainer
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -68,22 +69,8 @@ struct MenuBarView: View {
         }
         .padding(8)
         .frame(width: 300)
-        .sheet(isPresented: $appState.showSetupAssistant) {
-            SetupAssistantView(
-                appState: appState,
-                onDismiss: {
-                    appState.showSetupAssistant = false
-                },
-                onStartServer: {
-                    // Delegate to the app-level startServer via notification
-                    NotificationCenter.default.post(name: .startServerRequested, object: nil)
-                }
-            )
-            .environmentObject(serviceContainer)
-            .frame(minWidth: 500, minHeight: 400)
-        }
-        .sheet(isPresented: $appState.showBuildLog) {
-            BuildLogView(appState: appState)
+        .onReceive(NotificationCenter.default.publisher(for: .openSetupAssistant)) { _ in
+            openWindow(id: "setup-assistant")
         }
     }
 
@@ -232,7 +219,7 @@ struct MenuBarView: View {
             }
 
             // View build log button
-            Button(action: { appState.showBuildLog = true }) {
+            Button(action: { openWindow(id: "build-log") }) {
                 Label("View Build Log", systemImage: "doc.text")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -256,7 +243,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: { appState.showSetupAssistant = true }) {
+            Button(action: { openWindow(id: "setup-assistant") }) {
                 Label("Setup Guide", systemImage: "questionmark.circle")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
