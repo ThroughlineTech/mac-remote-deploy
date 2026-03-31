@@ -32,13 +32,15 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// Creates a new async stream for consuming build log output.
     /// Each call returns a fresh stream — call this before starting a build,
     /// then iterate it in a Task to receive real-time log lines.
+    /// The continuation is set synchronously so emitLog() can yield immediately.
     var buildLogStream: AsyncStream<String> {
         lock.lock()
-        // Finish any previous continuation so old consumers stop
         logContinuation?.finish()
-        let stream = AsyncStream<String> { cont in
-            self.logContinuation = cont
+        var captured: AsyncStream<String>.Continuation!
+        let stream = AsyncStream<String>(bufferingPolicy: .unbounded) { cont in
+            captured = cont
         }
+        logContinuation = captured
         lock.unlock()
         return stream
     }
