@@ -19,6 +19,8 @@ struct PushNotifSetupStep: View {
 
     /// Tracks which provider section is currently expanded.
     @State private var expandedProvider: PushProvider?
+    /// Tracks which provider's help popover is shown.
+    @State private var showingHelpFor: PushProvider?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -181,14 +183,20 @@ struct PushNotifSetupStep: View {
 
                         Spacer()
 
-                        // Setup instructions link
+                        // Setup instructions popover
                         Button {
-                            // Could open an inline help popover or external URL
+                            showingHelpFor = type
                         } label: {
                             Label("Setup Instructions", systemImage: "questionmark.circle")
                                 .font(.caption)
                         }
                         .buttonStyle(.borderless)
+                        .popover(isPresented: Binding(
+                            get: { showingHelpFor == type },
+                            set: { if !$0 { showingHelpFor = nil } }
+                        )) {
+                            PushNotifHelpPopover(provider: type)
+                        }
                     }
                     .padding(.top, 4)
                 }
