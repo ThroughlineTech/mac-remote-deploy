@@ -116,10 +116,9 @@ final class ProwlNotifierTests: XCTestCase {
         XCTAssertEqual(notifier.apiKey, "my-prowl-key")
     }
 
-    func testAPIKeyCanBeUpdated() {
-        let notifier = ProwlNotifier(apiKey: "old-key")
-        notifier.apiKey = "new-key"
-        XCTAssertEqual(notifier.apiKey, "new-key")
+    func testAPIKeyIsImmutableAfterInit() {
+        let notifier = ProwlNotifier(apiKey: "my-key")
+        XCTAssertEqual(notifier.apiKey, "my-key")
     }
 }
 
@@ -222,12 +221,10 @@ final class PushoverNotifierTests: XCTestCase {
         XCTAssertEqual(notifier.userKey, "my-user")
     }
 
-    func testCredentialsCanBeUpdated() {
-        let notifier = PushoverNotifier()
-        notifier.appToken = "updated-token"
-        notifier.userKey = "updated-user"
-        XCTAssertEqual(notifier.appToken, "updated-token")
-        XCTAssertEqual(notifier.userKey, "updated-user")
+    func testCredentialsAreImmutableAfterInit() {
+        let notifier = PushoverNotifier(appToken: "my-token", userKey: "my-user")
+        XCTAssertEqual(notifier.appToken, "my-token")
+        XCTAssertEqual(notifier.userKey, "my-user")
     }
 }
 
@@ -336,10 +333,8 @@ final class NtfyNotifierTests: XCTestCase {
         XCTAssertEqual(notifier.topic, "my-topic")
     }
 
-    func testConfigCanBeUpdated() {
-        let notifier = NtfyNotifier()
-        notifier.serverURL = "https://custom.ntfy.example.com"
-        notifier.topic = "builds"
+    func testConfigIsImmutableAfterInit() {
+        let notifier = NtfyNotifier(serverURL: "https://custom.ntfy.example.com", topic: "builds")
         XCTAssertEqual(notifier.serverURL, "https://custom.ntfy.example.com")
         XCTAssertEqual(notifier.topic, "builds")
     }

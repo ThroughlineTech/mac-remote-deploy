@@ -6,8 +6,7 @@ import Foundation
 final class ProwlNotifier: PushNotifying {
 
     /// The Prowl API key used to authenticate requests.
-    /// Must be set before calling `send` or `sendTest`.
-    var apiKey: String
+    let apiKey: String
 
     /// Creates a notifier with the given API key.
     /// - Parameter apiKey: A valid Prowl API key. Defaults to empty.

@@ -6,12 +6,10 @@ import Foundation
 final class NtfyNotifier: PushNotifying {
 
     /// The base URL of the ntfy server (e.g., "https://ntfy.sh").
-    /// Must be set before calling `send` or `sendTest`.
-    var serverURL: String
+    let serverURL: String
 
     /// The topic name to publish notifications to.
-    /// Must be set before calling `send` or `sendTest`.
-    var topic: String
+    let topic: String
 
     /// Creates a notifier with the given server configuration.
     /// - Parameters:

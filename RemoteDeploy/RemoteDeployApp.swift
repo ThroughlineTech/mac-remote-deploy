@@ -316,23 +316,15 @@ final class ServiceContainer: ObservableObject {
         var notifiers: [any PushNotifying] = []
 
         if config.prowlEnabled, !config.prowlAPIKey.isEmpty {
-            let prowl = ProwlNotifier()
-            prowl.apiKey = config.prowlAPIKey
-            notifiers.append(prowl)
+            notifiers.append(ProwlNotifier(apiKey: config.prowlAPIKey))
         }
 
         if config.pushoverEnabled, !config.pushoverAppToken.isEmpty {
-            let pushover = PushoverNotifier()
-            pushover.appToken = config.pushoverAppToken
-            pushover.userKey = config.pushoverUserKey
-            notifiers.append(pushover)
+            notifiers.append(PushoverNotifier(appToken: config.pushoverAppToken, userKey: config.pushoverUserKey))
         }
 
         if config.ntfyEnabled, !config.ntfyServerURL.isEmpty {
-            let ntfy = NtfyNotifier()
-            ntfy.serverURL = config.ntfyServerURL
-            ntfy.topic = config.ntfyTopic
-            notifiers.append(ntfy)
+            notifiers.append(NtfyNotifier(serverURL: config.ntfyServerURL, topic: config.ntfyTopic))
         }
 
         self.pushNotifiers = notifiers

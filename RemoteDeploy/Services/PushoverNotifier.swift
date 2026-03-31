@@ -6,12 +6,10 @@ import Foundation
 final class PushoverNotifier: PushNotifying {
 
     /// The Pushover application token used to authenticate requests.
-    /// Must be set before calling `send` or `sendTest`.
-    var appToken: String
+    let appToken: String
 
     /// The Pushover user key identifying the notification recipient.
-    /// Must be set before calling `send` or `sendTest`.
-    var userKey: String
+    let userKey: String
 
     /// Creates a notifier with the given credentials.
     /// - Parameters:
