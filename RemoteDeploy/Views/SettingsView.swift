@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import ServiceManagement
 
 // MARK: - Settings View
 
@@ -426,12 +427,38 @@ struct GeneralSettingsTab: View {
 
     var body: some View {
         Form {
-            // Launch at login toggle using SMAppService (macOS 13+)
             Toggle("Launch at Login", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { _ in
-                    // SMAppService registration handled by the coordinator
+                .onChange(of: launchAtLogin) { newValue in
+                    setLaunchAtLogin(newValue)
                 }
         }
         .padding()
+        .onAppear {
+            launchAtLogin = isLaunchAtLoginEnabled()
+        }
+    }
+
+    /// Checks whether the app is currently registered as a login item.
+    private func isLaunchAtLoginEnabled() -> Bool {
+        if #available(macOS 13.0, *) {
+            return SMAppService.mainApp.status == .enabled
+        }
+        return false
+    }
+
+    /// Registers or unregisters the app as a login item using SMAppService.
+    /// - Parameter enabled: Whether to enable or disable launch at login.
+    private func setLaunchAtLogin(_ enabled: Bool) {
+        if #available(macOS 13.0, *) {
+            do {
+                if enabled {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+            } catch {
+                print("Failed to \(enabled ? "enable" : "disable") launch at login: \(error.localizedDescription)")
+            }
+        }
     }
 }
