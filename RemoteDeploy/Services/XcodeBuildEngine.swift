@@ -96,15 +96,28 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
 
         var archiveArgs = ["xcodebuild", "archive"]
 
-        // Use workspace if available, otherwise project file
+        // Determine whether to use -workspace or -project.
+        // First check explicit config, then auto-detect from projectPath.
         if let workspace = project.workspaceFile {
             let workspacePath = (project.projectPath as NSString).appendingPathComponent(workspace)
             archiveArgs += ["-workspace", workspacePath]
         } else if let projectFile = project.projectFile {
             let projectFilePath = (project.projectPath as NSString).appendingPathComponent(projectFile)
             archiveArgs += ["-project", projectFilePath]
+        } else if project.projectPath.hasSuffix(".xcworkspace") {
+            archiveArgs += ["-workspace", project.projectPath]
+        } else if project.projectPath.hasSuffix(".xcodeproj") {
+            archiveArgs += ["-project", project.projectPath]
         } else {
-            throw BuildError.missingProjectFile(project.projectPath)
+            // projectPath is a directory — scan for .xcworkspace or .xcodeproj inside it
+            let contents = (try? fm.contentsOfDirectory(atPath: project.projectPath)) ?? []
+            if let ws = contents.first(where: { $0.hasSuffix(".xcworkspace") }) {
+                archiveArgs += ["-workspace", (project.projectPath as NSString).appendingPathComponent(ws)]
+            } else if let proj = contents.first(where: { $0.hasSuffix(".xcodeproj") }) {
+                archiveArgs += ["-project", (project.projectPath as NSString).appendingPathComponent(proj)]
+            } else {
+                throw BuildError.missingProjectFile(project.projectPath)
+            }
         }
 
         archiveArgs += [

@@ -231,7 +231,6 @@ struct MenuBarView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(appState.buildLog.isEmpty)
         }
     }
 
