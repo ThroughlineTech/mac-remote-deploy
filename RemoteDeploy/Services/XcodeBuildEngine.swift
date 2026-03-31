@@ -19,9 +19,6 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// The continuation used to yield lines into `buildLogStream`. Protected by `lock`.
     private var logContinuation: AsyncStream<String>.Continuation?
 
-    /// Backing storage for the async log stream, created once at init.
-    private let _buildLogStream: AsyncStream<String>
-
     // MARK: - Protocol Properties
 
     /// The current build status (idle, building, success, or failure).
@@ -32,21 +29,24 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         return _status
     }
 
-    /// An async stream that emits individual lines of xcodebuild stdout/stderr output
-    /// as they arrive. Consumers (e.g. a log view) can iterate this to show real-time
-    /// build output. The stream is long-lived and survives across multiple builds.
+    /// Creates a new async stream for consuming build log output.
+    /// Each call returns a fresh stream — call this before starting a build,
+    /// then iterate it in a Task to receive real-time log lines.
     var buildLogStream: AsyncStream<String> {
-        _buildLogStream
+        lock.lock()
+        // Finish any previous continuation so old consumers stop
+        logContinuation?.finish()
+        let stream = AsyncStream<String> { cont in
+            self.logContinuation = cont
+        }
+        lock.unlock()
+        return stream
     }
 
     // MARK: - Init
 
     init() {
-        var continuation: AsyncStream<String>.Continuation!
-        _buildLogStream = AsyncStream<String> { cont in
-            continuation = cont
-        }
-        logContinuation = continuation
+        logContinuation = nil
     }
 
     // MARK: - Build Pipeline

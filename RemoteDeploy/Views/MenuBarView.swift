@@ -301,9 +301,12 @@ struct MenuBarView: View {
             appState.buildStatus = .building(progress: "Starting build...")
             appState.buildLog = ""
 
+            // Get the log stream BEFORE starting the build so the continuation is ready
+            let logStream = serviceContainer.buildEngine.buildLogStream
+
             // Consume build log stream in a background task
             let logTask = Task {
-                for await line in serviceContainer.buildEngine.buildLogStream {
+                for await line in logStream {
                     await MainActor.run {
                         appState.buildLog += line + "\n"
                     }
