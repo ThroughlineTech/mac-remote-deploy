@@ -65,33 +65,45 @@ struct SetupAssistantView: View {
 
     // MARK: - Step Indicator
 
-    /// Horizontal row of numbered circles and labels showing progress through the wizard.
+    /// Horizontal row of numbered circles showing progress, with the current step name below.
     private var stepIndicator: some View {
-        HStack(spacing: 0) {
-            ForEach(SetupStep.allCases, id: \.rawValue) { step in
-                HStack(spacing: 4) {
-                    // Numbered circle -- filled when current or past
-                    ZStack {
-                        Circle()
-                            .fill(step.rawValue <= currentStep.rawValue ? Color.accentColor : Color.gray.opacity(0.3))
-                            .frame(width: 24, height: 24)
-                        Text("\(step.rawValue + 1)")
-                            .font(.caption2.bold())
-                            .foregroundColor(.white)
+        VStack(spacing: 6) {
+            HStack(spacing: 0) {
+                ForEach(SetupStep.allCases, id: \.rawValue) { step in
+                    // Numbered circle — filled when current or past, clickable to navigate
+                    Button {
+                        withAnimation { currentStep = step }
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(step.rawValue <= currentStep.rawValue ? Color.accentColor : Color.gray.opacity(0.3))
+                                .frame(width: 28, height: 28)
+                            if step.rawValue < currentStep.rawValue {
+                                Image(systemName: "checkmark")
+                                    .font(.caption2.bold())
+                                    .foregroundColor(.white)
+                            } else {
+                                Text("\(step.rawValue + 1)")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.white)
+                            }
+                        }
                     }
+                    .buttonStyle(.plain)
 
-                    Text(step.title)
-                        .font(.caption)
-                        .foregroundColor(step == currentStep ? .primary : .secondary)
-                }
-
-                // Connecting line between steps
-                if step != SetupStep.allCases.last {
-                    Rectangle()
-                        .fill(step.rawValue < currentStep.rawValue ? Color.accentColor : Color.gray.opacity(0.3))
-                        .frame(height: 2)
+                    // Connecting line between steps
+                    if step != SetupStep.allCases.last {
+                        Rectangle()
+                            .fill(step.rawValue < currentStep.rawValue ? Color.accentColor : Color.gray.opacity(0.3))
+                            .frame(height: 2)
+                            .frame(maxWidth: 40)
+                    }
                 }
             }
+
+            Text("Step \(currentStep.rawValue + 1): \(currentStep.title)")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
         }
     }
 

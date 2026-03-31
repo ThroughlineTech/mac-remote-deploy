@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -50,7 +50,6 @@
 		C642B5461B3177D36B808897 /* MockPushNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19D75895A8F839A9E45AB2B4 /* MockPushNotifier.swift */; };
 		C97AC4C1E29984DE8B675E59 /* UserDefaultsProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AE13591182653E83E1529A5 /* UserDefaultsProjectStore.swift */; };
 		D1EEC512B80AECC9EFABB44C /* ProjectConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9646E680B180ADA2F5925EE7 /* ProjectConfig.swift */; };
-		EFC34A45B1BAD48A107EB61E /* SettingsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD4FF1EE760DDC5615E56BF /* SettingsData.swift */; };
 		D50CBB9E697621C5571F2D2B /* PushNotifSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B671A818A6D0055CA3DEB4B /* PushNotifSetupStep.swift */; };
 		D8042E38E7C31561D24712D9 /* BuildEngineProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */; };
 		D972D686D54D5B87671E071A /* ServerInstallTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A2461C0A040726D284136C /* ServerInstallTracker.swift */; };
@@ -61,6 +60,7 @@
 		E05446F4892A6E956291CB40 /* SetupAssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2419EAD737FEC25ACDDBCCE0 /* SetupAssistantView.swift */; };
 		E4909B456FAE1B877C628D9C /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495CC99A1356A133ACC03C28 /* NotificationManager.swift */; };
 		EBBFEFEBC886A23A76FFCD08 /* MockTailscaleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E031F1B2F7D8B34B91EB95F /* MockTailscaleProvider.swift */; };
+		EFC34A45B1BAD48A107EB61E /* SettingsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FD4FF1EE760DDC5615E56BF /* SettingsData.swift */; };
 		F33309DA202DB2E0982030E1 /* ManifestGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */; };
 		F6CDDEAEC7248F4E6128A1CE /* InstallRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29195CB416816AB0185DDF26 /* InstallRecord.swift */; };
 		F812611F3D7F1F8C74BDE55F /* TailscaleProviderProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */; };
@@ -102,6 +102,7 @@
 		31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TailscaleProviderProtocol.swift; sourceTree = "<group>"; };
 		36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStoreTests.swift; sourceTree = "<group>"; };
 		3F88DC1A592D457DDBA4360A /* DeployServerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeployServerProtocol.swift; sourceTree = "<group>"; };
+		3FD4FF1EE760DDC5615E56BF /* SettingsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsData.swift; sourceTree = "<group>"; };
 		401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallPageGeneratorTests.swift; sourceTree = "<group>"; };
 		48677B76639F8593AF6C0336 /* BuildLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildLogView.swift; sourceTree = "<group>"; };
 		495CC99A1356A133ACC03C28 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
@@ -124,7 +125,6 @@
 		90AA426A4B6723150D61BF97 /* IPAImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPAImporter.swift; sourceTree = "<group>"; };
 		92BCC65C66A3D556B6D32ADF /* CertificateProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertificateProviding.swift; sourceTree = "<group>"; };
 		9646E680B180ADA2F5925EE7 /* ProjectConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectConfig.swift; sourceTree = "<group>"; };
-		3FD4FF1EE760DDC5615E56BF /* SettingsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsData.swift; sourceTree = "<group>"; };
 		A7E9A949DBC530810FF7E1CC /* InstallTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallTracking.swift; sourceTree = "<group>"; };
 		AA18BF51075D87304B5D69D5 /* PushNotifying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifying.swift; sourceTree = "<group>"; };
 		B223A9835076867EE2BCA306 /* MockProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockProjectStore.swift; sourceTree = "<group>"; };
@@ -383,7 +383,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 2640;
 			};
 			buildConfigurationList = 9ADD61A07CCC1F5958B30B30 /* Build configuration list for PBXProject "RemoteDeploy" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -399,7 +399,6 @@
 				C42DE6E49D1F60D42720B7A8 /* XCRemoteSwiftPackageReference "swift-nio" */,
 				9C670724106AE3FD8599051E /* XCRemoteSwiftPackageReference "swift-nio-ssl" */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -518,10 +517,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = RemoteDeploy/RemoteDeploy.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				INFOPLIST_FILE = RemoteDeploy/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/../Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.app;
 				PRODUCT_NAME = RemoteDeploy;
@@ -535,6 +533,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -555,10 +554,9 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = RemoteDeploy/RemoteDeploy.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				INFOPLIST_FILE = RemoteDeploy/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/../Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.app;
 				PRODUCT_NAME = RemoteDeploy;
@@ -572,6 +570,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -591,6 +590,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -639,9 +639,11 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -655,6 +657,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -666,6 +669,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -714,9 +718,11 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -737,6 +743,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
