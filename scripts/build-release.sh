@@ -28,6 +28,7 @@ VERSION=$(grep CFBundleShortVersionString "$PROJECT_DIR/RemoteDeploy/Info.plist"
 APP_NAME="RemoteDeploy"
 DMG_NAME="RemoteDeploy-v${VERSION}-macOS"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application}"
+DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-RDJQ523WP4}"
 NOTARIZE_PROFILE="${NOTARIZE_PROFILE:-RemoteDeploy-Notarize}"
 SKIP_NOTARIZE=false
 
@@ -60,8 +61,7 @@ xcodebuild build \
     -configuration Release \
     -destination 'platform=macOS' \
     -derivedDataPath "$BUILD_DIR" \
-    CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" \
-    CODE_SIGN_STYLE=Manual \
+    CODE_SIGN_IDENTITY="-" \
     2>&1 | tail -5
 
 APP_PATH="$BUILD_DIR/Build/Products/Release/${APP_NAME}.app"
@@ -74,18 +74,14 @@ fi
 echo "Build succeeded: $APP_PATH"
 echo "Size: $(du -sh "$APP_PATH" | cut -f1)"
 
-# Step 3: Codesign (if not already signed by xcodebuild)
-echo "--- Verifying code signature ---"
-if codesign --verify --deep --strict "$APP_PATH" 2>/dev/null; then
-    echo "Code signature valid"
-else
-    echo "WARNING: Code signature invalid or missing"
-    if [[ "$SIGNING_IDENTITY" != "-" ]]; then
-        echo "Signing with: $SIGNING_IDENTITY"
-        codesign --deep --force --options runtime \
-            --sign "$SIGNING_IDENTITY" "$APP_PATH"
-    fi
-fi
+# Step 3: Codesign the app bundle with Developer ID
+echo "--- Code signing with: $SIGNING_IDENTITY ---"
+codesign --deep --force --options runtime \
+    --sign "$SIGNING_IDENTITY" \
+    --timestamp \
+    "$APP_PATH"
+codesign --verify --deep --strict "$APP_PATH"
+echo "Code signature valid"
 
 # Step 4: Notarize (unless skipped)
 if [[ $SKIP_NOTARIZE == false ]]; then
