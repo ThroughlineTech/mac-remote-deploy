@@ -32,6 +32,7 @@ enum SetupStep: Int, CaseIterable {
 struct SetupAssistantView: View {
     @ObservedObject var appState: AppState
     @EnvironmentObject var serviceContainer: ServiceContainer
+    @Environment(\.dismiss) private var dismiss
     /// Dismissal action provided by the presenting view.
     var onDismiss: () -> Void
     /// Called when the wizard completes to save settings and start the server.
@@ -162,6 +163,7 @@ struct SetupAssistantView: View {
                     // Save settings and start the server before dismissing
                     onStartServer()
                     onDismiss()
+                    dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
             } else {
