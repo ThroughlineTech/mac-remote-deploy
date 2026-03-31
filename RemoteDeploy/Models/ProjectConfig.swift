@@ -53,6 +53,6 @@ struct ProjectConfig: Codable, Identifiable, Sendable, Equatable {
         self.provisioningProfile = nil
         self.buildConfiguration = "Release"
         self.urlSlug = name.lowercased().replacingOccurrences(of: " ", with: "-")
-        self.exportMethod = "ad-hoc"
+        self.exportMethod = "development"
     }
 }
