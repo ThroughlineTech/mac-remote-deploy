@@ -151,6 +151,8 @@ struct ProjectFormView: View {
                         project.scheme = first
                     }
                     isDetectingSchemes = false
+                    // Auto-detect bundle ID and team ID
+                    detectBuildSettings()
                 }
             } catch {
                 await MainActor.run {
@@ -159,5 +161,73 @@ struct ProjectFormView: View {
                 }
             }
         }
+    }
+
+    /// Auto-detects Bundle ID and Team ID by running xcodebuild -showBuildSettings.
+    /// Only fills in empty fields — won't overwrite user-entered values.
+    private func detectBuildSettings() {
+        guard !project.projectPath.isEmpty, !project.scheme.isEmpty else { return }
+
+        Task {
+            do {
+                let output = try await runShowBuildSettings()
+                await MainActor.run {
+                    if let detected = parseSetting("PRODUCT_BUNDLE_IDENTIFIER", from: output),
+                       project.bundleID.isEmpty {
+                        project.bundleID = detected
+                    }
+                    if let detected = parseSetting("DEVELOPMENT_TEAM", from: output),
+                       project.teamID.isEmpty {
+                        project.teamID = detected
+                    }
+                }
+            } catch {
+                print("Build settings detection failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Runs xcodebuild -showBuildSettings and returns the raw output.
+    private func runShowBuildSettings() async throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+
+        var args = ["xcodebuild", "-showBuildSettings", "-scheme", project.scheme]
+
+        let fm = FileManager.default
+        let path = project.projectPath
+        let xcworkspaces = (try? fm.contentsOfDirectory(atPath: path))?.filter { $0.hasSuffix(".xcworkspace") } ?? []
+        let xcprojects = (try? fm.contentsOfDirectory(atPath: path))?.filter { $0.hasSuffix(".xcodeproj") } ?? []
+
+        if let workspace = xcworkspaces.first {
+            args += ["-workspace", "\(path)/\(workspace)"]
+        } else if let xcproj = xcprojects.first {
+            args += ["-project", "\(path)/\(xcproj)"]
+        } else if path.hasSuffix(".xcodeproj") || path.hasSuffix(".xcworkspace") {
+            args += [path.hasSuffix(".xcworkspace") ? "-workspace" : "-project", path]
+        }
+
+        process.arguments = args
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    /// Parses a build setting value from xcodebuild -showBuildSettings output.
+    private func parseSetting(_ key: String, from output: String) -> String? {
+        for line in output.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("\(key) = ") {
+                let value = trimmed.replacingOccurrences(of: "\(key) = ", with: "")
+                if !value.isEmpty, !value.contains("$(") {
+                    return value
+                }
+            }
+        }
+        return nil
     }
 }

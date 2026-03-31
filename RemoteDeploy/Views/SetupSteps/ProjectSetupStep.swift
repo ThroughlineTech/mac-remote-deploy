@@ -137,6 +137,12 @@ struct ProjectSetupStep: View {
                             Text(scheme).tag(scheme)
                         }
                     }
+                    .onChange(of: selectedScheme) { _ in
+                        // Re-detect build settings when scheme changes
+                        bundleID = ""
+                        teamID = ""
+                        detectBuildSettings()
+                    }
                 }
             }
 
@@ -178,7 +184,7 @@ struct ProjectSetupStep: View {
         return true
     }
 
-    /// Sets the project path from the selected URL and kicks off scheme detection.
+    /// Sets the project path from the selected URL and kicks off scheme + build settings detection.
     private func applySelectedPath(_ url: URL) {
         projectPath = url.path
         // Derive a default name from the directory/file name
@@ -187,6 +193,82 @@ struct ProjectSetupStep: View {
             projectName = name
         }
         detectSchemes()
+    }
+
+    /// Auto-detects Bundle ID and Team ID from the Xcode project's build settings.
+    /// Runs `xcodebuild -showBuildSettings` and parses PRODUCT_BUNDLE_IDENTIFIER and DEVELOPMENT_TEAM.
+    private func detectBuildSettings() {
+        guard !projectPath.isEmpty, !selectedScheme.isEmpty else { return }
+
+        Task {
+            do {
+                let output = try await runXcodeBuildShowSettings()
+                await MainActor.run {
+                    if let detectedBundleID = parseSetting("PRODUCT_BUNDLE_IDENTIFIER", from: output), bundleID.isEmpty {
+                        bundleID = detectedBundleID
+                    }
+                    if let detectedTeamID = parseSetting("DEVELOPMENT_TEAM", from: output), teamID.isEmpty {
+                        teamID = detectedTeamID
+                    }
+                }
+            } catch {
+                print("Build settings detection failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Runs xcodebuild -showBuildSettings for the selected project and scheme.
+    /// - Returns: The raw stdout output as a string.
+    private func runXcodeBuildShowSettings() async throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+
+        var args = ["xcodebuild", "-showBuildSettings", "-scheme", selectedScheme]
+
+        // Determine if this is a project or workspace
+        let fm = FileManager.default
+        let xcworkspaces = try? fm.contentsOfDirectory(atPath: projectPath).filter { $0.hasSuffix(".xcworkspace") }
+        let xcprojects = try? fm.contentsOfDirectory(atPath: projectPath).filter { $0.hasSuffix(".xcodeproj") }
+
+        if let workspace = xcworkspaces?.first {
+            args += ["-workspace", "\(projectPath)/\(workspace)"]
+        } else if let project = xcprojects?.first {
+            args += ["-project", "\(projectPath)/\(project)"]
+        } else if projectPath.hasSuffix(".xcodeproj") || projectPath.hasSuffix(".xcworkspace") {
+            let flag = projectPath.hasSuffix(".xcworkspace") ? "-workspace" : "-project"
+            args += [flag, projectPath]
+        }
+
+        process.arguments = args
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+
+        try process.run()
+        process.waitUntilExit()
+
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+
+    /// Parses a single build setting value from xcodebuild -showBuildSettings output.
+    /// - Parameters:
+    ///   - key: The setting name (e.g., "PRODUCT_BUNDLE_IDENTIFIER").
+    ///   - output: The raw xcodebuild output.
+    /// - Returns: The setting value, or nil if not found.
+    private func parseSetting(_ key: String, from output: String) -> String? {
+        for line in output.components(separatedBy: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("\(key) = ") {
+                let value = trimmed.replacingOccurrences(of: "\(key) = ", with: "")
+                // Skip template values like $(PRODUCT_BUNDLE_IDENTIFIER)
+                if !value.isEmpty, !value.contains("$(") {
+                    return value
+                }
+            }
+        }
+        return nil
     }
 
     /// Runs scheme detection via BuildEngineProtocol.detectSchemes.
@@ -204,6 +286,8 @@ struct ProjectSetupStep: View {
                         selectedScheme = first
                     }
                     isDetectingSchemes = false
+                    // Auto-detect bundle ID and team ID now that we have a scheme
+                    detectBuildSettings()
                 }
             } catch {
                 await MainActor.run {
