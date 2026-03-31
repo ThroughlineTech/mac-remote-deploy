@@ -149,11 +149,16 @@ struct MenuBarView: View {
                     .onTapGesture {
                         appState.selectedProjectID = project.id
                     }
+                    .contextMenu {
+                        Button("Remove Project") {
+                            removeProject(project)
+                        }
+                    }
                 }
             }
 
-            // Add project button
-            Button(action: openSettings) {
+            // Add project button — opens Settings window
+            SettingsLink {
                 Label("Add Project...", systemImage: "plus")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -251,7 +256,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: openSettings) {
+            SettingsLink {
                 Label("Settings...", systemImage: "gear")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -273,15 +278,16 @@ struct MenuBarView: View {
 
     // MARK: - Actions
 
-    /// Opens the macOS Settings window for this app.
-    private func openSettings() {
-        // Use the modern API on macOS 14+
-        if #available(macOS 14.0, *) {
-            NSApp.activate()
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+    /// Removes a project from the store and app state.
+    /// - Parameter project: The project to remove.
+    private func removeProject(_ project: ProjectConfig) {
+        try? serviceContainer.projectStore.delete(projectID: project.id)
+        appState.projects.removeAll { $0.id == project.id }
+        serviceContainer.deployServer.unregisterProject(slug: project.urlSlug)
+        if appState.selectedProjectID == project.id {
+            appState.selectedProjectID = appState.projects.first?.id
         }
+        NotificationCenter.default.post(name: .saveSettingsRequested, object: nil)
     }
 
     /// Kicks off a build for the currently selected project.
