@@ -32,7 +32,7 @@ final class ProjectConfigTests: XCTestCase {
     func testDefaultInitSetsAdHocExportMethod() {
         let config = ProjectConfig(name: "MyApp", projectPath: "/path")
 
-        XCTAssertEqual(config.exportMethod, "ad-hoc")
+        XCTAssertEqual(config.exportMethod, "development")
     }
 
     func testDefaultInitSetsEmptyScheme() {

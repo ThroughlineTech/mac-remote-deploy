@@ -100,6 +100,10 @@ actor ServerInstallTracker: InstallTracking {
             encoder.dateEncodingStrategy = .secondsSince1970
             let data = try encoder.encode(records)
             try data.write(to: storageURL, options: .atomic)
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o600],
+                ofItemAtPath: storageURL.path
+            )
         } catch {
             // Log but do not propagate — install tracking is non-critical.
             print("ServerInstallTracker: failed to write installs: \(error.localizedDescription)")

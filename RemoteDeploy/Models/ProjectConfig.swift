@@ -21,10 +21,10 @@ struct ProjectConfig: Codable, Identifiable, Sendable, Equatable {
     /// Xcode scheme to build (e.g., "rejog-ios").
     var scheme: String
 
-    /// iOS bundle identifier (e.g., "net.rejog.voicememo").
+    /// iOS bundle identifier (e.g., "com.example.myapp").
     var bundleID: String
 
-    /// Apple Developer Team ID (e.g., "RDJQ523WP4").
+    /// Apple Developer Team ID (e.g., "ABCDE12345").
     var teamID: String
 
     /// Provisioning profile name or UUID. Nil for automatic signing.
@@ -52,7 +52,11 @@ struct ProjectConfig: Codable, Identifiable, Sendable, Equatable {
         self.teamID = ""
         self.provisioningProfile = nil
         self.buildConfiguration = "Release"
-        self.urlSlug = name.lowercased().replacingOccurrences(of: " ", with: "-")
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-"))
+        self.urlSlug = name.lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .unicodeScalars.filter { allowed.contains($0) }
+            .map { String($0) }.joined()
         self.exportMethod = "development"
     }
 }

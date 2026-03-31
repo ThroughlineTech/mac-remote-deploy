@@ -69,11 +69,11 @@ struct ProjectFormView: View {
 
                 TextField("Bundle ID", text: $project.bundleID)
                     .textFieldStyle(.roundedBorder)
-                    .help("iOS bundle identifier (e.g., net.rejog.voicememo)")
+                    .help("iOS bundle identifier (e.g., com.example.myapp)")
 
                 TextField("Team ID", text: $project.teamID)
                     .textFieldStyle(.roundedBorder)
-                    .help("Apple Developer Team ID (e.g., RDJQ523WP4)")
+                    .help("Apple Developer Team ID (e.g., ABCDE12345)")
 
                 TextField("Provisioning Profile (optional)", text: Binding(
                     get: { project.provisioningProfile ?? "" },
@@ -130,7 +130,11 @@ struct ProjectFormView: View {
             project.projectPath = url.path
             if project.name.isEmpty {
                 project.name = url.lastPathComponent
-                project.urlSlug = project.name.lowercased().replacingOccurrences(of: " ", with: "-")
+                let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-"))
+                project.urlSlug = project.name.lowercased()
+                    .replacingOccurrences(of: " ", with: "-")
+                    .unicodeScalars.filter { allowed.contains($0) }
+                    .map { String($0) }.joined()
             }
             detectSchemes()
         }

@@ -172,7 +172,7 @@ It can deploy **any iOS app** — not just a single hardcoded project. Users con
 1. **Tailscale** installed on both Mac and iPhone, both on same tailnet
 2. **Tailscale HTTPS cert** for the Mac's MagicDNS name:
    ```bash
-   tailscale cert <mac-hostname>.tailf3787.ts.net
+   tailscale cert <mac-hostname>.tail12345.ts.net
    ```
    This produces a cert + key file. The app needs to know where these are.
 3. **Apple Developer account** with:
@@ -201,13 +201,13 @@ It can deploy **any iOS app** — not just a single hardcoded project. Users con
 │  ─────────────────────                      │
 │  Status: ● Running on port 8443            │
 │  Tailscale: ● Connected                    │
-│  URL: https://dans-mbp.tailf3787...        │
+│  URL: https://your-mac.tail12345...        │
 │  📋 Copy URL                               │
 │                                             │
 │  ─────────────────────                      │
 │  Projects:                                  │
-│    rejog-ios  /Users/plympton/src/...       │
-│    other-app  /Users/plympton/src/...       │
+│    rejog-ios  /Users/you/src/...       │
+│    other-app  /Users/you/src/...       │
 │    + Add Project...                         │
 │                                             │
 │  ─────────────────────                      │
@@ -322,7 +322,7 @@ Create an export options plist:
     <key>method</key>
     <string>ad-hoc</string>
     <key>teamID</key>
-    <string>RDJQ523WP4</string>
+    <string>ABCDE12345</string>
     <key>stripSwiftSymbols</key>
     <true/>
     <key>compileBitcode</key>
@@ -582,7 +582,7 @@ Notify on:
 ### Code Signing for Ad-Hoc
 - The .ipa must be signed with an ad-hoc provisioning profile
 - The target device's UDID must be included in the profile
-- The development team ID for this project is `RDJQ523WP4`
+- The development team ID for this project is `ABCDE12345`
 - If using a development cert (not distribution), the export method should be `development` instead of `ad-hoc`
 - Support `signingStyle=automatic` to let xcodebuild pick the right profile
 
@@ -708,7 +708,7 @@ All are Apple-maintained Swift packages.
 
 ### Tester (iPhone, anywhere in the world):
 1. Open Safari
-2. Navigate to `https://dans-mbp.tailf3787.ts.net:8443/rejog/` (or tap saved bookmark)
+2. Navigate to `https://your-mac.tail12345.ts.net:8443/rejog/` (or tap saved bookmark)
 3. Tap "Install on This Device"
 4. iOS prompts "Would you like to install Rejog?"
 5. Tap Install
@@ -753,13 +753,7 @@ Features that could be valuable later but are not in scope for the initial build
 
 ## Current Project Info (for first project setup)
 
-- **Project path:** `/Users/plympton/src/rejog-ios-poc`
-- **Project file:** `rejog-ios.xcodeproj`
-- **Scheme:** `rejog-ios`
-- **Bundle ID:** `net.rejog.voicememo`
-- **Development Team:** `RDJQ523WP4`
-- **Mac Tailscale hostname:** Check via `tailscale status --self --json | jq -r '.Self.DNSName'`
-- **iPhone Tailscale hostname:** `iphone181.tailf3787.ts.net`
+Configure your project details in the Setup Assistant on first launch.
 
 ---
 

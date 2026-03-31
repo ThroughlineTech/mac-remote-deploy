@@ -112,6 +112,10 @@ final class UserDefaultsProjectStore: ProjectStoring, @unchecked Sendable {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(projects)
         try data.write(to: storageURL, options: .atomic)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: storageURL.path
+        )
     }
 
     /// Creates the storage directory if it does not already exist.

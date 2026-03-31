@@ -462,6 +462,8 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         headers.add(name: "Content-Type", value: contentType)
         headers.add(name: "Content-Length", value: "\(bodyData.count)")
         headers.add(name: "Connection", value: "close")
+        headers.add(name: "X-Content-Type-Options", value: "nosniff")
+        headers.add(name: "X-Frame-Options", value: "DENY")
 
         let responseHead = HTTPResponseHead(version: .http1_1, status: status, headers: headers)
         context.write(wrapOutboundOut(.head(responseHead)), promise: nil)
@@ -490,6 +492,8 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         headers.add(name: "Content-Length", value: "\(fileData.count)")
         headers.add(name: "Content-Disposition", value: "attachment; filename=\"app.ipa\"")
         headers.add(name: "Connection", value: "close")
+        headers.add(name: "X-Content-Type-Options", value: "nosniff")
+        headers.add(name: "X-Frame-Options", value: "DENY")
 
         let responseHead = HTTPResponseHead(version: .http1_1, status: .ok, headers: headers)
         context.write(wrapOutboundOut(.head(responseHead)), promise: nil)

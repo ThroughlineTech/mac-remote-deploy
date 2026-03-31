@@ -198,6 +198,10 @@ struct RemoteDeployApp: App {
             )
             let data = try JSONEncoder().encode(settings)
             try data.write(to: URL(fileURLWithPath: Self.settingsFilePath))
+            try FileManager.default.setAttributes(
+                [.posixPermissions: 0o600],
+                ofItemAtPath: Self.settingsFilePath
+            )
         } catch {
             print("Failed to save settings: \(error.localizedDescription)")
         }

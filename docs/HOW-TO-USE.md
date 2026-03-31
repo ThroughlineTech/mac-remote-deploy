@@ -31,7 +31,7 @@ What you need specifically:
 - An Apple Developer Program membership ($99/year)
 - A distribution certificate (or development certificate) in your keychain
 - A provisioning profile that lists your iPhone's UDID
-- Your Development Team ID (a 10-character string like `RDJQ523WP4`)
+- Your Development Team ID (a 10-character string like `ABCDE12345`)
 
 If you don't know your iPhone's UDID, plug it into your Mac, open Finder, click the phone, and click the serial number area until it shows the UDID. Add that UDID to your provisioning profile in the [Apple Developer Portal](https://developer.apple.com/account/resources/devices/list).
 
@@ -53,7 +53,7 @@ Since you have no projects configured yet, the app automatically opens the **Set
 
 ### Step 1: Tailscale
 
-The first screen checks whether Tailscale is running on your Mac. If it is, you'll see a green indicator and your Mac's Tailscale hostname (something like `dans-mbp.tailf3787.ts.net`).
+The first screen checks whether Tailscale is running on your Mac. If it is, you'll see a green indicator and your Mac's Tailscale hostname (something like `your-mac.tail12345.ts.net`).
 
 If Tailscale isn't running or isn't installed, the assistant explains what you need and gives you a link to install it. Once you've got it running, hit **Check Again** and it should detect the connection.
 
@@ -101,7 +101,7 @@ The final screen shows a summary of everything you configured:
 The install URL is displayed prominently — something like:
 
 ```
-https://dans-mbp.tailf3787.ts.net:8443/rejog/
+https://your-mac.tail12345.ts.net:8443/rejog/
 ```
 
 There's a **Copy URL** button so you can send it to yourself (AirDrop, iMessage, email — whatever). This is the URL you'll open on your iPhone to install apps.
@@ -119,10 +119,10 @@ If you want to set up certificates manually (instead of through the setup assist
 Open Terminal on your Mac and run:
 
 ```bash
-tailscale cert your-hostname.tailf3787.ts.net
+tailscale cert your-hostname.tail12345.ts.net
 ```
 
-Replace `your-hostname.tailf3787.ts.net` with your actual Tailscale MagicDNS hostname. You can find it by running:
+Replace `your-hostname.tail12345.ts.net` with your actual Tailscale MagicDNS hostname. You can find it by running:
 
 ```bash
 tailscale status --self --json | jq -r '.Self.DNSName'
@@ -131,8 +131,8 @@ tailscale status --self --json | jq -r '.Self.DNSName'
 (It'll have a trailing dot — ignore that.)
 
 The `tailscale cert` command creates two files in your current directory:
-- `your-hostname.tailf3787.ts.net.crt` — the certificate
-- `your-hostname.tailf3787.ts.net.key` — the private key
+- `your-hostname.tail12345.ts.net.crt` — the certificate
+- `your-hostname.tail12345.ts.net.key` — the private key
 
 ### Where to put them
 
@@ -180,7 +180,7 @@ In the menu bar dropdown, click **+ Add Project...** under the projects list.
 | **Project path** | The folder containing your `.xcodeproj` or `.xcworkspace`. You can type a path, click Browse, or drag-and-drop. | `/Users/you/src/my-app` |
 | **Scheme** | The Xcode scheme to build. Auto-detected from your project — pick from the dropdown. | `my-app` |
 | **Bundle ID** | Your app's bundle identifier. Auto-detected if possible. | `com.example.myapp` |
-| **Team ID** | Your Apple Development Team ID. A 10-character alphanumeric string. Auto-detected from your project's signing settings if available. | `RDJQ523WP4` |
+| **Team ID** | Your Apple Development Team ID. A 10-character alphanumeric string. Auto-detected from your project's signing settings if available. | `ABCDE12345` |
 | **Provisioning profile** | Usually set to automatic (`signingStyle=automatic`), which lets Xcode pick the right profile. You can also type a specific profile name as a fallback. | `automatic` |
 | **Build configuration** | Debug or Release. Default is Release. Release builds are smaller and faster but don't include debug symbols. | `Release` |
 | **URL path** | The path on the server where this project is served. Used for multi-project setups. | `/my-app/` |
@@ -247,7 +247,7 @@ It has to be Safari. Chrome, Firefox, and other browsers can't trigger iOS app i
 Type or paste the URL shown in the RemoteDeploy menu bar. It looks something like:
 
 ```
-https://dans-mbp.tailf3787.ts.net:8443/rejog/
+https://your-mac.tail12345.ts.net:8443/rejog/
 ```
 
 Make sure Tailscale is connected on your iPhone, or the URL won't resolve.
@@ -393,7 +393,7 @@ Build failures are sent at high priority so they break through Do Not Disturb on
 The HTTPS server needs valid TLS certificates to start. If you see "Server Stopped" in the menu bar:
 
 - Check that your certificate files exist at the paths configured in Settings
-- Certificates may have expired — re-run `tailscale cert your-hostname.tailf3787.ts.net` in Terminal to get fresh ones, then update the paths in Settings if needed
+- Certificates may have expired — re-run `tailscale cert your-hostname.tail12345.ts.net` in Terminal to get fresh ones, then update the paths in Settings if needed
 - Make sure the port (default 8443) isn't being used by another application
 
 ### "Tailscale Disconnected"
