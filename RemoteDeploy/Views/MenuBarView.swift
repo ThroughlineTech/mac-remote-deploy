@@ -165,6 +165,7 @@ struct MenuBarView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded { NSApp.activate() })
             .padding(.top, 2)
         }
     }
@@ -262,6 +263,7 @@ struct MenuBarView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded { NSApp.activate() })
 
             Divider().padding(.vertical, 2)
 
