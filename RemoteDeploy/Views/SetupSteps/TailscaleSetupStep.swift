@@ -44,12 +44,16 @@ struct TailscaleSetupStep: View {
                             .font(.headline)
 
                         if !hostname.isEmpty {
-                            HStack {
+                            VStack(alignment: .leading, spacing: 2) {
                                 Text("Hostname:")
                                     .foregroundColor(.secondary)
+                                    .font(.subheadline)
                                 Text(hostname)
                                     .fontWeight(.medium)
                                     .textSelection(.enabled)
+                                    .font(.system(.body, design: .monospaced))
+                                    .lineLimit(nil)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
 

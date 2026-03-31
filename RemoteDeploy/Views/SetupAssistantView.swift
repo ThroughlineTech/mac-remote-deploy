@@ -60,7 +60,7 @@ struct SetupAssistantView: View {
             navigationButtons
                 .padding(16)
         }
-        .frame(width: 560, height: 480)
+        .frame(width: 600, height: 520)
     }
 
     // MARK: - Step Indicator

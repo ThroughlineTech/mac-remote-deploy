@@ -72,7 +72,7 @@ struct RemoteDeployApp: App {
             .environmentObject(serviceContainer)
         }
         .windowResizability(.contentSize)
-        .defaultSize(width: 560, height: 480)
+        .defaultSize(width: 600, height: 520)
 
         // Build log — opens as a standalone window
         Window("Build Log", id: "build-log") {
