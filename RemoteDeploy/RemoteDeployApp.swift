@@ -211,7 +211,7 @@ struct RemoteDeployApp: App {
         guard !appState.certPath.isEmpty, !appState.keyPath.isEmpty else { return }
         guard !appState.serverRunning else { return }
 
-        let server = serviceContainer.deployServer as! NIODeployServer
+        let server = serviceContainer.deployServer
 
         // Register all known projects so their routes are available
         for project in appState.projects {
@@ -287,6 +287,9 @@ final class ServiceContainer: ObservableObject {
     /// Active push notification providers (Prowl, Pushover, ntfy).
     var pushNotifiers: [any PushNotifying]
 
+    /// Imports pre-built .ipa files for serving without building.
+    let ipaImporter: IPAImporter
+
     init() {
         let manifestGen = ManifestGenerator()
         let installPageGen = InstallPageGenerator()
@@ -304,6 +307,7 @@ final class ServiceContainer: ObservableObject {
         self.installTracker = ServerInstallTracker()
         self.notificationManager = NotificationManager.shared
         self.pushNotifiers = []
+        self.ipaImporter = IPAImporter()
     }
 
     /// Configures push notifiers based on the user's saved notification settings.

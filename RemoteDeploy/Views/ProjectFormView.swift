@@ -3,6 +3,7 @@ import SwiftUI
 /// Form view for adding or editing a project configuration.
 /// Used both in the settings window and the setup assistant.
 struct ProjectFormView: View {
+    @EnvironmentObject var serviceContainer: ServiceContainer
     @Binding var project: ProjectConfig
     var onSave: (ProjectConfig) -> Void
     var onCancel: () -> Void
@@ -143,8 +144,7 @@ struct ProjectFormView: View {
 
         Task {
             do {
-                let engine = XcodeBuildEngine()
-                let schemes = try await engine.detectSchemes(at: project.projectPath)
+                let schemes = try await serviceContainer.buildEngine.detectSchemes(at: project.projectPath)
                 await MainActor.run {
                     detectedSchemes = schemes
                     if let first = schemes.first, project.scheme.isEmpty {

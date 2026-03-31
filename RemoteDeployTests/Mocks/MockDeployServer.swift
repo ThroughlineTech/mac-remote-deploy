@@ -48,4 +48,27 @@ final class MockDeployServer: DeployServerProtocol, @unchecked Sendable {
     // MARK: - delegate
 
     var delegate: DeployServerDelegate?
+
+    // MARK: - registerProject / unregisterProject / setBaseURL / onIPADownload
+
+    var registeredProjects: [ProjectConfig] = []
+
+    func registerProject(_ project: ProjectConfig) {
+        registeredProjects.append(project)
+    }
+
+    var unregisteredSlugs: [String] = []
+
+    func unregisterProject(slug: String) {
+        unregisteredSlugs.append(slug)
+        registeredProjects.removeAll { $0.urlSlug == slug }
+    }
+
+    var lastBaseURL: String?
+
+    func setBaseURL(_ url: String) {
+        lastBaseURL = url
+    }
+
+    var onIPADownload: ((String, String, String) -> Void)?
 }

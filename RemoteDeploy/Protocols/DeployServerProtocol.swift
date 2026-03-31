@@ -39,4 +39,20 @@ protocol DeployServerProtocol: AnyObject, Sendable {
     /// Delegate that receives callbacks when IPA files are downloaded.
     /// Set this before calling `start` to receive install-tracking events.
     var delegate: DeployServerDelegate? { get set }
+
+    /// Registers a project so the server knows to serve its install page, manifest, and IPA.
+    /// Call this for each project before or after starting the server.
+    /// - Parameter project: The project configuration containing the URL slug and metadata.
+    func registerProject(_ project: ProjectConfig)
+
+    /// Removes a previously registered project from the server's routing table.
+    /// - Parameter slug: The URL slug of the project to unregister.
+    func unregisterProject(slug: String)
+
+    /// Sets the base HTTPS URL used to construct absolute URLs in manifests and install pages.
+    /// - Parameter url: The full base URL (e.g., "https://hostname:8443").
+    func setBaseURL(_ url: String)
+
+    /// Callback invoked when an IPA is downloaded. Arguments: (projectSlug, sourceIP, userAgent).
+    var onIPADownload: ((String, String, String) -> Void)? { get set }
 }

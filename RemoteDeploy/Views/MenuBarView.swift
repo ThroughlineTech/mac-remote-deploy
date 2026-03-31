@@ -330,9 +330,8 @@ struct MenuBarView: View {
                 )
 
                 // Register project with deploy server and start server if needed
-                let server = serviceContainer.deployServer as! NIODeployServer
-                server.registerProject(buildProject)
-                server.setBaseURL(appState.serverURL)
+                serviceContainer.deployServer.registerProject(buildProject)
+                serviceContainer.deployServer.setBaseURL(appState.serverURL)
                 if !appState.serverRunning, !appState.certPath.isEmpty, !appState.keyPath.isEmpty {
                     do {
                         try await serviceContainer.deployServer.start(
@@ -409,8 +408,7 @@ struct MenuBarView: View {
             .appendingPathComponent("RemoteDeploy/serve").path
 
         do {
-            let importer = IPAImporter()
-            let info = try importer.importIPA(from: url, to: slug, serveDirectory: serveDir)
+            let info = try serviceContainer.ipaImporter.importIPA(from: url, to: slug, serveDirectory: serveDir)
             appState.buildStatus = .success(ipaPath: "\(serveDir)/\(slug)/app.ipa")
             print("Imported IPA: \(info.bundleID) v\(info.version)")
         } catch {
