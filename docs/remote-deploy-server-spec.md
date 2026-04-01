@@ -577,6 +577,179 @@ Notify on:
 
 ---
 
+## macOS / SwiftUI Platform Gotchas
+
+These are hard-won lessons from the initial build. Every one of these caused a real bug. An agent implementing this spec MUST follow these rules.
+
+### MenuBarExtra cannot present sheets
+Calling `.sheet(isPresented:)` on a view inside a `MenuBarExtra` with `.window` style causes `_NSDetectedLayoutRecursion` warnings and clips content (navigation buttons get cut off). **Fix:** Use separate `Window(id:)` scenes for the setup assistant and build log. Open them via `@Environment(\.openWindow)` with `openWindow(id: "setup-assistant")`.
+
+```swift
+// In the App body, alongside MenuBarExtra and Settings:
+Window("Setup Assistant", id: "setup-assistant") {
+    SetupAssistantView(...)
+}
+.windowResizability(.contentSize)
+
+Window("Build Log", id: "build-log") {
+    BuildLogView(...)
+}
+.windowResizability(.contentMinSize)
+```
+
+### LSUIElement apps don't activate windows
+Since `LSUIElement = true` (no dock icon), opening a Settings window or a `Window` scene does NOT bring it to the front. It opens behind other windows and the user thinks nothing happened. **Fix:** Call `NSApp.activate()` whenever opening a window. For `SettingsLink`, attach `.simultaneousGesture(TapGesture().onEnded { NSApp.activate() })`.
+
+### SettingsLink, not NSApp.sendAction
+Do NOT use `NSApp.sendAction(Selector(("showSettingsWindow:")), ...)` to open Settings. It's a private selector that logs warnings. Use SwiftUI's `SettingsLink` view instead.
+
+### AsyncStream is single-consumer and lazy
+`AsyncStream` exhausts after one `for await` iteration. If you create it once at init, the second build gets no log output. **Fix:** The `buildLogStream` property must create a fresh `AsyncStream` each time it's accessed. The continuation must be set **synchronously** (not inside the stream's closure, which runs lazily when iteration begins). Use `bufferingPolicy: .unbounded` and capture the continuation immediately:
+
+```swift
+var buildLogStream: AsyncStream<String> {
+    lock.lock()
+    logContinuation?.finish()
+    var captured: AsyncStream<String>.Continuation!
+    let stream = AsyncStream<String>(bufferingPolicy: .unbounded) { cont in
+        captured = cont
+    }
+    logContinuation = captured
+    lock.unlock()
+    return stream
+}
+```
+
+The consumer must obtain the stream BEFORE starting the build:
+```swift
+let logStream = serviceContainer.buildEngine.buildLogStream  // sets continuation
+let logTask = Task { for await line in logStream { ... } }   // starts iterating
+let result = try await buildEngine.build(project: ...)        // emits lines
+logTask.cancel()
+```
+
+### xcodebuild path auto-detection
+Users will provide a directory path like `/Users/me/src/my-app`, not `/Users/me/src/my-app/my-app.xcodeproj`. The build engine MUST handle all three cases:
+1. Path ends in `.xcodeproj` → use `-project <path>`
+2. Path ends in `.xcworkspace` → use `-workspace <path>`
+3. Path is a directory → scan for `.xcworkspace` first, then `.xcodeproj`, inside the directory
+
+### Export method defaults to "development"
+Default `ProjectConfig.exportMethod` to `"development"`, NOT `"ad-hoc"`. Most developers have development provisioning profiles configured but not ad-hoc profiles. Ad-hoc requires explicitly creating profiles in the Apple Developer portal for every bundle ID and extension.
+
+### Bundle ID and Team ID auto-detection
+When a project is selected and a scheme is detected, automatically run `xcodebuild -showBuildSettings -scheme <scheme> -project/-workspace <path>` and parse `PRODUCT_BUNDLE_IDENTIFIER` and `DEVELOPMENT_TEAM` from the output. Only fill empty fields — don't overwrite user-entered values. Skip template values containing `$(`.
+
+### Notifier properties must be immutable
+Push notifier classes (`ProwlNotifier`, `PushoverNotifier`, `NtfyNotifier`) must use `let` for credential properties, not `var`. Mutable stored properties on `Sendable` classes are an error in Swift 6. Create fresh notifier instances with the right values via `configurePushNotifiers(from:)` — never mutate after init.
+
+### macOS notification permission may be denied
+`UNUserNotificationCenter.requestAuthorization` will fail for unsigned/development builds and LSUIElement apps. Handle this gracefully — print a message, don't crash. Push notifications (Prowl/Pushover/ntfy) work independently via HTTP and are unaffected.
+
+### Launch at Login uses SMAppService
+```swift
+import ServiceManagement
+// Register:   try SMAppService.mainApp.register()
+// Unregister: try SMAppService.mainApp.unregister()
+// Check:      SMAppService.mainApp.status == .enabled
+```
+
+### File permissions for settings
+All JSON files containing API keys or usage data must be written with `0600` permissions:
+```swift
+try data.write(to: url)
+try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+```
+Apply to: `settings.json`, `projects.json`, `installs.json`.
+
+### HTTP security headers
+Add to all server responses: `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY`.
+
+### URL slug sanitization
+Project URL slugs must be restricted to `[a-z0-9-]`. Strip all other characters:
+```swift
+let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-"))
+self.urlSlug = name.lowercased()
+    .replacingOccurrences(of: " ", with: "-")
+    .unicodeScalars.filter { allowed.contains($0) }
+    .map { String($0) }.joined()
+```
+
+### No NSAllowsArbitraryLoads
+Do NOT add `NSAllowsArbitraryLoads` to Info.plist. All outbound connections (Prowl, Pushover, ntfy) use HTTPS. The deploy server uses Tailscale certs. ATS exceptions are unnecessary.
+
+### Step indicator design
+The setup wizard step indicator should use numbered circles only — no text labels. With 5 steps, text labels overflow the window width. Show the current step name below the circles as "Step N: Name". Completed steps show checkmarks. Make circles clickable for navigation.
+
+---
+
+## Settings Persistence
+
+### SettingsData Model
+```swift
+struct SettingsData: Codable {
+    var serverPort: Int = 8443
+    var hostname: String = ""
+    var certPath: String = ""
+    var keyPath: String = ""
+    var pushNotificationConfig = PushNotificationConfig()
+}
+```
+
+### Storage Location
+`~/Library/Application Support/RemoteDeploy/settings.json`
+
+### AppState Properties
+`AppState` must include these `@Published` properties for settings that the UI reads/writes:
+```swift
+@Published var certPath: String = ""
+@Published var keyPath: String = ""
+@Published var hostname: String = ""
+@Published var pushNotificationConfig = PushNotificationConfig()
+```
+
+### Save/Load
+- **Load on launch:** Read `settings.json`, decode to `SettingsData`, populate `AppState`.
+- **Save on every change:** Encode `SettingsData` from `AppState`, write to `settings.json` with `0600` permissions.
+- **Cross-view communication:** Settings changes in views post `Notification.Name("RemoteDeploy.saveSettingsRequested")`. The app entry point listens and calls `saveSettings()`.
+- **Server start requests:** Post `Notification.Name("RemoteDeploy.startServerRequested")` from the setup wizard Done button. The app entry point listens, saves settings, and starts the server.
+
+---
+
+## App Icon
+
+The app needs a macOS app icon. Design: a shipping box with wireless signal arcs on a blue gradient rounded rectangle. Generate all macOS icon sizes (16, 32, 128, 256, 512, 1024 at 1x and 2x) as PNGs in `RemoteDeploy/Resources/AppIcon.appiconset/` with a `Contents.json` manifest. Set `ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon` in project settings.
+
+---
+
+## Build, Sign, and Release
+
+### Release Build Script (`scripts/build-release.sh`)
+The project includes a build script that automates the full release pipeline:
+
+1. **Generate Xcode project** via `xcodegen generate`
+2. **Build Release** with `CODE_SIGN_IDENTITY="-"` (ad-hoc signing during build to avoid SPM dependency signing conflicts)
+3. **Codesign** the final `.app` bundle with `Developer ID Application` certificate using `--deep --force --options runtime --timestamp`
+4. **Notarize** via `xcrun notarytool submit --keychain-profile <profile> --wait`
+5. **Staple** the notarization ticket via `xcrun stapler staple`
+6. **Create DMG** with `hdiutil create` including an Applications symlink for drag-and-drop install
+
+### Why not sign during build?
+SPM dependencies (SwiftNIO, NIOSSL) use automatic signing. Passing `CODE_SIGN_IDENTITY="Developer ID Application"` to xcodebuild causes "conflicting provisioning settings" errors on the dependency targets. The workaround is: build unsigned, then sign the final bundle.
+
+### Notarization Setup (one-time)
+```bash
+xcrun notarytool store-credentials "RemoteDeploy-Notarize" \
+  --apple-id "your@email.com" \
+  --team-id "ABCDE12345" \
+  --password "app-specific-password-from-appleid.apple.com"
+```
+
+### User settings are never touched
+All user data lives in `~/Library/Application Support/RemoteDeploy/`. The build, install, and update processes never read or write this directory.
+
+---
+
 ## Key Technical Details
 
 ### Code Signing for Ad-Hoc
@@ -655,9 +828,11 @@ RemoteDeploy/
 │   │   ├── ProjectConfig.swift            # Codable model for project settings
 │   │   ├── BuildResult.swift              # Build outcome (success/failure, log, timestamp)
 │   │   ├── InstallRecord.swift            # Single install event (timestamp, IP, project)
-│   │   └── PushNotificationConfig.swift   # Per-provider config (keys, URLs, toggles)
+│   │   ├── PushNotificationConfig.swift   # Per-provider config (keys, URLs, toggles)
+│   │   └── SettingsData.swift             # Codable settings (port, hostname, certs, push config)
 │   └── Resources/
-│       └── install-template.html          # HTML template
+│       ├── install-template.html          # HTML template
+│       └── AppIcon.appiconset/            # App icon (all macOS sizes)
 ├── RemoteDeployTests/
 │   ├── ManifestGeneratorTests.swift
 │   ├── InstallPageGeneratorTests.swift
@@ -677,10 +852,13 @@ RemoteDeploy/
 │       └── MockPushNotifier.swift
 ├── RemoteDeployIntegrationTests/
 │   └── HTTPServerIntegrationTests.swift   # Real NIO server, self-signed cert
+├── scripts/
+│   └── build-release.sh               # Build, sign, notarize, and package for distribution
 ├── Package.swift or SPM dependencies
 │   ├── swift-nio
 │   ├── swift-nio-ssl
 │   └── swift-nio-http2 (optional)
+├── LICENSE                            # MIT
 └── README.md
 ```
 
@@ -757,4 +935,4 @@ Configure your project details in the Setup Assistant on first launch.
 
 ---
 
-*Spec last updated: 2026-03-30*
+*Spec last updated: 2026-03-31*
