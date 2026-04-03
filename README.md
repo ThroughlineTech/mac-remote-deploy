@@ -1,12 +1,12 @@
 # RemoteDeploy
 
-A macOS menu bar app that builds, signs, and serves your iOS apps over HTTPS — install on any iPhone from anywhere with a single tap in Safari. No USB cable, no TestFlight, no waiting.
+A macOS menu bar app that builds, signs, and serves your iOS apps over HTTPS. Install on any iPhone from anywhere with a single tap in Safari. No USB cable, no TestFlight, no waiting.
 
 ## The Problem
 
 Deploying iOS builds to a test device is more painful than it should be. TestFlight takes 15-30 minutes to process each upload, USB deployment requires physical access to the device, and tools like Xcode's wireless debugging require both devices on the same network. If you're iterating quickly or your test device is somewhere else entirely, none of these options work well.
 
-RemoteDeploy eliminates all of that. It builds your app, serves the signed IPA over HTTPS via Tailscale, and your iPhone installs it from a URL in Safari — in about 10 seconds, from anywhere in the world.
+RemoteDeploy eliminates all of that. It builds your app, serves the signed IPA over HTTPS via Tailscale, and your iPhone installs it from a URL in Safari in about 10 seconds, from anywhere in the world.
 
 ## How It Works
 
