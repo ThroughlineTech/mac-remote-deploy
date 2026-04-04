@@ -36,7 +36,7 @@ final class WebSocketClient: ObservableObject {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let config = URLSessionConfiguration.default
-        session = URLSession(configuration: config)
+        session = URLSession(configuration: config, delegate: CertValidatingSessionDelegate(), delegateQueue: nil)
         task = session?.webSocketTask(with: request)
         task?.resume()
 

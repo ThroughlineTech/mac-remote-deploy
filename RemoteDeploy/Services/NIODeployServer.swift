@@ -186,8 +186,10 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
         let channel = try await bootstrap.bind(host: "0.0.0.0", port: port).get()
 
         // -- Secondary plain-HTTP listener for local WiFi API access --
+        // Restricted: no pairing endpoint over HTTP (tokens would be in cleartext)
         let httpHandler = HTTPHandler(server: self)
         httpHandler.apiRouter = self.apiRouter
+        httpHandler.rejectPairingOverHTTP = true
 
         let httpBootstrap = ServerBootstrap(group: group)
             .serverChannelOption(.backlog, value: 256)
@@ -277,6 +279,10 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     /// Optional API router for handling /api/ endpoints.
     var apiRouter: APIRouter?
 
+    /// When true, rejects pairing requests over this handler (used for the plain-HTTP listener
+    /// to prevent bearer tokens from being transmitted in cleartext).
+    var rejectPairingOverHTTP = false
+
     init(server: NIODeployServer) {
         self.server = server
     }
@@ -328,6 +334,12 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
 
         // Delegate API requests to the router
         if let router = apiRouter, router.shouldHandle(path: path) {
+            // Block pairing over plain HTTP to prevent token interception
+            if rejectPairingOverHTTP && path == "/api/v1/pair" {
+                let err = APIResponse.error(status: .forbidden, message: "Pairing requires HTTPS. Connect via Tailscale or use the HTTPS port.")
+                sendDataResponse(context: context, status: err.status, contentType: err.contentType, data: err.body)
+                return
+            }
             // Handle CORS preflight requests
             if head.method == .OPTIONS {
                 sendDataResponse(context: context, status: .noContent, contentType: "text/plain", data: Data())
@@ -459,7 +471,10 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     private func buildIndexPage(projects: [String: ProjectConfig]) -> String {
         var rows = ""
         for (slug, project) in projects.sorted(by: { $0.key < $1.key }) {
-            rows += "<li><a href=\"/\(slug)/\">\(project.name)</a> -- \(project.bundleID)</li>\n"
+            let safeName = htmlEscape(project.name)
+            let safeBundleID = htmlEscape(project.bundleID)
+            let safeSlug = htmlEscape(slug)
+            rows += "<li><a href=\"/\(safeSlug)/\">\(safeName)</a> -- \(safeBundleID)</li>\n"
         }
 
         if rows.isEmpty {
@@ -515,9 +530,8 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         headers.add(name: "Content-Length", value: "\(data.count)")
         headers.add(name: "Connection", value: "close")
         headers.add(name: "X-Content-Type-Options", value: "nosniff")
-        headers.add(name: "Access-Control-Allow-Origin", value: "*")
-        headers.add(name: "Access-Control-Allow-Headers", value: "Authorization, Content-Type")
-        headers.add(name: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS")
+        // No CORS wildcard — the PWA is served from the same origin so it doesn't need CORS.
+        // Cross-origin requests (e.g. from a dev tool) will be blocked by the browser.
 
         let responseHead = HTTPResponseHead(version: .http1_1, status: status, headers: headers)
         context.write(wrapOutboundOut(.head(responseHead)), promise: nil)
@@ -550,11 +564,24 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         headers.add(name: "Connection", value: "close")
         headers.add(name: "X-Content-Type-Options", value: "nosniff")
         headers.add(name: "X-Frame-Options", value: "DENY")
+        if contentType.contains("text/html") {
+            headers.add(name: "Content-Security-Policy", value: "default-src 'self'; style-src 'unsafe-inline'; connect-src 'self' wss: ws:")
+        }
 
         let responseHead = HTTPResponseHead(version: .http1_1, status: status, headers: headers)
         context.write(wrapOutboundOut(.head(responseHead)), promise: nil)
         context.write(wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
         context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
+    }
+
+    /// Escapes HTML special characters to prevent XSS.
+    private func htmlEscape(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
     }
 
     /// Sends a binary file as an HTTP response with `application/octet-stream` content type.
@@ -608,19 +635,20 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
             filename = "index.html"
         }
 
-        // Security: prevent path traversal
-        guard !filename.contains("..") else {
-            sendNotFound(context: context)
-            return
-        }
-
         // Look for the file in the app bundle's pwa resources
         guard let resourcePath = Bundle.main.resourcePath else {
             sendNotFound(context: context)
             return
         }
 
-        let filePath = "\(resourcePath)/pwa/\(filename)"
+        // Security: canonicalize the path and verify it stays inside the pwa directory
+        let pwaDir = "\(resourcePath)/pwa"
+        let filePath = (pwaDir as NSString).appendingPathComponent(filename)
+        let canonicalPath = (filePath as NSString).standardizingPath
+        guard canonicalPath.hasPrefix(pwaDir) else {
+            sendNotFound(context: context)
+            return
+        }
         guard let fileData = FileManager.default.contents(atPath: filePath) else {
             sendNotFound(context: context)
             return
@@ -643,6 +671,11 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         headers.add(name: "Content-Length", value: "\(fileData.count)")
         headers.add(name: "Connection", value: "close")
         headers.add(name: "Cache-Control", value: "public, max-age=3600")
+        headers.add(name: "X-Content-Type-Options", value: "nosniff")
+        headers.add(name: "X-Frame-Options", value: "DENY")
+        if contentType.contains("text/html") {
+            headers.add(name: "Content-Security-Policy", value: "default-src 'self'; style-src 'unsafe-inline'; connect-src 'self' wss: ws:")
+        }
 
         let responseHead = HTTPResponseHead(version: .http1_1, status: .ok, headers: headers)
         context.write(wrapOutboundOut(.head(responseHead)), promise: nil)

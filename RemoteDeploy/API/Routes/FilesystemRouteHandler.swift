@@ -83,11 +83,13 @@ final class FilesystemRouteHandler: @unchecked Sendable {
             return .error(status: .badRequest, message: "Missing 'path' query parameter")
         }
 
-        guard path.hasPrefix("/Users/") else {
-            return .error(status: .forbidden, message: "Path must be under /Users/")
+        // Resolve symlinks to prevent traversal, same as browse endpoint
+        let resolvedPath = (path as NSString).resolvingSymlinksInPath
+        guard resolvedPath.hasPrefix("/Users/") else {
+            return .error(status: .forbidden, message: "Path must resolve to under /Users/")
         }
 
-        let schemes = schemeDetector(path)
+        let schemes = schemeDetector(resolvedPath)
         return .json(SchemesResponse(schemes: schemes))
     }
 }

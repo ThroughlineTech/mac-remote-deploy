@@ -24,9 +24,16 @@ final class SettingsRouteHandler: @unchecked Sendable {
         self.settingsUpdater = settingsUpdater
     }
 
-    /// GET /api/v1/settings — Return current settings.
+    /// GET /api/v1/settings — Return current settings with secrets redacted.
     func get(_ request: APIRequest) -> APIResponse {
-        let settings = settingsProvider()
+        var settings = settingsProvider()
+        // Redact sensitive values — companion app only needs to know enabled/disabled status
+        settings.certPath = settings.certPath.isEmpty ? "" : "[configured]"
+        settings.keyPath = settings.keyPath.isEmpty ? "" : "[configured]"
+        settings.pushNotificationConfig.prowlAPIKey = settings.pushNotificationConfig.prowlAPIKey.isEmpty ? "" : "[redacted]"
+        settings.pushNotificationConfig.pushoverAppToken = settings.pushNotificationConfig.pushoverAppToken.isEmpty ? "" : "[redacted]"
+        settings.pushNotificationConfig.pushoverUserKey = settings.pushNotificationConfig.pushoverUserKey.isEmpty ? "" : "[redacted]"
+        settings.pushNotificationConfig.ntfyTopic = settings.pushNotificationConfig.ntfyTopic.isEmpty ? "" : "[redacted]"
         return .json(settings)
     }
 

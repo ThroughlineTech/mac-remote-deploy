@@ -400,6 +400,8 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// - Parameter teamID: The Apple Developer Team ID for code signing.
     /// - Returns: A complete XML plist string ready to be written to disk.
     private func generateExportOptionsPlist(method: String, teamID: String) -> String {
+        let safeMethod = xmlEscape(method)
+        let safeTeamID = xmlEscape(teamID)
         return """
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" \
@@ -407,9 +409,9 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         <plist version="1.0">
         <dict>
             <key>method</key>
-            <string>\(method)</string>
+            <string>\(safeMethod)</string>
             <key>teamID</key>
-            <string>\(teamID)</string>
+            <string>\(safeTeamID)</string>
             <key>stripSwiftSymbols</key>
             <true/>
             <key>compileBitcode</key>
@@ -417,6 +419,16 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         </dict>
         </plist>
         """
+    }
+
+    /// Escapes XML special characters to prevent injection in plist generation.
+    private func xmlEscape(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&apos;")
     }
 
     /// Returns the serve directory path for a given project slug.

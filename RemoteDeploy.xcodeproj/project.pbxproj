@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -17,6 +17,7 @@
 		0DDC9A9AB7E22338D004E220 /* InstallsRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3092237771744E80C980CCA7 /* InstallsRouteHandler.swift */; };
 		10287D53E80C0F63863F44C8 /* InstallPageGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 232FBCD51AAB989747FBCD32 /* InstallPageGenerator.swift */; };
 		11A42F5272D465A658EB3094 /* InstallPageGenerating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71692AD69CDCB450DA1618BE /* InstallPageGenerating.swift */; };
+		13D593A8690951E50CD6CF1F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CB98A54ABF32CDC31FEDD180 /* Assets.xcassets */; };
 		159C7B880F06DB98275651EF /* HTTPServerIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22813FB29C8DC7BD7FF11D34 /* HTTPServerIntegrationTests.swift */; };
 		1BFE1FB1B7F06EE12EDF7418 /* RemoteSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0E84C0CBF2FF90F199DB14 /* RemoteSettingsView.swift */; };
 		1C1D27F97963188F2AE05F34 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C195939BE1405B9D18634CB /* SettingsView.swift */; };
@@ -26,8 +27,6 @@
 		2740844711D86B9F73A070F5 /* QRCodeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C82B7886011CA021EFA3B01 /* QRCodeGenerator.swift */; };
 		286BC2DE7C33DA2E2A90470A /* CertificateProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92BCC65C66A3D556B6D32ADF /* CertificateProviding.swift */; };
 		2B0BF259F00A371C281BA991 /* AuthMiddleware.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CC69B6268BBCA0C4D86BC09 /* AuthMiddleware.swift */; };
-		2CAEC4FB3651286C1D732750 /* icon_32x32.png in Resources */ = {isa = PBXBuildFile; fileRef = 2D424B8090E223A0AD44ECC1 /* icon_32x32.png */; };
-		2D45926B1EF3A34842DA8E0A /* icon_16x16.png in Resources */ = {isa = PBXBuildFile; fileRef = E2EDB84F60CEA711857C54BB /* icon_16x16.png */; };
 		2F959B8525C5B500ADE39E86 /* BuildManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF49CC1B4C8288E434E8E7C /* BuildManager.swift */; };
 		314D2422FFF295B4B71DECD0 /* MockInstallTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B22248C4A19F27D25FEC2A3 /* MockInstallTracker.swift */; };
 		3568DECAAEB32EB450772544 /* ProjectFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F870159B1150DCAC3BB67AD3 /* ProjectFormView.swift */; };
@@ -48,10 +47,7 @@
 		5906E3FE183F04C9A4C4C7C5 /* ManifestGenerating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85A299F63D82BB4D6CC669C1 /* ManifestGenerating.swift */; };
 		5B1532B8D758D89C1430DE79 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7BB07446157CBE3644142C /* AboutView.swift */; };
 		5BBDB4867CCE30B7DF52D071 /* NIOSSL in Frameworks */ = {isa = PBXBuildFile; productRef = DB64D8F4C5AB01C06783592B /* NIOSSL */; };
-		5D5EF6611D012442F5FADFA8 /* icon_128x128@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = B179FC50E60CE45052BE8287 /* icon_128x128@2x.png */; };
-		5EE54CCD6C6009491AB8678F /* icon_512x512@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 05B2FCF253819ADC511045C3 /* icon_512x512@2x.png */; };
 		63BEFD3F1FC3D4A767BD073B /* PushNotificationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2342DB5A4C4015ED1C599FBC /* PushNotificationConfig.swift */; };
-		664D15AD4AC698A0BD33006D /* icon_512x512.png in Resources */ = {isa = PBXBuildFile; fileRef = 67128FD497837E5D8DD973F8 /* icon_512x512.png */; };
 		6A5A61018B20ADA6DD71491D /* InstallTrackerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3BAFD6343E5678C93000CE0 /* InstallTrackerTests.swift */; };
 		6F0BBDE9AC635FF4F1068B97 /* ConnectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9796786DAAB99C929734C0A8 /* ConnectionManager.swift */; };
 		6F90C3D743B618438E697EE1 /* MockDeployServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3CFA7588BD9D19BBF95BF0F /* MockDeployServer.swift */; };
@@ -68,16 +64,13 @@
 		8ADB19ECEEE56A11B67881B4 /* NtfyNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9384DF1F6D26C1009DB991 /* NtfyNotifier.swift */; };
 		8BE0A1A3C2B375F9E186B403 /* XcodeBuildEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 263C4FD3621265F3B0274C9C /* XcodeBuildEngine.swift */; };
 		8CA5AAA92186F8DD9362F168 /* ProwlNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB638F664A67F4373FEA58F9 /* ProwlNotifier.swift */; };
-		8E680512322115C959A2C588 /* icon_32x32@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 1FA7CD221801E1B2B8954FD7 /* icon_32x32@2x.png */; };
 		924D33FA3BCB64B9D50F0DEA /* ServerDiscoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3BB3F83E718F187F52F8D9 /* ServerDiscoveryView.swift */; };
-		94AD45BA7B3EAE9064C0AC75 /* icon_16x16@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 0326DFE59CC59A8F6D32A4FB /* icon_16x16@2x.png */; };
 		96AEC7C7D68921DC5C08B5D0 /* BuildResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = F33646F0F177BC5050D8DE93 /* BuildResult.swift */; };
 		96B405C9334034A38C6E97E3 /* NIO in Frameworks */ = {isa = PBXBuildFile; productRef = 95135FEDDDE0FB69F44412DC /* NIO */; };
 		9B21B84DA504D8DD613216E1 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309133F494431F7EC9140CCD /* SplashView.swift */; };
 		9D8B460D454E8F79A0D29218 /* PairDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E998EFEF8906090CC462E132 /* PairDeviceView.swift */; };
 		A80FF6755F6D189BF81B4CB9 /* RemoteDeployApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6D36C679876DC789D03BA2 /* RemoteDeployApp.swift */; };
 		AA65810FF506F20B0442FD42 /* InstallPageGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */; };
-		AFE204E1ED81D66BB2C9EF01 /* icon_128x128.png in Resources */ = {isa = PBXBuildFile; fileRef = 207CE74DE88D697A0F2CB3C0 /* icon_128x128.png */; };
 		B1C4801D31A2D78674340D89 /* app.js in Resources */ = {isa = PBXBuildFile; fileRef = 662271C2014D40E8931AC413 /* app.js */; };
 		B2E1DC71DEFF4511AFF4D184 /* BuildRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */; };
 		B355480BAA439F2411C660B7 /* style.css in Resources */ = {isa = PBXBuildFile; fileRef = 3FB95803032E83B9E66B296E /* style.css */; };
@@ -86,17 +79,14 @@
 		B90E71A01018EBBD14DF2101 /* APIRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9220015D340C1A6FA471E1A9 /* APIRouter.swift */; };
 		BC644904AAC8040719D72531 /* ProjectStoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEA47DFCA9B5079A893AEE6A /* ProjectStoring.swift */; };
 		BD259E0E150FBF72E72E3282 /* PushNotifying.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA18BF51075D87304B5D69D5 /* PushNotifying.swift */; };
-		BF8545494CB69DA350B14499 /* icon_1024x1024.png in Resources */ = {isa = PBXBuildFile; fileRef = DB6D9831C0136115235B4855 /* icon_1024x1024.png */; };
 		C245E317A246E70B1BFA57E5 /* ProjectsRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E98591F7FE0E83569463EBA /* ProjectsRouteHandler.swift */; };
 		C642B5461B3177D36B808897 /* MockPushNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19D75895A8F839A9E45AB2B4 /* MockPushNotifier.swift */; };
 		C7308DB2855727F742BE5D6B /* SettingsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33821A2C8332679830A7E259 /* SettingsData.swift */; };
-		C832181D8FCBDFDC356A5A26 /* icon_256x256.png in Resources */ = {isa = PBXBuildFile; fileRef = C8DC0F198E69CAA35DA02C4C /* icon_256x256.png */; };
 		C97AC4C1E29984DE8B675E59 /* UserDefaultsProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AE13591182653E83E1529A5 /* UserDefaultsProjectStore.swift */; };
 		D1EEC512B80AECC9EFABB44C /* ProjectConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9646E680B180ADA2F5925EE7 /* ProjectConfig.swift */; };
 		D50CBB9E697621C5571F2D2B /* PushNotifSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B671A818A6D0055CA3DEB4B /* PushNotifSetupStep.swift */; };
 		D5642154FDB1D28A10C64C91 /* StatusRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FBF08D8E89290BB7CB700A /* StatusRouteHandler.swift */; };
 		D5D6AF636B1398C341A44094 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 371A7842434201F6C882C50E /* manifest.json */; };
-		D6BE749C3CB29656C4063B34 /* Contents.json in Resources */ = {isa = PBXBuildFile; fileRef = 336B44C31F36130FE7D4EE6C /* Contents.json */; };
 		D8042E38E7C31561D24712D9 /* BuildEngineProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */; };
 		D84BF1DA80310136177ED71F /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2B0FECA392A23BF8455185 /* QRScannerView.swift */; };
 		D972D686D54D5B87671E071A /* ServerInstallTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A2461C0A040726D284136C /* ServerInstallTracker.swift */; };
@@ -112,7 +102,6 @@
 		F11BA351A6F23B6BEEE311E6 /* RemoteDeployCompanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */; };
 		F33309DA202DB2E0982030E1 /* ManifestGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */; };
 		F6CDDEAEC7248F4E6128A1CE /* InstallRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29195CB416816AB0185DDF26 /* InstallRecord.swift */; };
-		F71383111529D6AA8A24FF31 /* icon_256x256@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 7AEDB02A764C2D18FD6DB372 /* icon_256x256@2x.png */; };
 		F74A1E65D5E36A86A7C49F83 /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = A7F8A2432B42E20B9CDFDB8C /* index.html */; };
 		F812611F3D7F1F8C74BDE55F /* TailscaleProviderProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */; };
 		F99C13779BEF634640DA01C3 /* PairingRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 222E4A0816DEF5C1D9DEB3EE /* PairingRouteHandler.swift */; };
@@ -139,9 +128,7 @@
 
 /* Begin PBXFileReference section */
 		00F752D5070FCC9EADFD4C90 /* RemoteDeployShared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RemoteDeployShared; path = Packages/RemoteDeployShared; sourceTree = SOURCE_ROOT; };
-		0326DFE59CC59A8F6D32A4FB /* icon_16x16@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon_16x16@2x.png"; sourceTree = "<group>"; };
 		03D95AAD49CC7881D3034C63 /* ProjectConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectConfigTests.swift; sourceTree = "<group>"; };
-		05B2FCF253819ADC511045C3 /* icon_512x512@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon_512x512@2x.png"; sourceTree = "<group>"; };
 		0B671A818A6D0055CA3DEB4B /* PushNotifSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifSetupStep.swift; sourceTree = "<group>"; };
 		154315BEE4F2F035E35C3097 /* RemoteDeployIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteDeployIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildRouteHandler.swift; sourceTree = "<group>"; };
@@ -151,9 +138,7 @@
 		1C82B7886011CA021EFA3B01 /* QRCodeGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeGenerator.swift; sourceTree = "<group>"; };
 		1CC69B6268BBCA0C4D86BC09 /* AuthMiddleware.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthMiddleware.swift; sourceTree = "<group>"; };
 		1F9384DF1F6D26C1009DB991 /* NtfyNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NtfyNotifier.swift; sourceTree = "<group>"; };
-		1FA7CD221801E1B2B8954FD7 /* icon_32x32@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon_32x32@2x.png"; sourceTree = "<group>"; };
 		1FD535B366F2DA93C36C95B3 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
-		207CE74DE88D697A0F2CB3C0 /* icon_128x128.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_128x128.png; sourceTree = "<group>"; };
 		222E4A0816DEF5C1D9DEB3EE /* PairingRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingRouteHandler.swift; sourceTree = "<group>"; };
 		22813FB29C8DC7BD7FF11D34 /* HTTPServerIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPServerIntegrationTests.swift; sourceTree = "<group>"; };
 		232FBCD51AAB989747FBCD32 /* InstallPageGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallPageGenerator.swift; sourceTree = "<group>"; };
@@ -165,11 +150,9 @@
 		29195CB416816AB0185DDF26 /* InstallRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallRecord.swift; sourceTree = "<group>"; };
 		2A0E84C0CBF2FF90F199DB14 /* RemoteSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteSettingsView.swift; sourceTree = "<group>"; };
 		2C2B345C171BB6F51C0366B5 /* MockBuildEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildEngine.swift; sourceTree = "<group>"; };
-		2D424B8090E223A0AD44ECC1 /* icon_32x32.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_32x32.png; sourceTree = "<group>"; };
 		309133F494431F7EC9140CCD /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		3092237771744E80C980CCA7 /* InstallsRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallsRouteHandler.swift; sourceTree = "<group>"; };
 		31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TailscaleProviderProtocol.swift; sourceTree = "<group>"; };
-		336B44C31F36130FE7D4EE6C /* Contents.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Contents.json; sourceTree = "<group>"; };
 		33821A2C8332679830A7E259 /* SettingsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsData.swift; sourceTree = "<group>"; };
 		36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStoreTests.swift; sourceTree = "<group>"; };
 		371A7842434201F6C882C50E /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
@@ -193,7 +176,6 @@
 		5F9B36FF355CC7BA5AC1CD43 /* DevicesRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesRouteHandler.swift; sourceTree = "<group>"; };
 		6536341DB69DEC4E0783F486 /* BuildControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildControlView.swift; sourceTree = "<group>"; };
 		662271C2014D40E8931AC413 /* app.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = app.js; sourceTree = "<group>"; };
-		67128FD497837E5D8DD973F8 /* icon_512x512.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_512x512.png; sourceTree = "<group>"; };
 		676FFED8EA5712247CE5A782 /* PushoverNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushoverNotifier.swift; sourceTree = "<group>"; };
 		68A59F1983494213956BD82D /* RemoteDeployTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteDeployTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6A6D36C679876DC789D03BA2 /* RemoteDeployApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDeployApp.swift; sourceTree = "<group>"; };
@@ -203,7 +185,6 @@
 		6FC68632F6EFE61DC35CF3A9 /* PairedDevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairedDevicesView.swift; sourceTree = "<group>"; };
 		71692AD69CDCB450DA1618BE /* InstallPageGenerating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallPageGenerating.swift; sourceTree = "<group>"; };
 		783972E0E13988A70F5E76B5 /* RemoteDeploy.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RemoteDeploy.entitlements; sourceTree = "<group>"; };
-		7AEDB02A764C2D18FD6DB372 /* icon_256x256@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon_256x256@2x.png"; sourceTree = "<group>"; };
 		7BCC1DD0A91B6D40F002CFF9 /* ManifestGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestGenerator.swift; sourceTree = "<group>"; };
 		7C195939BE1405B9D18634CB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		7C44F3AF5ED2CE52038FCB87 /* BonjourAdvertiser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourAdvertiser.swift; sourceTree = "<group>"; };
@@ -224,22 +205,19 @@
 		A7F8A2432B42E20B9CDFDB8C /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		AA18BF51075D87304B5D69D5 /* PushNotifying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifying.swift; sourceTree = "<group>"; };
 		B0C98E31F3DA0E3F06382248 /* InstallHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallHistoryView.swift; sourceTree = "<group>"; };
-		B179FC50E60CE45052BE8287 /* icon_128x128@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "icon_128x128@2x.png"; sourceTree = "<group>"; };
 		B223A9835076867EE2BCA306 /* MockProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockProjectStore.swift; sourceTree = "<group>"; };
 		B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEngineProtocol.swift; sourceTree = "<group>"; };
-		C8DC0F198E69CAA35DA02C4C /* icon_256x256.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_256x256.png; sourceTree = "<group>"; };
+		CB98A54ABF32CDC31FEDD180 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D12338C042E71B355CC5F515 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
-		D3C9ED1D87408F37869FE473 /* RemoteDeployCompanion.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = RemoteDeployCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3C9ED1D87408F37869FE473 /* RemoteDeployCompanion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RemoteDeployCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D3CFA7588BD9D19BBF95BF0F /* MockDeployServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeployServer.swift; sourceTree = "<group>"; };
 		D7FE9D88C0571571898E928C /* PushNotifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifierTests.swift; sourceTree = "<group>"; };
 		D91B9C5E6B3976E7E1C65FBC /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		DA955EAB30E67230572C98B7 /* WebSocketHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketHandler.swift; sourceTree = "<group>"; };
 		DABE1229131FA24AB6F6890B /* CertificateSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertificateSetupStep.swift; sourceTree = "<group>"; };
-		DB6D9831C0136115235B4855 /* icon_1024x1024.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_1024x1024.png; sourceTree = "<group>"; };
 		DEA47DFCA9B5079A893AEE6A /* ProjectStoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStoring.swift; sourceTree = "<group>"; };
 		DF1E54C911A24AC15A89473F /* BuildResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildResultTests.swift; sourceTree = "<group>"; };
 		DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestGeneratorTests.swift; sourceTree = "<group>"; };
-		E2EDB84F60CEA711857C54BB /* icon_16x16.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon_16x16.png; sourceTree = "<group>"; };
 		E54938DFB9E58008B1BEE6D0 /* RemoteDeploy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RemoteDeploy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E998EFEF8906090CC462E132 /* PairDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairDeviceView.swift; sourceTree = "<group>"; };
 		EA5A883F3DF84EB00EE19999 /* ProjectSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupStep.swift; sourceTree = "<group>"; };
@@ -479,25 +457,6 @@
 			path = Pairing;
 			sourceTree = "<group>";
 		};
-		8FF4DA1B15B25A3F5CCEC542 /* AppIcon.appiconset */ = {
-			isa = PBXGroup;
-			children = (
-				336B44C31F36130FE7D4EE6C /* Contents.json */,
-				E2EDB84F60CEA711857C54BB /* icon_16x16.png */,
-				0326DFE59CC59A8F6D32A4FB /* icon_16x16@2x.png */,
-				2D424B8090E223A0AD44ECC1 /* icon_32x32.png */,
-				1FA7CD221801E1B2B8954FD7 /* icon_32x32@2x.png */,
-				207CE74DE88D697A0F2CB3C0 /* icon_128x128.png */,
-				B179FC50E60CE45052BE8287 /* icon_128x128@2x.png */,
-				C8DC0F198E69CAA35DA02C4C /* icon_256x256.png */,
-				7AEDB02A764C2D18FD6DB372 /* icon_256x256@2x.png */,
-				67128FD497837E5D8DD973F8 /* icon_512x512.png */,
-				05B2FCF253819ADC511045C3 /* icon_512x512@2x.png */,
-				DB6D9831C0136115235B4855 /* icon_1024x1024.png */,
-			);
-			path = AppIcon.appiconset;
-			sourceTree = "<group>";
-		};
 		97325A2C27615DA232097854 /* Protocols */ = {
 			isa = PBXGroup;
 			children = (
@@ -518,6 +477,7 @@
 		9FDA166706DF4343A5C1B0E0 /* RemoteDeploy */ = {
 			isa = PBXGroup;
 			children = (
+				CB98A54ABF32CDC31FEDD180 /* Assets.xcassets */,
 				F33445691F6AFF747BA18FA3 /* Info.plist */,
 				783972E0E13988A70F5E76B5 /* RemoteDeploy.entitlements */,
 				6A6D36C679876DC789D03BA2 /* RemoteDeployApp.swift */,
@@ -560,7 +520,6 @@
 			isa = PBXGroup;
 			children = (
 				4CDF361E12AFD78F0E5CCAE7 /* install-template.html */,
-				8FF4DA1B15B25A3F5CCEC542 /* AppIcon.appiconset */,
 				0C8DA017992F4E53D3FD998E /* pwa */,
 			);
 			path = Resources;
@@ -733,7 +692,6 @@
 				9C670724106AE3FD8599051E /* XCRemoteSwiftPackageReference "swift-nio-ssl" */,
 				FF6D6B0FA3CCA8C64AD16644 /* XCLocalSwiftPackageReference "Packages/RemoteDeployShared" */,
 			);
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -750,19 +708,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D6BE749C3CB29656C4063B34 /* Contents.json in Resources */,
+				13D593A8690951E50CD6CF1F /* Assets.xcassets in Resources */,
 				B1C4801D31A2D78674340D89 /* app.js in Resources */,
-				BF8545494CB69DA350B14499 /* icon_1024x1024.png in Resources */,
-				AFE204E1ED81D66BB2C9EF01 /* icon_128x128.png in Resources */,
-				5D5EF6611D012442F5FADFA8 /* icon_128x128@2x.png in Resources */,
-				2D45926B1EF3A34842DA8E0A /* icon_16x16.png in Resources */,
-				94AD45BA7B3EAE9064C0AC75 /* icon_16x16@2x.png in Resources */,
-				C832181D8FCBDFDC356A5A26 /* icon_256x256.png in Resources */,
-				F71383111529D6AA8A24FF31 /* icon_256x256@2x.png in Resources */,
-				2CAEC4FB3651286C1D732750 /* icon_32x32.png in Resources */,
-				8E680512322115C959A2C588 /* icon_32x32@2x.png in Resources */,
-				664D15AD4AC698A0BD33006D /* icon_512x512.png in Resources */,
-				5EE54CCD6C6009491AB8678F /* icon_512x512@2x.png in Resources */,
 				F74A1E65D5E36A86A7C49F83 /* index.html in Resources */,
 				57B9515C8306AD8179402668 /* install-template.html in Resources */,
 				D5D6AF636B1398C341A44094 /* manifest.json in Resources */,
@@ -921,9 +868,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = RDJQ523WP4;
 				INFOPLIST_FILE = RemoteDeploy/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/../Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.app;
 				PRODUCT_NAME = RemoteDeploy;
@@ -961,9 +906,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = RDJQ523WP4;
 				INFOPLIST_FILE = RemoteDeploy/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"@executable_path/../Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.app;
 				PRODUCT_NAME = RemoteDeploy;
@@ -1080,6 +1023,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.companion;
 				PRODUCT_NAME = RemoteDeployCompanion;
 				SDKROOT = iphoneos;
@@ -1184,6 +1128,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.companion;
 				PRODUCT_NAME = RemoteDeployCompanion;
 				SDKROOT = iphoneos;

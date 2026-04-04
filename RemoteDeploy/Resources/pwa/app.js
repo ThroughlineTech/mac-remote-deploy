@@ -46,7 +46,7 @@ function connectWS() {
         state.buildStatus = JSON.parse(msg.payload);
         if (state.tab === 'build') renderBuildStatus();
       }
-    } catch {}
+    } catch (e) { console.error('WS message parse error:', e); }
   };
   ws.onclose = () => setTimeout(connectWS, 3000);
   state.ws = ws;
@@ -69,7 +69,7 @@ function renderConnect() {
     <div class="connect-screen">
       <h1>RemoteDeploy</h1>
       <p>Enter your API token to connect.</p>
-      <input type="text" id="token-input" placeholder="Paste your bearer token">
+      <input type="password" id="token-input" placeholder="Paste your bearer token" autocomplete="off">
       <button class="btn btn-primary" onclick="doConnect()" style="margin-top:12px">Connect</button>
     </div>`;
 }
@@ -99,7 +99,7 @@ function renderTabContent() {
 function renderProjects() {
   if (!state.projects.length) return '<div class="spinner"></div>';
   return `<h1>Projects</h1>` + state.projects.map(p => `
-    <div class="card" onclick="selectProject('${p.id}')">
+    <div class="card" onclick="selectProject('${esc(p.id)}')">
       <div class="card-header">
         <div>
           <div class="card-title">${esc(p.name)}</div>
@@ -119,7 +119,7 @@ function renderBuild() {
     <h1>Build</h1>
     <select onchange="state.selectedProjectId=this.value">
       <option value="">Select project...</option>
-      ${state.projects.map(p => `<option value="${p.id}" ${p.id === state.selectedProjectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
+      ${state.projects.map(p => `<option value="${esc(p.id)}" ${p.id === state.selectedProjectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
     </select>
     ${statusHtml}
     <button class="btn btn-primary" onclick="triggerBuild()" ${state.selectedProjectId ? '' : 'disabled'}>Build & Deploy</button>
@@ -215,20 +215,25 @@ async function loadData() {
 }
 
 async function loadProjects() {
-  try { state.projects = await api('/api/v1/projects'); render(); } catch {}
+  try { state.projects = await api('/api/v1/projects'); render(); } catch (e) { handleApiError(e); }
 }
 
 async function loadInstalls() {
-  try { state.installs = await api('/api/v1/installs'); render(); } catch {}
+  try { state.installs = await api('/api/v1/installs'); render(); } catch (e) { handleApiError(e); }
 }
 
 async function loadStatus() {
-  try { state.status = await api('/api/v1/status'); render(); } catch {}
+  try { state.status = await api('/api/v1/status'); render(); } catch (e) { handleApiError(e); }
+}
+
+function handleApiError(e) {
+  console.error('API error:', e.message);
+  if (e.message && e.message.includes('401')) { doDisconnect(); }
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML.replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
 function statusColor(s) { return { building: 'orange', success: 'green', failure: 'red' }[s] || 'gray'; }
 function logClass(l) { if (l.includes('error:')) return 'error'; if (l.includes('warning:')) return 'warning'; return ''; }
 

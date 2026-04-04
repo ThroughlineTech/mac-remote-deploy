@@ -1,6 +1,6 @@
 // Service worker for RemoteDeploy PWA.
 // Caches the app shell for offline access to the UI.
-const CACHE_NAME = 'remotedeploy-v1';
+const CACHE_NAME = 'remotedeploy-v2';
 const SHELL_FILES = ['/app/', '/app/style.css', '/app/app.js', '/app/manifest.json'];
 
 self.addEventListener('install', (event) => {

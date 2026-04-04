@@ -42,6 +42,11 @@ struct SettingsView: View {
                 .tabItem {
                     Label("General", systemImage: "gear")
                 }
+
+            AboutSettingsTab()
+                .tabItem {
+                    Label("About", systemImage: "info.circle")
+                }
         }
         .frame(width: 560, height: 450)
     }
@@ -472,5 +477,101 @@ struct GeneralSettingsTab: View {
                 print("Failed to \(enabled ? "enable" : "disable") launch at login: \(error.localizedDescription)")
             }
         }
+    }
+}
+
+// MARK: - About Tab
+
+/// About page with app info, links, and company branding.
+struct AboutSettingsTab: View {
+    private let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+    private let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            // App icon
+            Image("AboutIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 100, height: 100)
+                .clipShape(RoundedRectangle(cornerRadius: 22))
+                .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+
+            // App name + version
+            VStack(spacing: 4) {
+                Text("RemoteDeploy")
+                    .font(.title)
+                    .fontWeight(.bold)
+                Text("Version \(appVersion) (\(buildNumber))")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+
+            Text("Build, sign, and deploy iOS and macOS apps to your devices from anywhere.\nControl builds from your phone or any browser.")
+                .font(.callout)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: 420)
+
+            // Links
+            HStack(spacing: 16) {
+                LinkButton(title: "GitHub", systemImage: "chevron.left.forwardslash.chevron.right",
+                           url: "https://github.com/danrichardson/mac-remote-deploy")
+                LinkButton(title: "Deep Dive", systemImage: "doc.text.magnifyingglass",
+                           url: "https://www.throughlinetech.net/deep-dives/remotedeploy")
+                LinkButton(title: "Website", systemImage: "globe",
+                           url: "https://www.throughlinetech.net")
+            }
+
+            Spacer()
+
+            // Company branding
+            VStack(spacing: 4) {
+                Text("Made by")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Button("Throughline Tech, LLC") {
+                    NSWorkspace.shared.open(URL(string: "https://www.throughlinetech.net")!)
+                }
+                .buttonStyle(.link)
+                .font(.callout)
+            }
+
+            // Credits
+            HStack(spacing: 20) {
+                Text("SwiftNIO")
+                Text("Tailscale")
+                Text("Let's Encrypt")
+            }
+            .font(.caption2)
+            .foregroundColor(.secondary)
+            .padding(.bottom, 8)
+        }
+        .padding()
+    }
+}
+
+/// A small button that opens a URL.
+private struct LinkButton: View {
+    let title: String
+    let systemImage: String
+    let url: String
+
+    var body: some View {
+        Button {
+            NSWorkspace.shared.open(URL(string: url)!)
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.title3)
+                Text(title)
+                    .font(.caption)
+            }
+            .frame(width: 80, height: 50)
+        }
+        .buttonStyle(.bordered)
     }
 }

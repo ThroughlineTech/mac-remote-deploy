@@ -52,8 +52,21 @@ final class KeychainStore {
         ]
         SecItemDelete(query as CFDictionary)
 
+        // Require device passcode/biometric to access the token
+        let access = SecAccessControlCreateWithFlags(
+            nil,
+            kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
+            .userPresence,
+            nil
+        )
+
         var addQuery = query
         addQuery[kSecValueData as String] = data
+        if let access {
+            addQuery[kSecAttrAccessControl as String] = access
+        } else {
+            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        }
         SecItemAdd(addQuery as CFDictionary, nil)
     }
 

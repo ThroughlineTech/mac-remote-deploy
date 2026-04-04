@@ -139,9 +139,8 @@ struct ManualEntryView: View {
                 }
 
                 Section("Token") {
-                    TextField("Paste the token from your Mac", text: $token)
+                    SecureField("Paste the token from your Mac", text: $token)
                         .autocapitalization(.none)
-                        .font(.system(.body, design: .monospaced))
                 }
 
                 if let error {

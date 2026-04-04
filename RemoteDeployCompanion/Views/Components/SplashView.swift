@@ -29,7 +29,7 @@ struct SplashView: View {
                 Spacer()
 
                 // App icon
-                Image("AppIcon")
+                Image("AboutIcon")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 140, height: 140)

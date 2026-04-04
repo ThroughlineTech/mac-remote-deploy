@@ -22,7 +22,7 @@ final class DevicesRouteHandler: @unchecked Sendable {
             let devices = try deviceStore.loadDevices()
             return .json(devices)
         } catch {
-            return .error(status: .internalServerError, message: "Failed to load devices: \(error.localizedDescription)")
+            return .error(status: .internalServerError, message: "Failed to load devices")
         }
     }
 

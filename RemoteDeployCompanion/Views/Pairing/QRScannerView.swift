@@ -98,7 +98,9 @@ struct QRScannerView: View {
                 dismiss()
                 return
             } catch {
+                #if DEBUG
                 print("Pairing via Tailscale URL failed: \(error.localizedDescription)")
+                #endif
             }
 
             // Fall back to local URL if available

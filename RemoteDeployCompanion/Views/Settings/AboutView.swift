@@ -12,7 +12,7 @@ struct AboutView: View {
             // App header
             Section {
                 VStack(spacing: 16) {
-                    Image("AppIcon")
+                    Image("AboutIcon")
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 100, height: 100)

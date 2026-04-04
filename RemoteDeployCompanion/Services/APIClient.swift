@@ -15,9 +15,8 @@ final class APIClient: @unchecked Sendable {
     /// URLSession with a delegate that accepts Tailscale TLS certificates.
     private let session: URLSession
 
-    /// Delegate that accepts TLS certificates (Tailscale certs are valid but the
-    /// phone may not be able to verify them without Tailscale's DNS resolver).
-    private let sessionDelegate = TrustingSessionDelegate()
+    /// Delegate that validates TLS certificates against the system trust store.
+    private let sessionDelegate = CertValidatingSessionDelegate()
 
     /// Creates a new API client.
     ///
@@ -197,17 +196,26 @@ final class APIClient: @unchecked Sendable {
     }
 }
 
-/// URLSession delegate that accepts TLS certificates from the RemoteDeploy server.
-/// Tailscale issues valid Let's Encrypt certs, but the phone may not be able to
-/// verify them if it's not using Tailscale's DNS. This delegate trusts the server
-/// for development use.
-final class TrustingSessionDelegate: NSObject, URLSessionDelegate {
+/// URLSession delegate that evaluates TLS certificates using the system trust store.
+/// Tailscale issues valid Let's Encrypt certs which are trusted by default.
+/// For local HTTP connections (port 8080), TLS is not used so this delegate is not invoked.
+final class CertValidatingSessionDelegate: NSObject, URLSessionDelegate {
     func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
               let trust = challenge.protectionSpace.serverTrust else {
             return (.performDefaultHandling, nil)
         }
-        return (.useCredential, URLCredential(trust: trust))
+
+        // Evaluate using the system trust store (includes Let's Encrypt CA)
+        var error: CFError?
+        let isValid = SecTrustEvaluateWithError(trust, &error)
+
+        if isValid {
+            return (.useCredential, URLCredential(trust: trust))
+        } else {
+            // Reject untrusted certificates
+            return (.cancelAuthenticationChallenge, nil)
+        }
     }
 }
 

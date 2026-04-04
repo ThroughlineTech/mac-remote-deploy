@@ -69,7 +69,8 @@ final class PairingRouteHandler: @unchecked Sendable {
         do {
             try deviceStore.save(device: device)
         } catch {
-            return .error(status: .internalServerError, message: "Failed to save paired device: \(error.localizedDescription)")
+            print("Failed to save paired device: \(error.localizedDescription)")
+            return .error(status: .internalServerError, message: "Failed to save paired device")
         }
 
         let response = PairResponse(serverName: serverName, paired: true)
@@ -85,7 +86,7 @@ final class PairingRouteHandler: @unchecked Sendable {
         do {
             try deviceStore.delete(deviceID: device.id)
         } catch {
-            return .error(status: .internalServerError, message: "Failed to unpair: \(error.localizedDescription)")
+            return .error(status: .internalServerError, message: "Failed to unpair")
         }
 
         return .json(["unpaired": true])

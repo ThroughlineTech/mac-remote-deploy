@@ -21,7 +21,7 @@ final class ProjectsRouteHandler: @unchecked Sendable {
             let projects = try projectStore.loadProjects()
             return .json(projects)
         } catch {
-            return .error(status: .internalServerError, message: "Failed to load projects: \(error.localizedDescription)")
+            return .error(status: .internalServerError, message: "Failed to load projects")
         }
     }
 
@@ -43,7 +43,7 @@ final class ProjectsRouteHandler: @unchecked Sendable {
             try projectStore.save(project: project)
             return .json(project, status: .created)
         } catch {
-            return .error(status: .internalServerError, message: "Failed to save project: \(error.localizedDescription)")
+            return .error(status: .internalServerError, message: "Failed to save project")
         }
     }
 
@@ -64,7 +64,7 @@ final class ProjectsRouteHandler: @unchecked Sendable {
             try projectStore.save(project: project)
             return .json(project)
         } catch {
-            return .error(status: .internalServerError, message: "Failed to update project: \(error.localizedDescription)")
+            return .error(status: .internalServerError, message: "Failed to update project")
         }
     }
 
