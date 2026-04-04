@@ -4,31 +4,30 @@
 import Foundation
 import NIO
 import NIOHTTP1
-import NIOSSL
+import NIOWebSocket
+@preconcurrency import NIOSSL
 import NIOFoundationCompat
+import os
 
 final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
 
     // MARK: - Private State
 
-    /// Lock protecting mutable state.
-    private let lock = NSLock()
+    /// Grouped server lifecycle state protected by a single lock.
+    private struct ServerState {
+        var group: MultiThreadedEventLoopGroup?
+        var serverChannel: Channel?
+        var httpChannel: Channel?
+        var isRunning = false
+        var port: Int = 8443
+        var httpPort: Int = 8080
+    }
 
-    /// The SwiftNIO event loop group powering the server.
-    private var group: MultiThreadedEventLoopGroup?
+    /// Lock protecting server lifecycle state.
+    private let lockedState = OSAllocatedUnfairLock(initialState: ServerState())
 
-    /// The bound server channel. Nil when not running.
-    private var serverChannel: Channel?
-
-    /// Backing storage for `isRunning`.
-    private var _isRunning = false
-
-    /// Backing storage for `port`.
-    private var _port: Int = 8443
-
-    /// The registered project configurations, keyed by URL slug.
-    /// Used to determine which slugs are valid and to look up project metadata.
-    fileprivate var projectsBySlug: [String: ProjectConfig] = [:]
+    /// The registered project configurations, keyed by URL slug. Protected by lock.
+    private let lockedProjectsBySlug = OSAllocatedUnfairLock<[String: ProjectConfig]>(initialState: [:])
 
     /// Generator for OTA manifest.plist responses.
     fileprivate let manifestGenerator: ManifestGenerating
@@ -37,26 +36,34 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
     fileprivate let installPageGenerator: InstallPageGenerating
 
     /// The base HTTPS URL (e.g. "https://macbook.tail1234.ts.net:8443") used to construct
-    /// absolute URLs in manifests and install pages.
-    fileprivate var baseURL: String = ""
+    /// absolute URLs in manifests and install pages. Protected by lock.
+    private let lockedBaseURL = OSAllocatedUnfairLock<String>(initialState: "")
 
     /// Callback invoked when an IPA is downloaded. Arguments: (projectSlug, sourceIP, userAgent).
     var onIPADownload: ((String, String, String) -> Void)?
+
+    /// Optional API router for handling /api/v1/ endpoints from companion devices.
+    /// Set this before calling `start` to enable the REST API.
+    var apiRouter: APIRouter?
+
+    /// WebSocket manager for live build log and status streaming.
+    let webSocketManager = WebSocketManager()
+
+    /// The plain HTTP port for local WiFi API access (no TLS).
+    var httpPort: Int {
+        lockedState.withLock { $0.httpPort }
+    }
 
     // MARK: - Protocol Properties
 
     /// Whether the server is currently listening for connections.
     var isRunning: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return _isRunning
+        lockedState.withLock { $0.isRunning }
     }
 
     /// The TCP port the server is currently configured to use.
     var port: Int {
-        lock.lock()
-        defer { lock.unlock() }
-        return _port
+        lockedState.withLock { $0.port }
     }
 
     /// Delegate that receives callbacks when IPA files are downloaded.
@@ -103,18 +110,14 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
     ///
     /// - Parameter project: The project configuration to register.
     func registerProject(_ project: ProjectConfig) {
-        lock.lock()
-        projectsBySlug[project.urlSlug] = project
-        lock.unlock()
+        lockedProjectsBySlug.withLock { $0[project.urlSlug] = project }
     }
 
     /// Removes a project configuration so its routes are no longer served.
     ///
     /// - Parameter slug: The URL slug of the project to unregister.
     func unregisterProject(slug: String) {
-        lock.lock()
-        projectsBySlug.removeValue(forKey: slug)
-        lock.unlock()
+        lockedProjectsBySlug.withLock { _ = $0.removeValue(forKey: slug) }
     }
 
     /// Updates the base URL used when generating absolute URLs in manifests and install pages.
@@ -124,9 +127,7 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
     ///
     /// - Parameter url: The base HTTPS URL (no trailing slash).
     func setBaseURL(_ url: String) {
-        lock.lock()
-        baseURL = url
-        lock.unlock()
+        lockedBaseURL.withLock { $0 = url }
     }
 
     // MARK: - Server Lifecycle
@@ -143,13 +144,12 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
     /// - Throws: If the port is already in use, the cert/key files are invalid or unreadable,
     ///   or the server otherwise fails to bind.
     func start(port: Int, certPath: String, keyPath: String) async throws {
-        lock.lock()
-        guard !_isRunning else {
-            lock.unlock()
-            return
+        let alreadyRunning = lockedState.withLock { state -> Bool in
+            if state.isRunning { return true }
+            state.port = port
+            return false
         }
-        _port = port
-        lock.unlock()
+        guard !alreadyRunning else { return }
 
         // -- TLS Configuration --
         let cert = try NIOSSLCertificate.fromPEMFile(certPath)
@@ -165,16 +165,16 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
 
         // -- Bootstrap --
         let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-        self.group = group
 
         let handler = HTTPHandler(server: self)
+        handler.apiRouter = self.apiRouter
 
         let bootstrap = ServerBootstrap(group: group)
             .serverChannelOption(.backlog, value: 256)
             .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)
             .childChannelInitializer { channel in
                 let sslHandler = NIOSSLServerHandler(context: sslContext)
-                return channel.pipeline.addHandler(sslHandler).flatMap {
+                return channel.pipeline.addHandler(sslHandler as RemovableChannelHandler).flatMap {
                     channel.pipeline.configureHTTPServerPipeline().flatMap {
                         channel.pipeline.addHandler(handler)
                     }
@@ -185,32 +185,53 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
 
         let channel = try await bootstrap.bind(host: "0.0.0.0", port: port).get()
 
-        lock.lock()
-        serverChannel = channel
-        _isRunning = true
-        lock.unlock()
+        // -- Secondary plain-HTTP listener for local WiFi API access --
+        let httpHandler = HTTPHandler(server: self)
+        httpHandler.apiRouter = self.apiRouter
+
+        let httpBootstrap = ServerBootstrap(group: group)
+            .serverChannelOption(.backlog, value: 256)
+            .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)
+            .childChannelInitializer { channel in
+                // No TLS — plain HTTP for local WiFi
+                channel.pipeline.configureHTTPServerPipeline().flatMap {
+                    channel.pipeline.addHandler(httpHandler)
+                }
+            }
+            .childChannelOption(.socketOption(.so_reuseaddr), value: 1)
+            .childChannelOption(.maxMessagesPerRead, value: 1)
+
+        let httpChannel = try? await httpBootstrap.bind(host: "0.0.0.0", port: 8080).get()
+
+        lockedState.withLock { state in
+            state.serverChannel = channel
+            state.httpChannel = httpChannel
+            state.group = group
+            state.isRunning = true
+        }
     }
 
-    /// Stops the server and releases the listening socket.
+    /// Stops both the HTTPS and HTTP servers and releases listening sockets.
     /// Shuts down the event loop group gracefully. No-op if the server is not running.
     func stop() async {
-        lock.lock()
-        guard _isRunning else {
-            lock.unlock()
-            return
+        let (channel, httpCh, group) = lockedState.withLock { state -> (Channel?, Channel?, MultiThreadedEventLoopGroup?) in
+            guard state.isRunning else { return (nil, nil, nil) }
+            let ch = state.serverChannel
+            let http = state.httpChannel
+            let gr = state.group
+            state.serverChannel = nil
+            state.httpChannel = nil
+            state.isRunning = false
+            return (ch, http, gr)
         }
-        let channel = serverChannel
-        let group = self.group
-        serverChannel = nil
-        _isRunning = false
-        lock.unlock()
+
+        guard channel != nil || httpCh != nil || group != nil else { return }
 
         try? await channel?.close().get()
+        try? await httpCh?.close().get()
         try? await group?.shutdownGracefully()
 
-        lock.lock()
-        self.group = nil
-        lock.unlock()
+        lockedState.withLock { $0.group = nil }
     }
 
     // MARK: - Internal Accessors (used by HTTPHandler)
@@ -218,27 +239,25 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
     /// Returns a snapshot of all registered project configs.
     /// Called by the HTTP handler to build the index page and validate routes.
     func registeredProjects() -> [String: ProjectConfig] {
-        lock.lock()
-        defer { lock.unlock() }
-        return projectsBySlug
+        lockedProjectsBySlug.withLock { $0 }
     }
 
     /// Returns the current base URL string.
     /// Called by the HTTP handler to construct absolute manifest and IPA URLs.
     func currentBaseURL() -> String {
-        lock.lock()
-        defer { lock.unlock() }
-        return baseURL
+        lockedBaseURL.withLock { $0 }
     }
 }
 
 // MARK: - HTTP Handler
 
 /// Channel handler that processes incoming HTTP/1.1 requests and routes them to the
-/// appropriate response: index page, project install page, OTA manifest, or IPA download.
+/// appropriate response: API endpoints, index page, project install page, OTA manifest,
+/// or IPA download.
 ///
-/// This handler accumulates the full request (head + body + end) before responding,
-/// since all routes produce complete responses (no streaming request bodies needed).
+/// This handler accumulates the full request (head + body + end) before responding.
+/// API requests under /api/ are delegated to the APIRouter. All other requests
+/// are handled as OTA deployment routes.
 final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
@@ -249,6 +268,15 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     /// Accumulated request head for the current request being processed.
     private var requestHead: HTTPRequestHead?
 
+    /// Accumulated request body bytes for the current request.
+    private var requestBody: Data = Data()
+
+    /// Maximum request body size (1 MB) to prevent abuse.
+    private static let maxBodySize = 1_048_576
+
+    /// Optional API router for handling /api/ endpoints.
+    var apiRouter: APIRouter?
+
     init(server: NIODeployServer) {
         self.server = server
     }
@@ -257,7 +285,7 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     ///
     /// HTTP/1.1 requests arrive in three parts: `.head` (method, URI, headers),
     /// `.body` (optional payload), and `.end` (trailing headers). We buffer the head
-    /// and process the full request once `.end` is received.
+    /// and body, then process the full request once `.end` is received.
     ///
     /// - Parameter context: The channel handler context for writing responses.
     /// - Parameter data: The inbound HTTP request part (head, body, or end).
@@ -267,39 +295,64 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         switch part {
         case .head(let head):
             requestHead = head
+            requestBody = Data()
 
-        case .body:
-            // We don't need request bodies for any of our routes.
-            break
+        case .body(let buffer):
+            // Accumulate request body bytes for API endpoints.
+            if requestBody.count + buffer.readableBytes <= Self.maxBodySize {
+                var buf = buffer
+                if let bytes = buf.readBytes(length: buf.readableBytes) {
+                    requestBody.append(contentsOf: bytes)
+                }
+            }
 
         case .end:
             guard let head = requestHead else { return }
             requestHead = nil
-            handleRequest(context: context, head: head)
+            let body = requestBody
+            requestBody = Data()
+            handleRequest(context: context, head: head, body: body)
         }
     }
 
-    /// Routes the fully-received HTTP request to the appropriate handler method.
+    /// Routes the fully-received HTTP request to the appropriate handler.
     ///
-    /// Route table:
-    /// - `GET /`                      → Index page listing all registered projects
-    /// - `GET /<slug>/`               → Install page for the given project
-    /// - `GET /<slug>/manifest.plist` → OTA manifest XML for the given project
-    /// - `GET /<slug>/app.ipa`        → Binary IPA file download
-    /// - Everything else              → 404 Not Found
+    /// Requests to /api/ are dispatched to the APIRouter. All other requests
+    /// are handled as OTA deployment routes (GET-only).
     ///
     /// - Parameter context: The channel handler context for writing the response.
     /// - Parameter head: The HTTP request head containing method, URI, and headers.
-    private func handleRequest(context: ChannelHandlerContext, head: HTTPRequestHead) {
+    /// - Parameter body: The accumulated request body.
+    private func handleRequest(context: ChannelHandlerContext, head: HTTPRequestHead, body: Data) {
+        let path = head.uri.split(separator: "?").first.map(String.init) ?? head.uri
+
+        // Delegate API requests to the router
+        if let router = apiRouter, router.shouldHandle(path: path) {
+            // Handle CORS preflight requests
+            if head.method == .OPTIONS {
+                sendDataResponse(context: context, status: .noContent, contentType: "text/plain", data: Data())
+                return
+            }
+            let apiRequest = APIRequest(head: head, body: body)
+            let apiResponse = router.handle(apiRequest)
+            sendDataResponse(context: context, status: apiResponse.status, contentType: apiResponse.contentType, data: apiResponse.body)
+            return
+        }
+
+        // Serve PWA static files at /app/
+        if path.hasPrefix("/app/") || path == "/app" {
+            servePWAFile(context: context, path: path)
+            return
+        }
+
+        // OTA routes are GET-only
         guard head.method == .GET else {
             sendResponse(context: context, status: .methodNotAllowed, contentType: "text/plain", body: "Method Not Allowed")
             return
         }
-
-        let path = head.uri.split(separator: "?").first.map(String.init) ?? head.uri
         let projects = server.registeredProjects()
 
-        // GET / → Index page
+        // GET / -> Index page
         if path == "/" {
             let html = buildIndexPage(projects: projects)
             sendResponse(context: context, status: .ok, contentType: "text/html", body: html)
@@ -323,8 +376,9 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         let baseURL = server.currentBaseURL()
 
         switch subpath {
-        case "", _ where path.hasSuffix("/") && components.count == 1:
-            // GET /<slug>/ → Install page
+        case _ where subpath.isEmpty,
+             _ where path.hasSuffix("/") && components.count == 1:
+            // GET /<slug>/ -> Install page
             let manifestURL = "\(baseURL)/\(slug)/manifest.plist"
             let ipaPath = "\(server.serveRoot)/\(slug)/app.ipa"
 
@@ -351,7 +405,7 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
             sendResponse(context: context, status: .ok, contentType: "text/html", body: html)
 
         case "manifest.plist":
-            // GET /<slug>/manifest.plist → OTA manifest
+            // GET /<slug>/manifest.plist -> OTA manifest
             let ipaURL = "\(baseURL)/\(slug)/app.ipa"
             let xml = server.manifestGenerator.generateManifest(
                 bundleID: project.bundleID,
@@ -362,7 +416,7 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
             sendResponse(context: context, status: .ok, contentType: "application/xml", body: xml)
 
         case "app.ipa":
-            // GET /<slug>/app.ipa → IPA file download
+            // GET /<slug>/app.ipa -> IPA file download
             let ipaPath = "\(server.serveRoot)/\(slug)/app.ipa"
             guard FileManager.default.fileExists(atPath: ipaPath) else {
                 sendNotFound(context: context)
@@ -400,12 +454,12 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     /// Builds a simple HTML index page listing all registered projects with links to their
     /// install pages.
     ///
-    /// - Parameter projects: Dictionary of slug → ProjectConfig for all registered projects.
+    /// - Parameter projects: Dictionary of slug -> ProjectConfig for all registered projects.
     /// - Returns: A complete HTML string for the index page.
     private func buildIndexPage(projects: [String: ProjectConfig]) -> String {
         var rows = ""
         for (slug, project) in projects.sorted(by: { $0.key < $1.key }) {
-            rows += "<li><a href=\"/\(slug)/\">\(project.name)</a> — \(project.bundleID)</li>\n"
+            rows += "<li><a href=\"/\(slug)/\">\(project.name)</a> -- \(project.bundleID)</li>\n"
         }
 
         if rows.isEmpty {
@@ -437,6 +491,38 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         </body>
         </html>
         """
+    }
+
+    /// Sends an HTTP response with raw Data body.
+    ///
+    /// Used by the API router to send JSON responses.
+    ///
+    /// - Parameter context: The channel handler context to write the response to.
+    /// - Parameter status: The HTTP status code.
+    /// - Parameter contentType: The Content-Type header value.
+    /// - Parameter data: The response body as raw bytes.
+    private func sendDataResponse(
+        context: ChannelHandlerContext,
+        status: HTTPResponseStatus,
+        contentType: String,
+        data: Data
+    ) {
+        var buffer = context.channel.allocator.buffer(capacity: data.count)
+        buffer.writeBytes(data)
+
+        var headers = HTTPHeaders()
+        headers.add(name: "Content-Type", value: contentType)
+        headers.add(name: "Content-Length", value: "\(data.count)")
+        headers.add(name: "Connection", value: "close")
+        headers.add(name: "X-Content-Type-Options", value: "nosniff")
+        headers.add(name: "Access-Control-Allow-Origin", value: "*")
+        headers.add(name: "Access-Control-Allow-Headers", value: "Authorization, Content-Type")
+        headers.add(name: "Access-Control-Allow-Methods", value: "GET, POST, PUT, DELETE, OPTIONS")
+
+        let responseHead = HTTPResponseHead(version: .http1_1, status: status, headers: headers)
+        context.write(wrapOutboundOut(.head(responseHead)), promise: nil)
+        context.write(wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
+        context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
     }
 
     /// Sends an HTTP response with a string body.
@@ -506,5 +592,61 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     /// - Parameter context: The channel handler context to write the response to.
     private func sendNotFound(context: ChannelHandlerContext) {
         sendResponse(context: context, status: .notFound, contentType: "text/plain", body: "404 Not Found")
+    }
+
+    /// Serves PWA static files from the app bundle's Resources/pwa directory.
+    ///
+    /// Maps /app/ to index.html, /app/style.css to style.css, etc.
+    /// Files are loaded from the main bundle's resource path.
+    ///
+    /// - Parameter context: The channel handler context to write the response to.
+    /// - Parameter path: The URL path (e.g., "/app/", "/app/style.css").
+    private func servePWAFile(context: ChannelHandlerContext, path: String) {
+        // Map the URL path to a filename
+        var filename = String(path.dropFirst("/app/".count))
+        if filename.isEmpty || filename == "/" {
+            filename = "index.html"
+        }
+
+        // Security: prevent path traversal
+        guard !filename.contains("..") else {
+            sendNotFound(context: context)
+            return
+        }
+
+        // Look for the file in the app bundle's pwa resources
+        guard let resourcePath = Bundle.main.resourcePath else {
+            sendNotFound(context: context)
+            return
+        }
+
+        let filePath = "\(resourcePath)/pwa/\(filename)"
+        guard let fileData = FileManager.default.contents(atPath: filePath) else {
+            sendNotFound(context: context)
+            return
+        }
+
+        // Determine content type from extension
+        let contentType: String
+        if filename.hasSuffix(".html") { contentType = "text/html; charset=utf-8" }
+        else if filename.hasSuffix(".css") { contentType = "text/css; charset=utf-8" }
+        else if filename.hasSuffix(".js") { contentType = "application/javascript; charset=utf-8" }
+        else if filename.hasSuffix(".json") { contentType = "application/json" }
+        else if filename.hasSuffix(".svg") { contentType = "image/svg+xml" }
+        else { contentType = "application/octet-stream" }
+
+        var buffer = context.channel.allocator.buffer(capacity: fileData.count)
+        buffer.writeBytes(fileData)
+
+        var headers = HTTPHeaders()
+        headers.add(name: "Content-Type", value: contentType)
+        headers.add(name: "Content-Length", value: "\(fileData.count)")
+        headers.add(name: "Connection", value: "close")
+        headers.add(name: "Cache-Control", value: "public, max-age=3600")
+
+        let responseHead = HTTPResponseHead(version: .http1_1, status: .ok, headers: headers)
+        context.write(wrapOutboundOut(.head(responseHead)), promise: nil)
+        context.write(wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
+        context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
     }
 }

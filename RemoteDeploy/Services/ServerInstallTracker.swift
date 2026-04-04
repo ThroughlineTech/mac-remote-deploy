@@ -111,7 +111,7 @@ actor ServerInstallTracker: InstallTracking {
     }
 
     /// Creates the storage directory if it does not already exist.
-    private func ensureDirectoryExists() {
+    private nonisolated func ensureDirectoryExists() {
         try? FileManager.default.createDirectory(
             at: storageDirectory,
             withIntermediateDirectories: true

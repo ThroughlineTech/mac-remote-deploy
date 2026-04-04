@@ -72,6 +72,9 @@ struct MenuBarView: View {
         .onReceive(NotificationCenter.default.publisher(for: .openSetupAssistant)) { _ in
             openWindow(id: "setup-assistant")
         }
+        .onReceive(NotificationCenter.default.publisher(for: .apiBuildRequested)) { notification in
+            handleAPIBuildRequest(notification)
+        }
     }
 
     // MARK: - Header Section
@@ -289,6 +292,23 @@ struct MenuBarView: View {
             appState.selectedProjectID = appState.projects.first?.id
         }
         NotificationCenter.default.post(name: .saveSettingsRequested, object: nil)
+    }
+
+    /// Handles a build request from the companion app API.
+    /// Selects the requested project and triggers the same build flow as the UI button.
+    private func handleAPIBuildRequest(_ notification: Notification) {
+        guard let projectID = notification.userInfo?["projectID"] as? UUID else { return }
+
+        // Select the requested project
+        appState.selectedProjectID = projectID
+
+        // Apply configuration override if provided
+        if let config = notification.userInfo?["configuration"] as? String, !config.isEmpty {
+            appState.buildConfiguration = config
+        }
+
+        // Trigger the build through the same path as the UI button
+        performBuild()
     }
 
     /// Kicks off a build for the currently selected project.

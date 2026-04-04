@@ -83,7 +83,7 @@ struct BuildLogView: View {
             }
             .background(Color(nsColor: .textBackgroundColor))
             // Auto-scroll to bottom whenever the log text changes
-            .onChange(of: appState.buildLog) { _ in
+            .onChange(of: appState.buildLog) {
                 withAnimation {
                     proxy.scrollTo(bottomAnchorID, anchor: .bottom)
                 }

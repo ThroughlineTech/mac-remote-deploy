@@ -31,12 +31,19 @@ struct SettingsView: View {
                     Label("Notifications", systemImage: "bell")
                 }
 
+            PairedDevicesTab()
+                .environmentObject(serviceContainer)
+                .environmentObject(appState)
+                .tabItem {
+                    Label("Devices", systemImage: "iphone")
+                }
+
             GeneralSettingsTab()
                 .tabItem {
                     Label("General", systemImage: "gear")
                 }
         }
-        .frame(width: 520, height: 420)
+        .frame(width: 560, height: 450)
     }
 }
 
@@ -58,8 +65,8 @@ struct ServerSettingsTab: View {
             // Port number field
             TextField("Port:", text: $port)
                 .frame(width: 80)
-                .onChange(of: port) { newValue in
-                    if let p = Int(newValue) {
+                .onChange(of: port) {
+                    if let p = Int(port) {
                         appState.serverPort = p
                         updateServerURL()
                         requestSaveSettings()
@@ -69,8 +76,8 @@ struct ServerSettingsTab: View {
             // Hostname with auto-detect button
             HStack {
                 TextField("Hostname:", text: $hostname)
-                    .onChange(of: hostname) { newValue in
-                        appState.hostname = newValue
+                    .onChange(of: hostname) {
+                        appState.hostname = hostname
                         updateServerURL()
                         requestSaveSettings()
                     }
@@ -91,8 +98,8 @@ struct ServerSettingsTab: View {
             // TLS certificate file path with browse button
             HStack {
                 TextField("Certificate:", text: $certPath)
-                    .onChange(of: certPath) { newValue in
-                        appState.certPath = newValue
+                    .onChange(of: certPath) {
+                        appState.certPath = certPath
                         requestSaveSettings()
                     }
                 Button("Browse...") {
@@ -107,8 +114,8 @@ struct ServerSettingsTab: View {
             // TLS private key file path with browse button
             HStack {
                 TextField("Private Key:", text: $keyPath)
-                    .onChange(of: keyPath) { newValue in
-                        appState.keyPath = newValue
+                    .onChange(of: keyPath) {
+                        appState.keyPath = keyPath
                         requestSaveSettings()
                     }
                 Button("Browse...") {
@@ -244,6 +251,11 @@ struct ProjectsSettingsTab: View {
                 },
                 onCancel: {
                     showingProjectForm = false
+                },
+                onDelete: { deletedProject in
+                    try? serviceContainer.projectStore.delete(projectID: deletedProject.id)
+                    appState.projects.removeAll { $0.id == deletedProject.id }
+                    showingProjectForm = false
                 }
             )
         }
@@ -324,17 +336,17 @@ struct PushSettingsTab: View {
         .onAppear {
             config = appState.pushNotificationConfig
         }
-        .onChange(of: config.prowlEnabled) { _ in syncConfig() }
-        .onChange(of: config.prowlAPIKey) { _ in syncConfig() }
-        .onChange(of: config.pushoverEnabled) { _ in syncConfig() }
-        .onChange(of: config.pushoverAppToken) { _ in syncConfig() }
-        .onChange(of: config.pushoverUserKey) { _ in syncConfig() }
-        .onChange(of: config.ntfyEnabled) { _ in syncConfig() }
-        .onChange(of: config.ntfyServerURL) { _ in syncConfig() }
-        .onChange(of: config.ntfyTopic) { _ in syncConfig() }
-        .onChange(of: config.notifyOnBuildStarted) { _ in syncConfig() }
-        .onChange(of: config.notifyOnBuildSuccess) { _ in syncConfig() }
-        .onChange(of: config.notifyOnBuildFailure) { _ in syncConfig() }
+        .onChange(of: config.prowlEnabled) { syncConfig() }
+        .onChange(of: config.prowlAPIKey) { syncConfig() }
+        .onChange(of: config.pushoverEnabled) { syncConfig() }
+        .onChange(of: config.pushoverAppToken) { syncConfig() }
+        .onChange(of: config.pushoverUserKey) { syncConfig() }
+        .onChange(of: config.ntfyEnabled) { syncConfig() }
+        .onChange(of: config.ntfyServerURL) { syncConfig() }
+        .onChange(of: config.ntfyTopic) { syncConfig() }
+        .onChange(of: config.notifyOnBuildStarted) { syncConfig() }
+        .onChange(of: config.notifyOnBuildSuccess) { syncConfig() }
+        .onChange(of: config.notifyOnBuildFailure) { syncConfig() }
     }
 
     /// Syncs config to appState, reconfigures push notifiers, and requests save.
@@ -428,8 +440,8 @@ struct GeneralSettingsTab: View {
     var body: some View {
         Form {
             Toggle("Launch at Login", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { newValue in
-                    setLaunchAtLogin(newValue)
+                .onChange(of: launchAtLogin) {
+                    setLaunchAtLogin(launchAtLogin)
                 }
         }
         .padding()

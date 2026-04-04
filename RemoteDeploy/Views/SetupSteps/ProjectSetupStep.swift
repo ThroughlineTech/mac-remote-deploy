@@ -137,7 +137,7 @@ struct ProjectSetupStep: View {
                             Text(scheme).tag(scheme)
                         }
                     }
-                    .onChange(of: selectedScheme) { _ in
+                    .onChange(of: selectedScheme) {
                         // Re-detect build settings when scheme changes
                         bundleID = ""
                         teamID = ""

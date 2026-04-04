@@ -1,6 +1,8 @@
 # How to Use RemoteDeploy
 
-RemoteDeploy is a macOS menu bar app that builds your iOS apps, signs them ad-hoc, and serves them over HTTPS so you can install them on your iPhone from anywhere — no USB cable, no TestFlight, no waiting. You just open a URL in Safari and tap Install.
+RemoteDeploy is a macOS menu bar app that builds your iOS and macOS apps, signs them, and serves them over HTTPS so you can install them on your iPhone from anywhere -- no USB cable, no TestFlight, no waiting. You just open a URL in Safari and tap Install.
+
+As of v2.0, you can also trigger builds and monitor progress from your phone using the **RemoteDeploy Companion** iOS app, or from any browser using the built-in **web PWA** at `/app/`.
 
 This guide walks through the entire process from first launch to a working app on your phone.
 

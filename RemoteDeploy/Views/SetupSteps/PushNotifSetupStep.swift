@@ -90,14 +90,14 @@ struct PushNotifSetupStep: View {
             // Load config from appState on appear
             config = appState.pushNotificationConfig
         }
-        .onChange(of: config.prowlEnabled) { _ in syncConfigToAppState() }
-        .onChange(of: config.prowlAPIKey) { _ in syncConfigToAppState() }
-        .onChange(of: config.pushoverEnabled) { _ in syncConfigToAppState() }
-        .onChange(of: config.pushoverAppToken) { _ in syncConfigToAppState() }
-        .onChange(of: config.pushoverUserKey) { _ in syncConfigToAppState() }
-        .onChange(of: config.ntfyEnabled) { _ in syncConfigToAppState() }
-        .onChange(of: config.ntfyServerURL) { _ in syncConfigToAppState() }
-        .onChange(of: config.ntfyTopic) { _ in syncConfigToAppState() }
+        .onChange(of: config.prowlEnabled) { syncConfigToAppState() }
+        .onChange(of: config.prowlAPIKey) { syncConfigToAppState() }
+        .onChange(of: config.pushoverEnabled) { syncConfigToAppState() }
+        .onChange(of: config.pushoverAppToken) { syncConfigToAppState() }
+        .onChange(of: config.pushoverUserKey) { syncConfigToAppState() }
+        .onChange(of: config.ntfyEnabled) { syncConfigToAppState() }
+        .onChange(of: config.ntfyServerURL) { syncConfigToAppState() }
+        .onChange(of: config.ntfyTopic) { syncConfigToAppState() }
     }
 
     /// Syncs the local config state back to appState.

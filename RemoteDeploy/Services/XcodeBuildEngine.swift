@@ -2,54 +2,45 @@
 // Handles the full pipeline: archive → export IPA → copy to serve directory.
 // Uses Process to run xcodebuild and streams output via AsyncStream for real-time log display.
 import Foundation
+import os
 
 final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
 
     // MARK: - Private State
 
-    /// Lock protecting mutable state accessed from multiple threads/tasks.
-    private let lock = NSLock()
+    /// The currently running xcodebuild process, if any. Protected by lock.
+    private let lockedRunningProcess = OSAllocatedUnfairLock<Process?>(initialState: nil)
 
-    /// The currently running xcodebuild process, if any. Protected by `lock`.
-    private var runningProcess: Process?
+    /// Backing storage for `status`. Protected by lock.
+    private let lockedStatus = OSAllocatedUnfairLock<BuildStatus>(initialState: .idle)
 
-    /// Backing storage for `status`. Protected by `lock`.
-    private var _status: BuildStatus = .idle
-
-    /// The continuation used to yield lines into `buildLogStream`. Protected by `lock`.
-    private var logContinuation: AsyncStream<String>.Continuation?
+    /// The continuation used to yield lines into `buildLogStream`. Protected by lock.
+    private let lockedLogContinuation = OSAllocatedUnfairLock<AsyncStream<String>.Continuation?>(initialState: nil)
 
     // MARK: - Protocol Properties
 
     /// The current build status (idle, building, success, or failure).
     /// Thread-safe: reads are protected by the internal lock.
     var status: BuildStatus {
-        lock.lock()
-        defer { lock.unlock() }
-        return _status
+        lockedStatus.withLock { $0 }
     }
 
     /// Creates a new async stream for consuming build log output.
-    /// Each call returns a fresh stream — call this before starting a build,
+    /// Each call returns a fresh stream -- call this before starting a build,
     /// then iterate it in a Task to receive real-time log lines.
     /// The continuation is set synchronously so emitLog() can yield immediately.
     var buildLogStream: AsyncStream<String> {
-        lock.lock()
-        logContinuation?.finish()
-        var captured: AsyncStream<String>.Continuation!
-        let stream = AsyncStream<String>(bufferingPolicy: .unbounded) { cont in
-            captured = cont
+        let (stream, continuation) = AsyncStream<String>.makeStream(of: String.self, bufferingPolicy: .unbounded)
+        lockedLogContinuation.withLock {
+            $0?.finish()
+            $0 = continuation
         }
-        logContinuation = captured
-        lock.unlock()
         return stream
     }
 
     // MARK: - Init
 
-    init() {
-        logContinuation = nil
-    }
+    init() {}
 
     // MARK: - Build Pipeline
 
@@ -122,10 +113,23 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             }
         }
 
+        // Set the destination based on the project's target platform
+        let destination: String
+        switch project.platform.lowercased() {
+        case "macos":
+            destination = "generic/platform=macOS"
+        case "tvos":
+            destination = "generic/platform=tvOS"
+        case "watchos":
+            destination = "generic/platform=watchOS"
+        default:
+            destination = "generic/platform=iOS"
+        }
+
         archiveArgs += [
             "-scheme", project.scheme,
             "-archivePath", archivePath,
-            "-destination", "generic/platform=iOS",
+            "-destination", destination,
             "-configuration", project.buildConfiguration,
             "DEVELOPMENT_TEAM=\(project.teamID)"
         ]
@@ -185,9 +189,7 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// If no build is currently running, this is a no-op.
     /// After cancellation, the build status is set to failure with a cancellation message.
     func cancelBuild() async {
-        lock.lock()
-        let process = runningProcess
-        lock.unlock()
+        let process = lockedRunningProcess.withLock { $0 }
 
         if let process = process, process.isRunning {
             process.terminate()
@@ -202,16 +204,40 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// and parses the "Schemes:" section from the text output, returning each scheme name
     /// as a trimmed string.
     ///
-    /// - Parameter projectPath: Absolute path to a `.xcodeproj` or `.xcworkspace` bundle.
+    /// - Parameter projectPath: Absolute path to a directory containing an Xcode project,
+    ///   or a direct path to a `.xcodeproj` or `.xcworkspace` bundle.
     /// - Returns: An array of scheme name strings found in the project.
     /// - Throws: If xcodebuild fails to parse the project or the path is invalid.
     func detectSchemes(at projectPath: String) async throws -> [String] {
-        let isWorkspace = projectPath.hasSuffix(".xcworkspace")
-        let flag = isWorkspace ? "-workspace" : "-project"
-        let args = [flag, projectPath, "-list"]
+        let resolved = try resolveXcodeProject(at: projectPath)
+        let flag = resolved.hasSuffix(".xcworkspace") ? "-workspace" : "-project"
+        let args = [flag, resolved, "-list"]
 
         let output = try await runXcodebuildCapturing(arguments: args)
         return parseSchemesFromOutput(output)
+    }
+
+    /// Resolves a path to the actual `.xcworkspace` or `.xcodeproj` bundle.
+    ///
+    /// If the path already points to a bundle, returns it as-is. Otherwise treats it as a
+    /// directory and scans for `.xcworkspace` (preferred) or `.xcodeproj` inside it.
+    private func resolveXcodeProject(at path: String) throws -> String {
+        if path.hasSuffix(".xcworkspace") || path.hasSuffix(".xcodeproj") {
+            return path
+        }
+
+        let fm = FileManager.default
+        let contents = (try? fm.contentsOfDirectory(atPath: path)) ?? []
+        let xcworkspaces = contents.filter { $0.hasSuffix(".xcworkspace") }
+        let xcprojects = contents.filter { $0.hasSuffix(".xcodeproj") }
+
+        if let workspace = xcworkspaces.first {
+            return "\(path)/\(workspace)"
+        } else if let project = xcprojects.first {
+            return "\(path)/\(project)"
+        }
+
+        throw BuildError.xcodebuildFailed(1, "No .xcodeproj or .xcworkspace found in \(path)")
     }
 
     // MARK: - Private Helpers
@@ -234,9 +260,7 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
 
-        lock.lock()
-        runningProcess = process
-        lock.unlock()
+        lockedRunningProcess.withLock { $0 = process }
 
         // Stream stdout lines
         stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
@@ -262,9 +286,7 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
                 stdoutPipe.fileHandleForReading.readabilityHandler = nil
                 stderrPipe.fileHandleForReading.readabilityHandler = nil
 
-                self?.lock.lock()
-                self?.runningProcess = nil
-                self?.lock.unlock()
+                self?.lockedRunningProcess.withLock { $0 = nil }
 
                 if proc.terminationReason == .uncaughtSignal {
                     continuation.resume(throwing: BuildError.cancelled)
@@ -280,9 +302,7 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             do {
                 try process.run()
             } catch {
-                lock.lock()
-                runningProcess = nil
-                lock.unlock()
+                lockedRunningProcess.withLock { $0 = nil }
                 continuation.resume(throwing: error)
             }
         }
@@ -418,18 +438,14 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     ///
     /// - Parameter newStatus: The new status to assign.
     private func setStatus(_ newStatus: BuildStatus) {
-        lock.lock()
-        _status = newStatus
-        lock.unlock()
+        lockedStatus.withLock { $0 = newStatus }
     }
 
     /// Emits a single log line to the async build log stream.
     ///
     /// - Parameter line: The log message to emit.
     private func emitLog(_ line: String) {
-        lock.lock()
-        let cont = logContinuation
-        lock.unlock()
+        let cont = lockedLogContinuation.withLock { $0 }
         cont?.yield(line)
     }
 }

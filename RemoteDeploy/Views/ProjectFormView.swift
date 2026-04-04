@@ -7,6 +7,10 @@ struct ProjectFormView: View {
     @Binding var project: ProjectConfig
     var onSave: (ProjectConfig) -> Void
     var onCancel: () -> Void
+    /// Optional delete handler. When provided, a Delete button is shown.
+    var onDelete: ((ProjectConfig) -> Void)?
+
+    @State private var showDeleteConfirm = false
 
     /// Schemes detected from the Xcode project, populated when the user picks a project path.
     @State private var detectedSchemes: [String] = []
@@ -50,6 +54,10 @@ struct ProjectFormView: View {
                             Text(scheme).tag(scheme)
                         }
                     }
+                    .onChange(of: project.scheme) {
+                        // Re-detect bundle ID and team ID when scheme changes
+                        detectBuildSettings()
+                    }
                 }
 
                 if isDetectingSchemes {
@@ -91,6 +99,11 @@ struct ProjectFormView: View {
                     Text("Ad Hoc").tag("ad-hoc")
                     Text("Development").tag("development")
                 }
+
+                Picker("Platform", selection: $project.platform) {
+                    Text("iOS").tag("iOS")
+                    Text("macOS").tag("macOS")
+                }
             }
 
             // MARK: - Server Settings
@@ -102,6 +115,12 @@ struct ProjectFormView: View {
 
             // MARK: - Actions
             HStack {
+                if onDelete != nil {
+                    Button("Delete", role: .destructive) {
+                        showDeleteConfirm = true
+                    }
+                    .foregroundColor(.red)
+                }
                 Spacer()
                 Button("Cancel", action: onCancel)
                     .keyboardShortcut(.cancelAction)
@@ -114,6 +133,13 @@ struct ProjectFormView: View {
         }
         .padding()
         .frame(minWidth: 450)
+        .confirmationDialog("Delete \"\(project.name)\"?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                onDelete?(project)
+            }
+        } message: {
+            Text("This will remove the project from RemoteDeploy. Your source code is not affected.")
+        }
     }
 
     // MARK: - Actions
@@ -167,8 +193,8 @@ struct ProjectFormView: View {
         }
     }
 
-    /// Auto-detects Bundle ID and Team ID by running xcodebuild -showBuildSettings.
-    /// Only fills in empty fields — won't overwrite user-entered values.
+    /// Auto-detects Bundle ID, Team ID, and platform by running xcodebuild -showBuildSettings.
+    /// Always updates bundle ID to match the selected scheme. Only fills team ID if empty.
     private func detectBuildSettings() {
         guard !project.projectPath.isEmpty, !project.scheme.isEmpty else { return }
 
@@ -176,13 +202,20 @@ struct ProjectFormView: View {
             do {
                 let output = try await runShowBuildSettings()
                 await MainActor.run {
-                    if let detected = parseSetting("PRODUCT_BUNDLE_IDENTIFIER", from: output),
-                       project.bundleID.isEmpty {
+                    if let detected = parseSetting("PRODUCT_BUNDLE_IDENTIFIER", from: output) {
                         project.bundleID = detected
                     }
                     if let detected = parseSetting("DEVELOPMENT_TEAM", from: output),
                        project.teamID.isEmpty {
                         project.teamID = detected
+                    }
+                    // Auto-detect platform from SDK
+                    if let sdk = parseSetting("SDK_NAME", from: output) {
+                        if sdk.hasPrefix("macos") {
+                            project.platform = "macOS"
+                        } else {
+                            project.platform = "iOS"
+                        }
                     }
                 }
             } catch {

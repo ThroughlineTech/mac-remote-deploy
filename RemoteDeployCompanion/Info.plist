@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is needed to scan QR codes for pairing with your Mac.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Local network access is used to discover your Mac on the same WiFi network.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_remotedeploy._tcp</string>
+	</array>
+</dict>
+</plist>
