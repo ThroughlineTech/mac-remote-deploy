@@ -12,6 +12,7 @@ final class BonjourBrowser: ObservableObject {
         let id: String
         let name: String
         let hostname: String
+        let localIP: String
         let httpsPort: Int
         let httpPort: Int
     }
@@ -73,11 +74,13 @@ final class BonjourBrowser: ObservableObject {
             guard case .service(let name, _, _, _) = result.endpoint else { continue }
 
             var hostname = ""
+            var localIP = ""
             var httpsPort = 8443
             var httpPort = 8080
 
             if case .bonjour(let record) = result.metadata {
                 hostname = txtString(from: record, key: "hostname") ?? ""
+                localIP = txtString(from: record, key: "localIP") ?? ""
                 if let p = txtString(from: record, key: "httpsPort"), let port = Int(p) {
                     httpsPort = port
                 }
@@ -90,6 +93,7 @@ final class BonjourBrowser: ObservableObject {
                 id: name,
                 name: name,
                 hostname: hostname,
+                localIP: localIP,
                 httpsPort: httpsPort,
                 httpPort: httpPort
             ))

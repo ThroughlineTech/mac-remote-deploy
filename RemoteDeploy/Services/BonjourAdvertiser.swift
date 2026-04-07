@@ -49,6 +49,9 @@ final class BonjourAdvertiser: NSObject, @unchecked Sendable, NetServiceDelegate
         if !hostname.isEmpty {
             txtDict["hostname"] = Data(hostname.utf8)
         }
+        if let localIP = QRCodeGenerator.localIPAddress() {
+            txtDict["localIP"] = Data(localIP.utf8)
+        }
         let txtData = NetService.data(fromTXTRecord: txtDict)
 
         // Advertise on the HTTP port so Bonjour resolves to something reachable

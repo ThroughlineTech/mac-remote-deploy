@@ -108,12 +108,18 @@ struct PairDeviceView: View {
         // Register the token as pending pairing
         serviceContainer.pairingHandler?.registerPendingToken(hash)
 
-        // Include local IP so the phone can fall back when Tailscale DNS isn't available
+        // Build URLs — always include a local IP fallback
         let localIP = QRCodeGenerator.localIPAddress()
         let localURL = localIP.map { "http://\($0):8080" }
 
+        // Primary URL: use serverURL if set, otherwise local
+        var primaryURL = appState.serverURL
+        if primaryURL.isEmpty, let local = localURL {
+            primaryURL = local
+        }
+
         let payload = QRCodeGenerator.PairingPayload(
-            url: appState.serverURL,
+            url: primaryURL,
             token: token,
             serverName: Host.current().localizedName ?? "Mac",
             localURL: localURL

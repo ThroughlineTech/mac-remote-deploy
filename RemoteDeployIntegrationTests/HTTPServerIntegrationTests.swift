@@ -3,6 +3,7 @@
 // using URLSession, and verifies responses.
 
 import XCTest
+import RemoteDeployShared
 @testable import RemoteDeploy
 
 final class HTTPServerIntegrationTests: XCTestCase {
@@ -256,6 +257,133 @@ final class HTTPServerIntegrationTests: XCTestCase {
 
         let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
         XCTAssertEqual(httpResponse.statusCode, 404, "Missing IPA file should return 404")
+    }
+
+    // MARK: - API Pairing Tests
+
+    func testPairingOverHTTP() async throws {
+        // Set up the server with an API router that includes pairing
+        let deviceStore = JSONPairedDeviceStore(directory: tempDir)
+        let auth = AuthMiddleware(deviceStore: deviceStore)
+        let pairingHandler = PairingRouteHandler(deviceStore: deviceStore, serverName: "TestMac")
+        let statusHandler = StatusRouteHandler(statusProvider: {
+            ServerStatus(serverRunning: true, tailscaleConnected: false, hostname: "", serverPort: 8443, buildStatus: BuildStatusInfo(state: "idle"))
+        })
+        let projectsHandler = ProjectsRouteHandler(projectStore: UserDefaultsProjectStore(directory: tempDir))
+        let buildHandler = BuildRouteHandler(buildTrigger: { _, _ in nil }, buildStatusProvider: { BuildStatusInfo(state: "idle") }, buildCanceler: { false }, buildHistoryProvider: { [] })
+        let installsHandler = InstallsRouteHandler(installTracker: ServerInstallTracker(directory: tempDir))
+        let settingsHandler = SettingsRouteHandler(settingsProvider: { SettingsData() }, settingsUpdater: { _ in nil })
+        let filesystemHandler = FilesystemRouteHandler(schemeDetector: { _ in [] })
+        let devicesHandler = DevicesRouteHandler(deviceStore: deviceStore)
+
+        let router = APIRouter(
+            auth: auth,
+            pairingHandler: pairingHandler,
+            statusHandler: statusHandler,
+            projectsHandler: projectsHandler,
+            buildHandler: buildHandler,
+            installsHandler: installsHandler,
+            settingsHandler: settingsHandler,
+            filesystemHandler: filesystemHandler,
+            devicesHandler: devicesHandler
+        )
+        server.apiRouter = router
+
+        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+
+        // The HTTP listener starts on port 8080 alongside HTTPS.
+        // For this test, we'll use the HTTPS listener with the API router since
+        // the HTTP listener port isn't configurable. The pairing logic is the same.
+
+        // Generate a token and register it as pending
+        let token = JSONPairedDeviceStore.generateToken()
+        let tokenHash = JSONPairedDeviceStore.hashToken(token)
+        pairingHandler.registerPendingToken(tokenHash)
+
+        // Send pairing request
+        let pairURL = URL(string: "https://localhost:\(serverPort!)/api/v1/pair")!
+        var request = URLRequest(url: pairURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body = try JSONEncoder().encode(PairRequest(token: token, deviceName: "TestiPhone"))
+        request.httpBody = body
+
+        let (data, response) = try await session.data(for: request)
+        let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
+
+        XCTAssertEqual(httpResponse.statusCode, 201, "Pairing should succeed with status 201")
+
+        let pairResponse = try JSONDecoder().decode(PairResponse.self, from: data)
+        XCTAssertTrue(pairResponse.paired, "Response should indicate paired=true")
+        XCTAssertEqual(pairResponse.serverName, "TestMac")
+
+        // Verify the device was saved
+        let devices = try deviceStore.loadDevices()
+        XCTAssertEqual(devices.count, 1, "One device should be paired")
+        XCTAssertEqual(devices.first?.name, "TestiPhone")
+
+        // Verify the token works for authenticated requests
+        var statusRequest = URLRequest(url: URL(string: "https://localhost:\(serverPort!)/api/v1/status")!)
+        statusRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (statusData, statusResponse) = try await session.data(for: statusRequest)
+        let statusHTTP = try XCTUnwrap(statusResponse as? HTTPURLResponse)
+        XCTAssertEqual(statusHTTP.statusCode, 200, "Authenticated status request should succeed")
+    }
+
+    func testPairingWithInvalidToken() async throws {
+        let deviceStore = JSONPairedDeviceStore(directory: tempDir)
+        let pairingHandler = PairingRouteHandler(deviceStore: deviceStore, serverName: "TestMac")
+        let auth = AuthMiddleware(deviceStore: deviceStore)
+        let statusHandler = StatusRouteHandler(statusProvider: { ServerStatus(serverRunning: true, tailscaleConnected: false, hostname: "", serverPort: 8443, buildStatus: BuildStatusInfo(state: "idle")) })
+        let projectsHandler = ProjectsRouteHandler(projectStore: UserDefaultsProjectStore(directory: tempDir))
+        let buildHandler = BuildRouteHandler(buildTrigger: { _, _ in nil }, buildStatusProvider: { BuildStatusInfo(state: "idle") }, buildCanceler: { false }, buildHistoryProvider: { [] })
+        let installsHandler = InstallsRouteHandler(installTracker: ServerInstallTracker(directory: tempDir))
+        let settingsHandler = SettingsRouteHandler(settingsProvider: { SettingsData() }, settingsUpdater: { _ in nil })
+        let filesystemHandler = FilesystemRouteHandler(schemeDetector: { _ in [] })
+        let devicesHandler = DevicesRouteHandler(deviceStore: deviceStore)
+
+        let router = APIRouter(auth: auth, pairingHandler: pairingHandler, statusHandler: statusHandler, projectsHandler: projectsHandler, buildHandler: buildHandler, installsHandler: installsHandler, settingsHandler: settingsHandler, filesystemHandler: filesystemHandler, devicesHandler: devicesHandler)
+        server.apiRouter = router
+
+        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+
+        // Do NOT register a pending token — pairing should fail
+        let pairURL = URL(string: "https://localhost:\(serverPort!)/api/v1/pair")!
+        var request = URLRequest(url: pairURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(PairRequest(token: "bogus", deviceName: "Hacker"))
+
+        let (_, response) = try await session.data(for: request)
+        let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
+        XCTAssertEqual(httpResponse.statusCode, 403, "Invalid token should return 403")
+
+        let devices = try deviceStore.loadDevices()
+        XCTAssertEqual(devices.count, 0, "No device should be paired")
+    }
+
+    func testUnauthenticatedRequestReturns401() async throws {
+        let deviceStore = JSONPairedDeviceStore(directory: tempDir)
+        let auth = AuthMiddleware(deviceStore: deviceStore)
+        let pairingHandler = PairingRouteHandler(deviceStore: deviceStore, serverName: "TestMac")
+        let statusHandler = StatusRouteHandler(statusProvider: { ServerStatus(serverRunning: true, tailscaleConnected: false, hostname: "", serverPort: 8443, buildStatus: BuildStatusInfo(state: "idle")) })
+        let projectsHandler = ProjectsRouteHandler(projectStore: UserDefaultsProjectStore(directory: tempDir))
+        let buildHandler = BuildRouteHandler(buildTrigger: { _, _ in nil }, buildStatusProvider: { BuildStatusInfo(state: "idle") }, buildCanceler: { false }, buildHistoryProvider: { [] })
+        let installsHandler = InstallsRouteHandler(installTracker: ServerInstallTracker(directory: tempDir))
+        let settingsHandler = SettingsRouteHandler(settingsProvider: { SettingsData() }, settingsUpdater: { _ in nil })
+        let filesystemHandler = FilesystemRouteHandler(schemeDetector: { _ in [] })
+        let devicesHandler = DevicesRouteHandler(deviceStore: deviceStore)
+
+        let router = APIRouter(auth: auth, pairingHandler: pairingHandler, statusHandler: statusHandler, projectsHandler: projectsHandler, buildHandler: buildHandler, installsHandler: installsHandler, settingsHandler: settingsHandler, filesystemHandler: filesystemHandler, devicesHandler: devicesHandler)
+        server.apiRouter = router
+
+        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+
+        // Request without Authorization header
+        let url = URL(string: "https://localhost:\(serverPort!)/api/v1/status")!
+        let (_, response) = try await session.data(from: url)
+        let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
+        XCTAssertEqual(httpResponse.statusCode, 401, "Unauthenticated request should return 401")
     }
 
     // MARK: - Helpers

@@ -9,6 +9,9 @@ struct ServerDiscoveryView: View {
 
     @State private var showQRScanner = false
     @State private var showManualEntry = false
+    @State private var showTokenEntry = false
+    @State private var selectedServerURL = ""
+    @State private var selectedServerName = ""
     @State private var isConnecting = false
     @State private var error: String?
 
@@ -50,8 +53,16 @@ struct ServerDiscoveryView: View {
 
                         ForEach(bonjourBrowser.servers) { server in
                             Button {
-                                // Bonjour servers still need pairing via QR
-                                showQRScanner = true
+                                // Use local IP for direct connection (works without Tailscale)
+                                if !server.localIP.isEmpty {
+                                    selectedServerURL = "http://\(server.localIP):\(server.httpPort)"
+                                } else if !server.hostname.isEmpty {
+                                    selectedServerURL = "https://\(server.hostname):\(server.httpsPort)"
+                                } else {
+                                    selectedServerURL = "http://127.0.0.1:\(server.httpPort)"
+                                }
+                                selectedServerName = server.name
+                                showTokenEntry = true
                             } label: {
                                 HStack {
                                     Image(systemName: "desktopcomputer")
@@ -109,6 +120,10 @@ struct ServerDiscoveryView: View {
                 ManualEntryView()
                     .environmentObject(connectionManager)
             }
+            .sheet(isPresented: $showTokenEntry) {
+                TokenEntryView(serverURL: selectedServerURL, serverName: selectedServerName)
+                    .environmentObject(connectionManager)
+            }
         }
         .onAppear {
             bonjourBrowser.startBrowsing()
@@ -126,6 +141,7 @@ struct ManualEntryView: View {
 
     @State private var serverURL = ""
     @State private var token = ""
+    @State private var showToken = false
     @State private var isConnecting = false
     @State private var error: String?
 
@@ -139,8 +155,23 @@ struct ManualEntryView: View {
                 }
 
                 Section("Token") {
-                    SecureField("Paste the token from your Mac", text: $token)
-                        .autocapitalization(.none)
+                    HStack {
+                        if showToken {
+                            TextField("Paste the token from your Mac", text: $token)
+                                .autocapitalization(.none)
+                                .font(.system(.body, design: .monospaced))
+                        } else {
+                            SecureField("Paste the token from your Mac", text: $token)
+                                .autocapitalization(.none)
+                        }
+                        Button {
+                            showToken.toggle()
+                        } label: {
+                            Image(systemName: showToken ? "eye.slash" : "eye")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.borderless)
+                    }
                 }
 
                 if let error {
@@ -172,6 +203,88 @@ struct ManualEntryView: View {
         Task {
             do {
                 try await connectionManager.connect(url: serverURL, token: token)
+                dismiss()
+            } catch {
+                self.error = error.localizedDescription
+            }
+            isConnecting = false
+        }
+    }
+}
+
+/// Simple token entry for a discovered server — just enter the 8-char code shown on the Mac.
+struct TokenEntryView: View {
+    @EnvironmentObject var connectionManager: ConnectionManager
+    @Environment(\.dismiss) var dismiss
+
+    let serverURL: String
+    let serverName: String
+
+    @State private var token = ""
+    @State private var isConnecting = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Image(systemName: "desktopcomputer")
+                    .font(.system(size: 50))
+                    .foregroundColor(.accentColor)
+
+                Text(serverName)
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("Enter the pairing code shown on your Mac\n(Settings > Devices > Pair New Device)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+
+                TextField("Pairing code", text: $token)
+                    .font(.system(size: 24, weight: .medium, design: .monospaced))
+                    .multilineTextAlignment(.center)
+                    .autocapitalization(.none)
+                    .autocorrectionDisabled()
+                    .padding()
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 40)
+
+                if let error {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+
+                Button {
+                    connect()
+                } label: {
+                    Text(isConnecting ? "Connecting..." : "Connect")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(token.isEmpty || isConnecting)
+                .padding(.horizontal)
+            }
+            .padding()
+            .navigationTitle("Pair with Mac")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func connect() {
+        isConnecting = true
+        error = nil
+        Task {
+            do {
+                try await connectionManager.pair(url: serverURL, token: token, serverName: serverName)
                 dismiss()
             } catch {
                 self.error = error.localizedDescription

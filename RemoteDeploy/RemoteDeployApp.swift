@@ -141,9 +141,18 @@ struct RemoteDeployApp: App {
                 appState.hostname = hostname
                 let port = appState.serverPort
                 appState.serverURL = "https://\(hostname):\(port)"
+            } else {
+                // No Tailscale — use local IP so QR codes and the API still work
+                if let localIP = QRCodeGenerator.localIPAddress() {
+                    appState.serverURL = "http://\(localIP):8080"
+                }
             }
         } catch {
             appState.tailscaleConnected = false
+            // Fall back to local IP
+            if let localIP = QRCodeGenerator.localIPAddress() {
+                appState.serverURL = "http://\(localIP):8080"
+            }
             print("Tailscale check failed: \(error.localizedDescription)")
         }
     }
