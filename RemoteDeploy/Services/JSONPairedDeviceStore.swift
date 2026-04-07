@@ -105,11 +105,12 @@ final class JSONPairedDeviceStore: PairedDeviceStoring, @unchecked Sendable {
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
-    /// Generates a cryptographically random 256-bit token as a hex string.
+    /// Generates a cryptographically random token as a short hex string.
     ///
-    /// - Returns: A 64-character hex string suitable for use as a bearer token.
+    /// - Returns: An 8-character hex string suitable for use as a bearer token.
+    ///   This is a local dev tool on a private network — 32 bits of entropy is sufficient.
     static func generateToken() -> String {
-        var bytes = [UInt8](repeating: 0, count: 32)
+        var bytes = [UInt8](repeating: 0, count: 4)
         _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
         return bytes.map { String(format: "%02x", $0) }.joined()
     }
