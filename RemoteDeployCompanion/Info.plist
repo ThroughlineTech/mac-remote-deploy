@@ -15,5 +15,16 @@
 	<array>
 		<string>_remotedeploy._tcp</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>remotedeploy</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>com.remotedeploy.companion.pair</string>
+		</dict>
+	</array>
 </dict>
 </plist>

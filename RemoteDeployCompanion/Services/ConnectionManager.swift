@@ -2,7 +2,10 @@
 // Handles pairing, connection state, and provides the APIClient to views.
 import Foundation
 import SwiftUI
+import os
 import RemoteDeployShared
+
+private let logger = Logger(subsystem: "com.remotedeploy.companion", category: "pairing")
 
 /// Manages the connection to a paired RemoteDeploy Mac server.
 @MainActor
@@ -33,6 +36,42 @@ final class ConnectionManager: ObservableObject {
     let buildManager = BuildManager()
 
     init() {
+        // Support auto-pairing via environment variables or UserDefaults for testing/screenshots.
+        // XCUITest uses launchEnvironment, simctl uses UserDefaults.
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+
+        // --reset-pairing: clear saved credentials for fresh discovery screenshots
+        if args.contains("--reset-pairing") {
+            KeychainStore.clear()
+            logger.info("Pairing reset via launch argument")
+        }
+
+        // --auto-pair: connect directly from launch arguments, bypassing Keychain
+        // (Keychain returns -34018 in XCUITest without code signing)
+        if args.contains("--auto-pair"),
+           let urlIndex = args.firstIndex(of: "--pair-url"), urlIndex + 1 < args.count,
+           let tokenIndex = args.firstIndex(of: "--pair-token"), tokenIndex + 1 < args.count {
+            let url = args[urlIndex + 1]
+            let token = args[tokenIndex + 1]
+            let name: String
+            if let nameIndex = args.firstIndex(of: "--pair-name"), nameIndex + 1 < args.count {
+                name = args[nameIndex + 1]
+            } else {
+                name = "Mac"
+            }
+            logger.info("Auto-pairing via launch args: \(url, privacy: .public)")
+            if let baseURL = URL(string: url) {
+                apiClient = APIClient(baseURL: baseURL, token: token)
+                buildManager.setClient(apiClient)
+                serverName = name
+                isConnected = true
+                Task { await refreshStatus() }
+                return
+            }
+        }
+        #endif
+
         // Try to restore a saved connection
         restoreConnection()
     }
@@ -61,7 +100,9 @@ final class ConnectionManager: ObservableObject {
     /// - Parameter token: The bearer token from the QR code.
     /// - Parameter serverName: The Mac's display name.
     func pair(url: String, token: String, serverName: String) async throws {
+        logger.info("Pairing: attempting with url=\(url, privacy: .public) token=\(token.prefix(4), privacy: .public)...")
         guard let baseURL = URL(string: url) else {
+            logger.error("Pairing: invalid URL '\(url, privacy: .public)'")
             throw ConnectionError.invalidURL
         }
 
@@ -69,12 +110,15 @@ final class ConnectionManager: ObservableObject {
 
         // Complete the pairing handshake
         let deviceName = UIDevice.current.name
+        logger.info("Pairing: sending pair request as '\(deviceName, privacy: .public)'")
         let response = try await client.completePairing(deviceName: deviceName)
 
         guard response.paired else {
+            logger.error("Pairing: server rejected pairing")
             throw ConnectionError.pairingFailed
         }
 
+        logger.info("Pairing: success! Server name: \(response.serverName, privacy: .public)")
         // Save credentials and connect
         KeychainStore.save(url: url, token: token, serverName: response.serverName)
 

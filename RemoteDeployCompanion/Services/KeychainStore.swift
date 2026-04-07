@@ -52,22 +52,30 @@ final class KeychainStore {
         ]
         SecItemDelete(query as CFDictionary)
 
+        var addQuery = query
+        addQuery[kSecValueData as String] = data
+
+        #if targetEnvironment(simulator)
+        // Simulator doesn't support biometric — use basic accessibility
+        addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        #else
         // Require device passcode/biometric to access the token
-        let access = SecAccessControlCreateWithFlags(
+        if let access = SecAccessControlCreateWithFlags(
             nil,
             kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
             .userPresence,
             nil
-        )
-
-        var addQuery = query
-        addQuery[kSecValueData as String] = data
-        if let access {
+        ) {
             addQuery[kSecAttrAccessControl as String] = access
         } else {
             addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         }
-        SecItemAdd(addQuery as CFDictionary, nil)
+        #endif
+
+        let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        if addStatus != errSecSuccess {
+            NSLog("KeychainStore: SecItemAdd failed for key '\(key)' with status \(addStatus)")
+        }
     }
 
     private static func get(key: String) -> String? {

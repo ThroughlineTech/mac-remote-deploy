@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -37,7 +37,6 @@
 		41A1AA6E6E8AC7ED8B3D27C4 /* TailscaleSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C437FE67443E50301B2FBC1 /* TailscaleSetupStep.swift */; };
 		43AC8C833B74768A395571AB /* PairedDeviceStoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4339E627499951F26144AC1B /* PairedDeviceStoring.swift */; };
 		456AB631D8EFB95038C042B7 /* ProjectStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */; };
-		47A11FA9EE2830C59BCD863C /* sw.js in Resources */ = {isa = PBXBuildFile; fileRef = 6B0227FD785C4198B27607A4 /* sw.js */; };
 		4B08C1304B06942B13A779A3 /* PairedDevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FC68632F6EFE61DC35CF3A9 /* PairedDevicesView.swift */; };
 		531CCB51E106CEA864BF3768 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91B9C5E6B3976E7E1C65FBC /* APIClient.swift */; };
 		53C037A8761540A069FF09B6 /* ProjectSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5A883F3DF84EB00EE19999 /* ProjectSetupStep.swift */; };
@@ -54,6 +53,7 @@
 		70A76E24FDF4C330FB87216C /* SetupCompleteStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B83C2E31BD5EF9FA3AEE7A /* SetupCompleteStep.swift */; };
 		72266AE27465FFE3127912B1 /* WebSocketHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA955EAB30E67230572C98B7 /* WebSocketHandler.swift */; };
 		754206C48F746015A018F469 /* BuildResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF1E54C911A24AC15A89473F /* BuildResultTests.swift */; };
+		75A8AAF87DE244D0649B1C07 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99A149FBB61626663F091536 /* ScreenshotTests.swift */; };
 		781BEB1DA79C908730C34701 /* NIOHTTP1 in Frameworks */ = {isa = PBXBuildFile; productRef = BDBF8EEF824FC2161D84A4C1 /* NIOHTTP1 */; };
 		792434EFEF1642985DE64E0B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 489A6CB77F32B387688FC39D /* Assets.xcassets */; };
 		823E3790257BCF616C9910DD /* JSONPairedDeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FF6629262E737F32BF1B707 /* JSONPairedDeviceStore.swift */; };
@@ -71,9 +71,7 @@
 		9D8B460D454E8F79A0D29218 /* PairDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E998EFEF8906090CC462E132 /* PairDeviceView.swift */; };
 		A80FF6755F6D189BF81B4CB9 /* RemoteDeployApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6D36C679876DC789D03BA2 /* RemoteDeployApp.swift */; };
 		AA65810FF506F20B0442FD42 /* InstallPageGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */; };
-		B1C4801D31A2D78674340D89 /* app.js in Resources */ = {isa = PBXBuildFile; fileRef = 662271C2014D40E8931AC413 /* app.js */; };
 		B2E1DC71DEFF4511AFF4D184 /* BuildRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */; };
-		B355480BAA439F2411C660B7 /* style.css in Resources */ = {isa = PBXBuildFile; fileRef = 3FB95803032E83B9E66B296E /* style.css */; };
 		B5BBDDF0CDDA8D15998E1D67 /* FilesystemRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA40F77DFBF56FBBCE4301E /* FilesystemRouteHandler.swift */; };
 		B63331497F3FC2E9F1DDC680 /* PushNotifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7FE9D88C0571571898E928C /* PushNotifierTests.swift */; };
 		B90E71A01018EBBD14DF2101 /* APIRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9220015D340C1A6FA471E1A9 /* APIRouter.swift */; };
@@ -86,7 +84,6 @@
 		D1EEC512B80AECC9EFABB44C /* ProjectConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9646E680B180ADA2F5925EE7 /* ProjectConfig.swift */; };
 		D50CBB9E697621C5571F2D2B /* PushNotifSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B671A818A6D0055CA3DEB4B /* PushNotifSetupStep.swift */; };
 		D5642154FDB1D28A10C64C91 /* StatusRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FBF08D8E89290BB7CB700A /* StatusRouteHandler.swift */; };
-		D5D6AF636B1398C341A44094 /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 371A7842434201F6C882C50E /* manifest.json */; };
 		D8042E38E7C31561D24712D9 /* BuildEngineProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */; };
 		D84BF1DA80310136177ED71F /* QRScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B2B0FECA392A23BF8455185 /* QRScannerView.swift */; };
 		D972D686D54D5B87671E071A /* ServerInstallTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A2461C0A040726D284136C /* ServerInstallTracker.swift */; };
@@ -97,12 +94,12 @@
 		DDB9A247587E7B578CDBD33A /* BuildLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48677B76639F8593AF6C0336 /* BuildLogView.swift */; };
 		E05446F4892A6E956291CB40 /* SetupAssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2419EAD737FEC25ACDDBCCE0 /* SetupAssistantView.swift */; };
 		E4909B456FAE1B877C628D9C /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495CC99A1356A133ACC03C28 /* NotificationManager.swift */; };
+		E821FED832FFEE25C0AEA3BE /* pwa in Resources */ = {isa = PBXBuildFile; fileRef = 06F17616046388C32C137E57 /* pwa */; };
 		E9BD2D4F02832B41482A8803 /* WebSocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD0EFFB2E04CB922D5E2A6C /* WebSocketClient.swift */; };
 		EBBFEFEBC886A23A76FFCD08 /* MockTailscaleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E031F1B2F7D8B34B91EB95F /* MockTailscaleProvider.swift */; };
 		F11BA351A6F23B6BEEE311E6 /* RemoteDeployCompanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */; };
 		F33309DA202DB2E0982030E1 /* ManifestGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */; };
 		F6CDDEAEC7248F4E6128A1CE /* InstallRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29195CB416816AB0185DDF26 /* InstallRecord.swift */; };
-		F74A1E65D5E36A86A7C49F83 /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = A7F8A2432B42E20B9CDFDB8C /* index.html */; };
 		F812611F3D7F1F8C74BDE55F /* TailscaleProviderProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */; };
 		F99C13779BEF634640DA01C3 /* PairingRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 222E4A0816DEF5C1D9DEB3EE /* PairingRouteHandler.swift */; };
 		FC4274EA8184A79AC0993DCD /* CertificateSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = DABE1229131FA24AB6F6890B /* CertificateSetupStep.swift */; };
@@ -117,6 +114,13 @@
 			remoteGlobalIDString = 68BE782919A1EC2B25ED75B7;
 			remoteInfo = RemoteDeploy;
 		};
+		9D85DE40C53D9C05BEB1A5C9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A7C5F0C3E5825535435AE76C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AFA5AE57142B7F71846823A1;
+			remoteInfo = RemoteDeployCompanion;
+		};
 		D23A4D25941A7369788A7057 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A7C5F0C3E5825535435AE76C /* Project object */;
@@ -129,6 +133,7 @@
 /* Begin PBXFileReference section */
 		00F752D5070FCC9EADFD4C90 /* RemoteDeployShared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RemoteDeployShared; path = Packages/RemoteDeployShared; sourceTree = SOURCE_ROOT; };
 		03D95AAD49CC7881D3034C63 /* ProjectConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectConfigTests.swift; sourceTree = "<group>"; };
+		06F17616046388C32C137E57 /* pwa */ = {isa = PBXFileReference; lastKnownFileType = folder; name = pwa; path = RemoteDeploy/Resources/pwa; sourceTree = SOURCE_ROOT; };
 		0B671A818A6D0055CA3DEB4B /* PushNotifSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifSetupStep.swift; sourceTree = "<group>"; };
 		154315BEE4F2F035E35C3097 /* RemoteDeployIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteDeployIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildRouteHandler.swift; sourceTree = "<group>"; };
@@ -155,10 +160,8 @@
 		31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TailscaleProviderProtocol.swift; sourceTree = "<group>"; };
 		33821A2C8332679830A7E259 /* SettingsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsData.swift; sourceTree = "<group>"; };
 		36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStoreTests.swift; sourceTree = "<group>"; };
-		371A7842434201F6C882C50E /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
 		3B2B0FECA392A23BF8455185 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		3F88DC1A592D457DDBA4360A /* DeployServerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeployServerProtocol.swift; sourceTree = "<group>"; };
-		3FB95803032E83B9E66B296E /* style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = style.css; sourceTree = "<group>"; };
 		401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallPageGeneratorTests.swift; sourceTree = "<group>"; };
 		4339E627499951F26144AC1B /* PairedDeviceStoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairedDeviceStoring.swift; sourceTree = "<group>"; };
 		47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDeployCompanionApp.swift; sourceTree = "<group>"; };
@@ -175,11 +178,9 @@
 		5A7BB07446157CBE3644142C /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		5F9B36FF355CC7BA5AC1CD43 /* DevicesRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesRouteHandler.swift; sourceTree = "<group>"; };
 		6536341DB69DEC4E0783F486 /* BuildControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildControlView.swift; sourceTree = "<group>"; };
-		662271C2014D40E8931AC413 /* app.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = app.js; sourceTree = "<group>"; };
 		676FFED8EA5712247CE5A782 /* PushoverNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushoverNotifier.swift; sourceTree = "<group>"; };
 		68A59F1983494213956BD82D /* RemoteDeployTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteDeployTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		6A6D36C679876DC789D03BA2 /* RemoteDeployApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDeployApp.swift; sourceTree = "<group>"; };
-		6B0227FD785C4198B27607A4 /* sw.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = sw.js; sourceTree = "<group>"; };
 		6C95C1E39804894283DF74ED /* CLITailscaleProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLITailscaleProvider.swift; sourceTree = "<group>"; };
 		6E3BB3F83E718F187F52F8D9 /* ServerDiscoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerDiscoveryView.swift; sourceTree = "<group>"; };
 		6FC68632F6EFE61DC35CF3A9 /* PairedDevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairedDevicesView.swift; sourceTree = "<group>"; };
@@ -197,19 +198,20 @@
 		92BCC65C66A3D556B6D32ADF /* CertificateProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertificateProviding.swift; sourceTree = "<group>"; };
 		9646E680B180ADA2F5925EE7 /* ProjectConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectConfig.swift; sourceTree = "<group>"; };
 		9796786DAAB99C929734C0A8 /* ConnectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionManager.swift; sourceTree = "<group>"; };
+		99A149FBB61626663F091536 /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 		9DF49CC1B4C8288E434E8E7C /* BuildManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildManager.swift; sourceTree = "<group>"; };
 		9FF6629262E737F32BF1B707 /* JSONPairedDeviceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONPairedDeviceStore.swift; sourceTree = "<group>"; };
 		A2FBF08D8E89290BB7CB700A /* StatusRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusRouteHandler.swift; sourceTree = "<group>"; };
 		A7BC0525DCB7457A921BD53E /* BonjourBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourBrowser.swift; sourceTree = "<group>"; };
 		A7E9A949DBC530810FF7E1CC /* InstallTracking.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallTracking.swift; sourceTree = "<group>"; };
-		A7F8A2432B42E20B9CDFDB8C /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = index.html; sourceTree = "<group>"; };
 		AA18BF51075D87304B5D69D5 /* PushNotifying.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifying.swift; sourceTree = "<group>"; };
+		ABA6A45F2D9DF8B9684B65E5 /* RemoteDeployCompanionUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RemoteDeployCompanionUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B0C98E31F3DA0E3F06382248 /* InstallHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallHistoryView.swift; sourceTree = "<group>"; };
 		B223A9835076867EE2BCA306 /* MockProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockProjectStore.swift; sourceTree = "<group>"; };
 		B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEngineProtocol.swift; sourceTree = "<group>"; };
 		CB98A54ABF32CDC31FEDD180 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D12338C042E71B355CC5F515 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
-		D3C9ED1D87408F37869FE473 /* RemoteDeployCompanion.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RemoteDeployCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3C9ED1D87408F37869FE473 /* RemoteDeployCompanion.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = RemoteDeployCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D3CFA7588BD9D19BBF95BF0F /* MockDeployServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDeployServer.swift; sourceTree = "<group>"; };
 		D7FE9D88C0571571898E928C /* PushNotifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifierTests.swift; sourceTree = "<group>"; };
 		D91B9C5E6B3976E7E1C65FBC /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -255,18 +257,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		0C8DA017992F4E53D3FD998E /* pwa */ = {
-			isa = PBXGroup;
-			children = (
-				662271C2014D40E8931AC413 /* app.js */,
-				A7F8A2432B42E20B9CDFDB8C /* index.html */,
-				371A7842434201F6C882C50E /* manifest.json */,
-				3FB95803032E83B9E66B296E /* style.css */,
-				6B0227FD785C4198B27607A4 /* sw.js */,
-			);
-			path = pwa;
-			sourceTree = "<group>";
-		};
 		0D8BBCA74EF535F64D98D887 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -313,6 +303,14 @@
 			path = Discovery;
 			sourceTree = "<group>";
 		};
+		24F7BC0E98188981E69CAFD3 /* RemoteDeployCompanionUITests */ = {
+			isa = PBXGroup;
+			children = (
+				99A149FBB61626663F091536 /* ScreenshotTests.swift */,
+			);
+			path = RemoteDeployCompanionUITests;
+			sourceTree = "<group>";
+		};
 		2B15827BBB6A2EC81B7A4C3F /* WebSocket */ = {
 			isa = PBXGroup;
 			children = (
@@ -342,6 +340,7 @@
 			children = (
 				E54938DFB9E58008B1BEE6D0 /* RemoteDeploy.app */,
 				D3C9ED1D87408F37869FE473 /* RemoteDeployCompanion.app */,
+				ABA6A45F2D9DF8B9684B65E5 /* RemoteDeployCompanionUITests.xctest */,
 				154315BEE4F2F035E35C3097 /* RemoteDeployIntegrationTests.xctest */,
 				68A59F1983494213956BD82D /* RemoteDeployTests.xctest */,
 			);
@@ -373,9 +372,11 @@
 		65A5086AF00B27E675318A4E = {
 			isa = PBXGroup;
 			children = (
+				06F17616046388C32C137E57 /* pwa */,
 				E4A58C4A7580D0586E4AAED7 /* Packages */,
 				9FDA166706DF4343A5C1B0E0 /* RemoteDeploy */,
 				F20BF8EA591DB89DD1CDB7F6 /* RemoteDeployCompanion */,
+				24F7BC0E98188981E69CAFD3 /* RemoteDeployCompanionUITests */,
 				3788075EE6B6F3EBD789E239 /* RemoteDeployIntegrationTests */,
 				775014B825542198F52FA2D1 /* RemoteDeployTests */,
 				3C4C121CD444158E1D5CD619 /* Products */,
@@ -520,7 +521,6 @@
 			isa = PBXGroup;
 			children = (
 				4CDF361E12AFD78F0E5CCAE7 /* install-template.html */,
-				0C8DA017992F4E53D3FD998E /* pwa */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -662,6 +662,24 @@
 			productReference = 154315BEE4F2F035E35C3097 /* RemoteDeployIntegrationTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		F9C7782EFD0ADEBCAD945DE7 /* RemoteDeployCompanionUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 538E0E09B942A6345075F596 /* Build configuration list for PBXNativeTarget "RemoteDeployCompanionUITests" */;
+			buildPhases = (
+				EB924C8707C9695F87E57505 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				07D93262ED1CA526404FB893 /* PBXTargetDependency */,
+			);
+			name = RemoteDeployCompanionUITests;
+			packageProductDependencies = (
+			);
+			productName = RemoteDeployCompanionUITests;
+			productReference = ABA6A45F2D9DF8B9684B65E5 /* RemoteDeployCompanionUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -674,6 +692,9 @@
 					68BE782919A1EC2B25ED75B7 = {
 						DevelopmentTeam = RDJQ523WP4;
 						ProvisioningStyle = Automatic;
+					};
+					F9C7782EFD0ADEBCAD945DE7 = {
+						TestTargetID = AFA5AE57142B7F71846823A1;
 					};
 				};
 			};
@@ -692,11 +713,13 @@
 				9C670724106AE3FD8599051E /* XCRemoteSwiftPackageReference "swift-nio-ssl" */,
 				FF6D6B0FA3CCA8C64AD16644 /* XCLocalSwiftPackageReference "Packages/RemoteDeployShared" */,
 			);
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				68BE782919A1EC2B25ED75B7 /* RemoteDeploy */,
 				AFA5AE57142B7F71846823A1 /* RemoteDeployCompanion */,
+				F9C7782EFD0ADEBCAD945DE7 /* RemoteDeployCompanionUITests */,
 				E970A1851CF25E43E606EE50 /* RemoteDeployIntegrationTests */,
 				A588A7954E9CA3198AE6A57E /* RemoteDeployTests */,
 			);
@@ -709,12 +732,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				13D593A8690951E50CD6CF1F /* Assets.xcassets in Resources */,
-				B1C4801D31A2D78674340D89 /* app.js in Resources */,
-				F74A1E65D5E36A86A7C49F83 /* index.html in Resources */,
 				57B9515C8306AD8179402668 /* install-template.html in Resources */,
-				D5D6AF636B1398C341A44094 /* manifest.json in Resources */,
-				B355480BAA439F2411C660B7 /* style.css in Resources */,
-				47A11FA9EE2830C59BCD863C /* sw.js in Resources */,
+				E821FED832FFEE25C0AEA3BE /* pwa in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -820,6 +839,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		EB924C8707C9695F87E57505 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				75A8AAF87DE244D0649B1C07 /* ScreenshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		FF2EDADCAFE266D13E5B8D4E /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -845,6 +872,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		07D93262ED1CA526404FB893 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AFA5AE57142B7F71846823A1 /* RemoteDeployCompanion */;
+			targetProxy = 9D85DE40C53D9C05BEB1A5C9 /* PBXContainerItemProxy */;
+		};
 		411F71F6E95E9AB8E7AFBEB8 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 68BE782919A1EC2B25ED75B7 /* RemoteDeploy */;
@@ -868,7 +900,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = RDJQ523WP4;
 				INFOPLIST_FILE = RemoteDeploy/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.app;
 				PRODUCT_NAME = RemoteDeploy;
@@ -906,7 +940,9 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				DEVELOPMENT_TEAM = RDJQ523WP4;
 				INFOPLIST_FILE = RemoteDeploy/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"@executable_path/../Frameworks",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.app;
 				PRODUCT_NAME = RemoteDeploy;
@@ -914,6 +950,25 @@
 				SWIFT_VERSION = 5.10;
 			};
 			name = Release;
+		};
+		7D3EE99BAF18E76AB2B7F0F1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.RemoteDeployCompanionUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = RemoteDeployCompanion;
+			};
+			name = Debug;
 		};
 		7E2648BD881F5AAE9A37432C /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -1023,7 +1078,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.companion;
 				PRODUCT_NAME = RemoteDeployCompanion;
 				SDKROOT = iphoneos;
@@ -1048,6 +1102,25 @@
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RemoteDeploy.app/Contents/MacOS/RemoteDeploy";
+			};
+			name = Release;
+		};
+		E791109A13C8B9189644371C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.RemoteDeployCompanionUITests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.10;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = RemoteDeployCompanion;
 			};
 			name = Release;
 		};
@@ -1128,7 +1201,6 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.remotedeploy.companion;
 				PRODUCT_NAME = RemoteDeployCompanion;
 				SDKROOT = iphoneos;
@@ -1154,6 +1226,15 @@
 			buildConfigurations = (
 				7E2648BD881F5AAE9A37432C /* Debug */,
 				E57D94055CA783A72594BDB7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		538E0E09B942A6345075F596 /* Build configuration list for PBXNativeTarget "RemoteDeployCompanionUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7D3EE99BAF18E76AB2B7F0F1 /* Debug */,
+				E791109A13C8B9189644371C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
