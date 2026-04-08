@@ -38,8 +38,16 @@ struct SetupAssistantView: View {
     /// Called when the wizard completes to save settings and start the server.
     var onStartServer: () -> Void
 
-    /// Tracks the currently displayed step.
-    @State private var currentStep: SetupStep = .tailscale
+    /// UserDefaults key for persisting the current step across app launches so the user
+    /// can resume mid-setup if they close the wizard.
+    private static let savedStepKey = "RemoteDeploy.setupAssistant.currentStep"
+
+    /// Tracks the currently displayed step. Initialized from UserDefaults so closing
+    /// and reopening the wizard returns the user to where they left off.
+    @State private var currentStep: SetupStep = {
+        let raw = UserDefaults.standard.integer(forKey: SetupAssistantView.savedStepKey)
+        return SetupStep(rawValue: raw) ?? .tailscale
+    }()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,6 +70,10 @@ struct SetupAssistantView: View {
                 .padding(16)
         }
         .frame(width: 700, height: 700)
+        .onChange(of: currentStep) { _, newValue in
+            // Persist progress so closing the wizard preserves the current step.
+            UserDefaults.standard.set(newValue.rawValue, forKey: Self.savedStepKey)
+        }
     }
 
     // MARK: - Step Indicator
@@ -163,6 +175,8 @@ struct SetupAssistantView: View {
                     // Save settings and start the server before dismissing
                     onStartServer()
                     onDismiss()
+                    // Clear saved step — wizard is complete, no need to resume.
+                    UserDefaults.standard.removeObject(forKey: Self.savedStepKey)
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
