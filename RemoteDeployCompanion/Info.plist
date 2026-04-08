@@ -9,6 +9,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera access is needed to scan QR codes for pairing with your Mac.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>RemoteDeploy uses Face ID to protect your paired Mac's authentication token.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Local network access is used to discover your Mac on the same WiFi network.</string>
 	<key>NSBonjourServices</key>

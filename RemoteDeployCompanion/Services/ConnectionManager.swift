@@ -73,13 +73,20 @@ final class ConnectionManager: ObservableObject {
         }
         #endif
 
-        // Try to restore a saved connection
-        restoreConnection()
+        // Try to restore a saved connection. restoreConnection is async because
+        // it authenticates with Face ID / passcode via LAContext (TKT-022), so
+        // we kick it off in a Task and let the init return immediately. The
+        // user sees the app launch with `isConnected = false`, then once
+        // authentication succeeds the UI flips to connected state.
+        Task { [weak self] in
+            await self?.restoreConnection()
+        }
     }
 
-    /// Attempts to connect using saved Keychain credentials.
-    func restoreConnection() {
-        guard let saved = KeychainStore.load(),
+    /// Attempts to connect using saved Keychain credentials. Async because the
+    /// keychain read is gated by LAContext.evaluatePolicy (Face ID / passcode).
+    func restoreConnection() async {
+        guard let saved = await KeychainStore.load(),
               let url = URL(string: saved.url) else {
             return
         }
@@ -90,9 +97,7 @@ final class ConnectionManager: ObservableObject {
         isConnected = true
 
         // Verify the connection works
-        Task {
-            await refreshStatus()
-        }
+        await refreshStatus()
     }
 
     /// Pairs with a server using QR code data.
