@@ -43,7 +43,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
             buildTrigger: StubBuildTrigger(),
             buildStatus: StubBuildStatus(),
             buildCanceler: NoopBuildCanceler(),
-            buildHistory: EmptyBuildHistoryProvider(),
+            buildHistory: EmptyBuildHistoryProvider.empty(),
             settingsProvider: StubSettingsProvider(),
             settingsUpdater: DeferredSettingsUpdater(),
             serverName: "TestMac"
