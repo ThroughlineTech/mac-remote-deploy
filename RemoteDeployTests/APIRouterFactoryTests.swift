@@ -48,36 +48,13 @@ final class APIRouterFactoryTests: XCTestCase {
         }
     }
 
-    /// Decoder configured to match the encoder used by APIResponse.json (ISO8601 dates).
-    private func decoder() -> JSONDecoder {
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
-        return d
+    /// Convenience wrappers around APITestSupport so existing tests read the same.
+    private func makeRequest(method: HTTPMethod, uri: String, body: Data = Data(), bearerToken: String? = nil) -> APIRequest {
+        APITestSupport.makeRequest(method: method, uri: uri, body: body, bearerToken: bearerToken)
     }
-
-    /// Builds an APIRequest with the given method, URI, optional body, and optional bearer token.
-    private func makeRequest(
-        method: HTTPMethod,
-        uri: String,
-        body: Data = Data(),
-        bearerToken: String? = nil
-    ) -> APIRequest {
-        var headers = HTTPHeaders()
-        if let token = bearerToken {
-            headers.add(name: "Authorization", value: "Bearer \(token)")
-        }
-        let head = HTTPRequestHead(version: .init(major: 1, minor: 1), method: method, uri: uri, headers: headers)
-        return APIRequest(head: head, body: body)
-    }
-
-    /// Pairs a device with the given raw token in the mock store and returns the token.
-    /// Used by tests that need to hit authenticated endpoints.
+    private func decoder() -> JSONDecoder { APITestSupport.decoder() }
     private func pairDevice(in store: MockPairedDeviceStore, name: String = "iPhone") -> String {
-        let token = "test-token-\(UUID().uuidString)"
-        let hash = JSONPairedDeviceStore.hashToken(token)
-        let device = PairedDevice(name: name, tokenHash: hash)
-        store.devices.append(device)
-        return token
+        APITestSupport.pairDevice(in: store, name: name)
     }
 
     // MARK: - Status
