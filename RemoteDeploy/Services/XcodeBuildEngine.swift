@@ -17,6 +17,12 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// The continuation used to yield lines into `buildLogStream`. Protected by lock.
     private let lockedLogContinuation = OSAllocatedUnfairLock<AsyncStream<String>.Continuation?>(initialState: nil)
 
+    /// Set to true when `cancelBuild()` is invoked, reset at the start of each `build()`.
+    /// Used to make `cancelBuild()` idempotent and to prevent the xcodebuild
+    /// terminationHandler from racing the cancel and overwriting the cancellation
+    /// status with a success or unrelated failure. See TKT-016.
+    private let lockedIsCancelling = OSAllocatedUnfairLock<Bool>(initialState: false)
+
     // MARK: - Protocol Properties
 
     /// The current build status (idle, building, success, or failure).
@@ -60,6 +66,9 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// - Throws: If archiving, exporting, or copying the IPA fails for any reason
     ///   (missing scheme, code-sign error, disk full, process termination, etc.).
     func build(project: ProjectConfig) async throws -> String {
+        // Reset cancellation flag at the start of every new build so a previous
+        // cancellation doesn't carry over and immediately fail this build.
+        lockedIsCancelling.withLock { $0 = false }
         setStatus(.building(progress: "Preparing build…"))
 
         let fm = FileManager.default
@@ -186,9 +195,20 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     }
 
     /// Cancels any in-progress build by terminating the underlying xcodebuild process.
-    /// If no build is currently running, this is a no-op.
-    /// After cancellation, the build status is set to failure with a cancellation message.
+    /// If no build is currently running, this is a no-op. Idempotent — calling it twice
+    /// in a row only terminates the process once. After cancellation, the build status
+    /// is set to `.failure(error: "Build cancelled.")` and the xcodebuild
+    /// terminationHandler will skip its normal status updates so the cancellation
+    /// message wins regardless of the actual exit code (TKT-016).
     func cancelBuild() async {
+        // Atomic check-and-set: if cancellation is already in progress, no-op.
+        let alreadyCancelling = lockedIsCancelling.withLock { state -> Bool in
+            if state { return true }
+            state = true
+            return false
+        }
+        guard !alreadyCancelling else { return }
+
         let process = lockedRunningProcess.withLock { $0 }
 
         if let process = process, process.isRunning {
@@ -287,6 +307,16 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
                 stderrPipe.fileHandleForReading.readabilityHandler = nil
 
                 self?.lockedRunningProcess.withLock { $0 = nil }
+
+                // TKT-016: if cancellation is in progress, the cancel-failure status
+                // already wrote to lockedStatus. Don't overwrite it with success or an
+                // unrelated failure based on the actual exit code — always throw
+                // .cancelled and let the build pipeline propagate it up.
+                let isCancelling = self?.lockedIsCancelling.withLock { $0 } ?? false
+                if isCancelling {
+                    continuation.resume(throwing: BuildError.cancelled)
+                    return
+                }
 
                 if proc.terminationReason == .uncaughtSignal {
                     continuation.resume(throwing: BuildError.cancelled)
