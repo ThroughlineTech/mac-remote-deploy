@@ -12,6 +12,10 @@ struct BuildControlView: View {
     @State private var isLoadingProjects = true
     @State private var error: String?
 
+    /// Timestamp captured when the build first transitions to building.
+    /// Used to drive the elapsed-seconds display via TimelineView (TKT-017).
+    @State private var buildStartedAt: Date?
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -83,9 +87,20 @@ struct BuildControlView: View {
                                     .fill(statusColor(status.state))
                                     .frame(width: 10, height: 10)
                             }
-                            Text(statusLabel(status.state))
-                                .font(.subheadline)
-                                .fontWeight(.medium)
+                            // While building, show "Building... 12s" using a TimelineView
+                            // that updates once per second from the captured start time.
+                            if status.state == "building", let startedAt = buildStartedAt {
+                                TimelineView(.periodic(from: startedAt, by: 1.0)) { context in
+                                    let elapsed = Int(context.date.timeIntervalSince(startedAt))
+                                    Text("Building... \(elapsed)s")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                }
+                            } else {
+                                Text(statusLabel(status.state))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                            }
                             if let message = status.message, status.state != "success" || status.state == "failure" {
                                 Text(message)
                                     .font(.caption)
@@ -123,6 +138,11 @@ struct BuildControlView: View {
         }
         .task {
             await loadProjects()
+        }
+        .onChange(of: connectionManager.buildManager.isBuilding) { _, newValue in
+            // Capture/clear the build start time so the elapsed timer is accurate
+            // from the moment the build kicks off.
+            buildStartedAt = newValue ? Date() : nil
         }
     }
 
