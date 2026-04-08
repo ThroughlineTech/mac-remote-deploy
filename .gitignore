@@ -1,5 +1,6 @@
 # Xcode
 build/
+!RemoteDeployCompanion/Views/Build/
 DerivedData/
 *.xcuserdata
 *.xcworkspace/xcuserdata/

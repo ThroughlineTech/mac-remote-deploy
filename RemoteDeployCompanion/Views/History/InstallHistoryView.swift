@@ -8,25 +8,30 @@ struct InstallHistoryView: View {
 
     @State private var installs: [InstallRecord] = []
     @State private var isLoading = true
+    @State private var error: String?
 
     var body: some View {
         NavigationStack {
             Group {
                 if isLoading {
                     ProgressView("Loading...")
-                } else if installs.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "arrow.down.circle")
-                            .font(.largeTitle)
-                            .foregroundColor(.secondary)
-                        Text("No Installs Yet")
-                            .font(.headline)
-                        Text("Install history will appear here after devices download IPAs.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
+                } else if let error {
+                    ContentUnavailableView {
+                        Label("Couldn't load installs", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(error)
+                    } actions: {
+                        Button("Retry") {
+                            Task { await loadInstalls() }
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .padding()
+                } else if installs.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Installs Yet", systemImage: "arrow.down.circle")
+                    } description: {
+                        Text("Install history will appear here after devices download IPAs.")
+                    }
                 } else {
                     List(installs) { record in
                         VStack(alignment: .leading, spacing: 4) {
@@ -62,10 +67,11 @@ struct InstallHistoryView: View {
     private func loadInstalls() async {
         guard let client = connectionManager.apiClient else { return }
         isLoading = true
+        error = nil
         do {
             installs = try await client.getInstalls()
         } catch {
-            // Silently handle — the list just stays empty
+            self.error = error.localizedDescription
         }
         isLoading = false
     }
