@@ -145,6 +145,7 @@
 		F6CDDEAEC7248F4E6128A1CE /* InstallRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29195CB416816AB0185DDF26 /* InstallRecord.swift */; };
 		F812611F3D7F1F8C74BDE55F /* TailscaleProviderProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */; };
 		F99C13779BEF634640DA01C3 /* PairingRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 222E4A0816DEF5C1D9DEB3EE /* PairingRouteHandler.swift */; };
+		FC2F6D861481C7A500A68888 /* XcodeBuildEngineCancelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */; };
 		FC4274EA8184A79AC0993DCD /* CertificateSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = DABE1229131FA24AB6F6890B /* CertificateSetupStep.swift */; };
 		FEC3A2D0361583DCC3AF5F44 /* DevicesRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9B36FF355CC7BA5AC1CD43 /* DevicesRouteHandler.swift */; };
 /* End PBXBuildFile section */
@@ -284,6 +285,7 @@
 		B5C83442A51AD2C39C5D7FC5 /* APIRouterFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRouterFactory.swift; sourceTree = "<group>"; };
 		B976E30E8F5281A40D7E129F /* StatusProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusProviding.swift; sourceTree = "<group>"; };
 		C2B144D783065CC4AC0F575C /* DevicesRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesRouteHandlerTests.swift; sourceTree = "<group>"; };
+		C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildEngineCancelTests.swift; sourceTree = "<group>"; };
 		C88E4899A75F7D4BB021E602 /* BuildHistoryProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildHistoryProviding.swift; sourceTree = "<group>"; };
 		C9003DF3FC9CE4215B3B4F10 /* FilesystemRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesystemRouteHandlerTests.swift; sourceTree = "<group>"; };
 		CA7B1BFE416750BFF523C941 /* PairingRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingRouteHandlerTests.swift; sourceTree = "<group>"; };
@@ -557,6 +559,7 @@
 				36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */,
 				D7FE9D88C0571571898E928C /* PushNotifierTests.swift */,
 				994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */,
+				C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */,
 				5CCDEDFEDA2820CD165CA1DD /* API */,
 				D1B31D03DE6F82D06FB3BB47 /* Mocks */,
 				B9D763DC9E6CC3D9291D0423 /* Support */,
@@ -1039,6 +1042,7 @@
 				610F3644E76DFA69BE68CE2D /* RemoteDeployErrorTests.swift in Sources */,
 				BBBE6BA26787E2374F9C6A2B /* SettingsRouteHandlerTests.swift in Sources */,
 				6ABB387F26712A7861105E4E /* StatusRouteHandlerTests.swift in Sources */,
+				FC2F6D861481C7A500A68888 /* XcodeBuildEngineCancelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
