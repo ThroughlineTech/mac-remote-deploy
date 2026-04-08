@@ -10,6 +10,7 @@ import RemoteDeployShared
 struct RemoteDeployApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var serviceContainer = ServiceContainer()
+    @StateObject private var buildManager = BuildManager()
 
     /// Tracks whether performStartup() has already been called.
     @State private var hasLaunched = false
@@ -34,6 +35,7 @@ struct RemoteDeployApp: App {
             MenuBarView()
                 .environmentObject(appState)
                 .environmentObject(serviceContainer)
+                .environmentObject(buildManager)
                 .task {
                     // Guard ensures startup runs only once across popover open/close cycles
                     guard !hasLaunched else { return }
@@ -78,8 +80,9 @@ struct RemoteDeployApp: App {
 
         // Build log — opens as a standalone window
         Window("Build Log", id: "build-log") {
-            BuildLogView(appState: appState)
+            BuildLogView()
                 .environmentObject(serviceContainer)
+                .environmentObject(buildManager)
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 600, height: 400)
@@ -92,6 +95,17 @@ struct RemoteDeployApp: App {
     private func performStartup() async {
         // Request notification permissions
         serviceContainer.notificationManager.requestPermission()
+
+        // Wire BuildManager's dependencies once we have the service container.
+        buildManager.configure(
+            buildEngine: serviceContainer.buildEngine,
+            deployServer: serviceContainer.deployServer,
+            notificationManager: serviceContainer.notificationManager,
+            ipaImporter: serviceContainer.ipaImporter
+        )
+        buildManager.sendPushNotification = { [serviceContainer] title, message, priority, url in
+            await serviceContainer.sendPushNotification(title: title, message: message, priority: priority, url: url)
+        }
 
         // Load persisted settings (cert paths, hostname, push config, etc.)
         loadSettings()
@@ -241,7 +255,7 @@ struct RemoteDeployApp: App {
         server.setBaseURL(appState.serverURL)
 
         // Configure the API router for companion device access
-        configureAPIRouter(on: server, appState: appState, services: serviceContainer)
+        configureAPIRouter(on: server, appState: appState, buildManager: buildManager, services: serviceContainer)
 
         // Wire up IPA download callback for install tracking
         server.onIPADownload = { [weak appState, serviceContainer] slug, ip, ua in
@@ -287,11 +301,11 @@ struct RemoteDeployApp: App {
 
     /// Configures the API router on the deploy server by building real adapters
     /// for every injectable seam and handing them to `APIRouterFactory`.
-    @MainActor private func configureAPIRouter(on server: any DeployServerProtocol, appState: AppState, services: ServiceContainer) {
+    @MainActor private func configureAPIRouter(on server: any DeployServerProtocol, appState: AppState, buildManager: BuildManager, services: ServiceContainer) {
         guard let nioServer = server as? NIODeployServer else { return }
 
-        // Thread-safe bridge so adapters can read live AppState from NIO's event loop.
-        let bridge = AppStateBridge(appState: appState)
+        // Thread-safe bridge so adapters can read live AppState + BuildManager from NIO's event loop.
+        let bridge = AppStateBridge(appState: appState, buildManager: buildManager)
 
         let deps = APIRouterFactory.Dependencies(
             deviceStore: services.pairedDeviceStore,
@@ -450,12 +464,13 @@ final class AppStateBridge: @unchecked Sendable {
     private let _snapshot: () -> (hostname: String, tailscaleConnected: Bool, serverPort: Int, certPath: String, keyPath: String, pushConfig: PushNotificationConfig, buildStatus: BuildStatus)
 
     @MainActor
-    init(appState: AppState) {
-        // Capture the appState reference. The closure will be called from NIO threads
-        // but AppState properties are simple value types so reading is safe.
+    init(appState: AppState, buildManager: BuildManager) {
+        // Capture both references. Closures will be called from NIO threads but
+        // the fields we read are simple value types so reading is safe.
         nonisolated(unsafe) let state = appState
+        nonisolated(unsafe) let manager = buildManager
         self._snapshot = {
-            (state.hostname, state.tailscaleConnected, state.serverPort, state.certPath, state.keyPath, state.pushNotificationConfig, state.buildStatus)
+            (state.hostname, state.tailscaleConnected, state.serverPort, state.certPath, state.keyPath, state.pushNotificationConfig, manager.buildStatus)
         }
     }
 

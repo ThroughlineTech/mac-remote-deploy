@@ -147,6 +147,7 @@
 		F99C13779BEF634640DA01C3 /* PairingRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 222E4A0816DEF5C1D9DEB3EE /* PairingRouteHandler.swift */; };
 		FC2F6D861481C7A500A68888 /* XcodeBuildEngineCancelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */; };
 		FC4274EA8184A79AC0993DCD /* CertificateSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = DABE1229131FA24AB6F6890B /* CertificateSetupStep.swift */; };
+		FD3204C72009CF17A398B303 /* BuildManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5864C52F2776A20414E93C79 /* BuildManager.swift */; };
 		FEC3A2D0361583DCC3AF5F44 /* DevicesRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F9B36FF355CC7BA5AC1CD43 /* DevicesRouteHandler.swift */; };
 /* End PBXBuildFile section */
 
@@ -234,6 +235,7 @@
 		4FE018321B14C64CF18E5C8E /* MockBuildStatusProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildStatusProvider.swift; sourceTree = "<group>"; };
 		558DD3356CFB9F90A420C6DF /* MockBuildTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildTrigger.swift; sourceTree = "<group>"; };
 		56053E0D824141AE58369035 /* MockSchemeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockSchemeDetector.swift; sourceTree = "<group>"; };
+		5864C52F2776A20414E93C79 /* BuildManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildManager.swift; sourceTree = "<group>"; };
 		59964712D89DB2DA34241AD5 /* NIODeployServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NIODeployServer.swift; sourceTree = "<group>"; };
 		5A7BB07446157CBE3644142C /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		5B66C9243801D8E8F27DB0DA /* MockBuildHistoryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildHistoryProvider.swift; sourceTree = "<group>"; };
@@ -473,6 +475,14 @@
 			path = History;
 			sourceTree = "<group>";
 		};
+		4DA773EDB4CB16273C5F3AAC /* Managers */ = {
+			isa = PBXGroup;
+			children = (
+				5864C52F2776A20414E93C79 /* BuildManager.swift */,
+			);
+			path = Managers;
+			sourceTree = "<group>";
+		};
 		5B1B521AC7C9082F206D6434 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -628,6 +638,7 @@
 				783972E0E13988A70F5E76B5 /* RemoteDeploy.entitlements */,
 				6A6D36C679876DC789D03BA2 /* RemoteDeployApp.swift */,
 				FC5FD63F2E06AEEF92CDE763 /* API */,
+				4DA773EDB4CB16273C5F3AAC /* Managers */,
 				66C28D50A7CC96603EEB7589 /* Models */,
 				97325A2C27615DA232097854 /* Protocols */,
 				D4D350E15930F64633FBCACB /* Resources */,
@@ -935,6 +946,7 @@
 				D8042E38E7C31561D24712D9 /* BuildEngineProtocol.swift in Sources */,
 				8DFA9AD9743E35A8B601CB12 /* BuildHistoryProviding.swift in Sources */,
 				DDB9A247587E7B578CDBD33A /* BuildLogView.swift in Sources */,
+				FD3204C72009CF17A398B303 /* BuildManager.swift in Sources */,
 				96AEC7C7D68921DC5C08B5D0 /* BuildResult.swift in Sources */,
 				B2E1DC71DEFF4511AFF4D184 /* BuildRouteHandler.swift in Sources */,
 				571141FE23BF2B3A9022131D /* BuildStatusProviding.swift in Sources */,

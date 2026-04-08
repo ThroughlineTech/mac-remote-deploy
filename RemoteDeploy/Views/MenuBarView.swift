@@ -8,17 +8,14 @@ import os
 /// Published properties drive all SwiftUI view updates across the menu bar,
 /// settings window, and setup assistant.
 @MainActor
-class AppState: ObservableObject {
+final class AppState: ObservableObject {
     @Published var serverRunning = false
     @Published var tailscaleConnected = false
     @Published var serverURL = ""
     @Published var serverPort: Int = 8443
     @Published var projects: [ProjectConfig] = []
     @Published var selectedProjectID: UUID?
-    @Published var buildStatus: BuildStatus = .idle
-    @Published var lastBuildResult: BuildResult?
     @Published var lastInstall: InstallRecord?
-    @Published var buildLog: String = ""
     @Published var showSetupAssistant = false
     @Published var showSettings = false
     @Published var showBuildLog = false
@@ -46,6 +43,7 @@ class AppState: ObservableObject {
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var serviceContainer: ServiceContainer
+    @EnvironmentObject var buildManager: BuildManager
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -203,7 +201,7 @@ struct MenuBarView: View {
                 performBuild()
             } label: {
                 HStack {
-                    if case .building = appState.buildStatus {
+                    if buildManager.isBuilding {
                         ProgressView()
                             .controlSize(.small)
                             .padding(.trailing, 2)
@@ -216,10 +214,10 @@ struct MenuBarView: View {
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .disabled(appState.selectedProject == nil || isBuildInProgress)
+            .disabled(appState.selectedProject == nil || buildManager.isBuilding)
 
             // Last build result summary
-            if let result = appState.lastBuildResult {
+            if let result = buildManager.lastBuildResult {
                 lastBuildInfoView(result)
             }
 
@@ -312,115 +310,25 @@ struct MenuBarView: View {
         performBuild()
     }
 
-    /// Kicks off a build for the currently selected project.
+    /// Kicks off a build for the currently selected project by delegating to BuildManager.
     private func performBuild() {
         guard let project = appState.selectedProject else { return }
 
-        // Update the project's build configuration from the picker
+        // Apply the picker's build configuration to the project copy.
         var buildProject = project
         buildProject.buildConfiguration = appState.buildConfiguration
 
-        Task {
-            appState.buildStatus = .building(progress: "Starting build...")
-            appState.buildLog = ""
-
-            // Get the log stream BEFORE starting the build so the continuation is ready
-            let logStream = serviceContainer.buildEngine.buildLogStream
-
-            // Consume build log stream in a background task
-            let logTask = Task {
-                for await line in logStream {
-                    await MainActor.run {
-                        appState.buildLog += line + "\n"
-                    }
-                }
+        buildManager.triggerBuild(
+            project: buildProject,
+            serverURL: appState.serverURL,
+            serverPort: appState.serverPort,
+            certPath: appState.certPath,
+            keyPath: appState.keyPath,
+            serverRunning: appState.serverRunning,
+            onServerStarted: { [appState] in
+                appState.serverRunning = true
             }
-
-            // Post build-started notification
-            serviceContainer.notificationManager.notifyBuildStarted(projectName: project.name)
-
-            let startTime = Date()
-            let installURL = appState.serverURL + "/" + project.urlSlug + "/"
-
-            do {
-                let ipaPath = try await serviceContainer.buildEngine.build(project: buildProject)
-                let endTime = Date()
-                logTask.cancel()
-                appState.buildStatus = .success(ipaPath: ipaPath)
-                appState.lastBuildResult = BuildResult(
-                    id: UUID(),
-                    projectID: project.id,
-                    success: true,
-                    ipaPath: ipaPath,
-                    errorSummary: nil,
-                    buildLog: appState.buildLog,
-                    startTime: startTime,
-                    endTime: endTime,
-                    version: nil,
-                    buildNumber: nil
-                )
-
-                // Register project with deploy server and start server if needed
-                serviceContainer.deployServer.registerProject(buildProject)
-                serviceContainer.deployServer.setBaseURL(appState.serverURL)
-                if !appState.serverRunning, !appState.certPath.isEmpty, !appState.keyPath.isEmpty {
-                    do {
-                        try await serviceContainer.deployServer.start(
-                            port: appState.serverPort,
-                            certPath: appState.certPath,
-                            keyPath: appState.keyPath
-                        )
-                        appState.serverRunning = true
-                    } catch {
-                        Logger.server.error("Server failed to start after build: \(error.localizedDescription, privacy: .public)")
-                    }
-                }
-
-                // Post success notification (local)
-                serviceContainer.notificationManager.notifyBuildSuccess(
-                    projectName: project.name,
-                    installURL: installURL
-                )
-
-                // Send push notifications to configured providers
-                await serviceContainer.sendPushNotification(
-                    title: "Build Succeeded",
-                    message: "\(project.name) is ready to install",
-                    priority: .normal,
-                    url: installURL
-                )
-            } catch {
-                let endTime = Date()
-                logTask.cancel()
-                appState.buildStatus = .failure(error: error.localizedDescription)
-                appState.lastBuildResult = BuildResult(
-                    id: UUID(),
-                    projectID: project.id,
-                    success: false,
-                    ipaPath: nil,
-                    errorSummary: error.localizedDescription,
-                    buildLog: appState.buildLog,
-                    startTime: startTime,
-                    endTime: endTime,
-                    version: nil,
-                    buildNumber: nil
-                )
-
-                // Post failure notification (local)
-                serviceContainer.notificationManager.notifyBuildFailure(
-                    projectName: project.name,
-                    error: error.localizedDescription
-                )
-
-                // Send push notifications for failure
-                await serviceContainer.sendPushNotification(
-                    title: "Build Failed",
-                    message: "\(project.name): \(error.localizedDescription)",
-                    priority: .high,
-                    url: nil
-                )
-            }
-        }
+        )
     }
 
     /// Opens a file picker to import a pre-built .ipa file.
@@ -440,20 +348,14 @@ struct MenuBarView: View {
 
         do {
             let info = try serviceContainer.ipaImporter.importIPA(from: url, to: slug, serveDirectory: serveDir)
-            appState.buildStatus = .success(ipaPath: "\(serveDir)/\(slug)/app.ipa")
+            buildManager.markImportSucceeded(ipaPath: "\(serveDir)/\(slug)/app.ipa")
             Logger.build.info("Imported IPA: \(info.bundleID, privacy: .public) v\(info.version, privacy: .public)")
         } catch {
-            appState.buildStatus = .failure(error: "Import failed: \(error.localizedDescription)")
+            buildManager.markImportFailed(reason: error.localizedDescription)
         }
     }
 
     // MARK: - Helpers
-
-    /// True when a build is currently in progress.
-    private var isBuildInProgress: Bool {
-        if case .building = appState.buildStatus { return true }
-        return false
-    }
 
     /// Displays the last build result: time ago, and success/failure badge.
     private func lastBuildInfoView(_ result: BuildResult) -> some View {
