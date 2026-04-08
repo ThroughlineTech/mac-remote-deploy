@@ -10,7 +10,7 @@ final class PairingRouteHandlerTests: XCTestCase {
 
     private func makeHandler(serverName: String = "TestMac") -> (handler: PairingRouteHandler, store: MockPairedDeviceStore) {
         let store = MockPairedDeviceStore()
-        let handler = PairingRouteHandler(deviceStore: store, serverName: serverName)
+        let handler = PairingRouteHandler(deviceStore: store, serverName: serverName, minInterval: 0)
         return (handler, store)
     }
 
@@ -173,4 +173,75 @@ final class PairingRouteHandlerTests: XCTestCase {
     // The pair() method does not check token age either, so the documented "10-minute pairing
     // token TTL" from docs/SECURITY_AUDIT.md is currently UNENFORCED. Wiring cleanup into the
     // pair flow (or into a periodic timer) and adding the matching test is tracked in TKT-018.
+
+    // MARK: - Rate limiting (TKT-018)
+
+    func test_pair_rateLimits_consecutiveCallsWithin1Second() {
+        // With default minInterval = 1.0, two consecutive calls should be throttled.
+        let store = MockPairedDeviceStore()
+        let handler = PairingRouteHandler(deviceStore: store, serverName: "TestMac") // default 1s
+
+        let token = "throttle-test-\(UUID().uuidString)"
+        handler.registerPendingToken(JSONPairedDeviceStore.hashToken(token))
+
+        let body = try! APITestSupport.encoder().encode(PairRequest(token: token, deviceName: "iPhone"))
+        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: body)
+
+        let firstResponse = handler.pair(req)
+        XCTAssertEqual(firstResponse.status, .created)
+
+        // Second call immediately after — should be 429 Too Many Requests.
+        let secondResponse = handler.pair(req)
+        XCTAssertEqual(secondResponse.status, .tooManyRequests, "Second call within 1s should be throttled")
+    }
+
+    func test_pair_locksOutAfter10FailedAttempts() {
+        // With minInterval = 0 we can blast the endpoint. After 10 failures we expect 429 lockout.
+        let (handler, _) = makeHandler()
+
+        let body = try! APITestSupport.encoder().encode(PairRequest(token: "wrong", deviceName: "iPhone"))
+        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: body)
+
+        // 10 failed attempts.
+        for _ in 0..<10 {
+            _ = handler.pair(req)
+        }
+        // 11th should be locked out with 429.
+        let response = handler.pair(req)
+        XCTAssertEqual(response.status, .tooManyRequests, "11th attempt should be locked out")
+    }
+
+    func test_pair_successResetsFailureCounter() {
+        // A successful pair clears the failure counter, allowing further attempts.
+        let (handler, _) = makeHandler()
+        let token = registerAndReturnToken(handler)
+
+        // Rack up 9 failures (one below lockout).
+        let badBody = try! APITestSupport.encoder().encode(PairRequest(token: "wrong", deviceName: "iPhone"))
+        let badReq = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: badBody)
+        for _ in 0..<9 {
+            _ = handler.pair(badReq)
+        }
+
+        // Successful pair should reset the counter.
+        let goodBody = try! APITestSupport.encoder().encode(PairRequest(token: token, deviceName: "iPhone"))
+        let goodReq = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: goodBody)
+        let goodResponse = handler.pair(goodReq)
+        XCTAssertEqual(goodResponse.status, .created)
+
+        // Now register a fresh token and confirm we can still fail 9 more times
+        // before being locked out (i.e. counter was reset to 0).
+        let nextToken = registerAndReturnToken(handler)
+        let nextBody = try! APITestSupport.encoder().encode(PairRequest(token: nextToken, deviceName: "iPhone"))
+        let nextReq = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: nextBody)
+
+        // 9 bad attempts should still not lock out (counter is fresh).
+        let badAttempts = (0..<9).map { _ in handler.pair(badReq).status }
+        for s in badAttempts {
+            XCTAssertNotEqual(s, .tooManyRequests, "Counter reset should allow 9 more failures")
+        }
+
+        // The next (good) attempt should succeed since the counter hasn't hit 10 yet.
+        XCTAssertEqual(handler.pair(nextReq).status, .created)
+    }
 }
