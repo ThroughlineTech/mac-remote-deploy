@@ -16,16 +16,22 @@ struct ProjectListView: View {
             Group {
                 if isLoading {
                     ProgressView("Loading projects...")
+                } else if let error {
+                    ContentUnavailableView {
+                        Label("Couldn't load projects", systemImage: "exclamationmark.triangle")
+                    } description: {
+                        Text(error)
+                    } actions: {
+                        Button("Retry") {
+                            Task { await loadProjects() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
                 } else if projects.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "folder.badge.questionmark")
-                            .font(.largeTitle)
-                            .foregroundColor(.secondary)
-                        Text("No Projects")
-                            .font(.headline)
+                    ContentUnavailableView {
+                        Label("No Projects", systemImage: "folder.badge.questionmark")
+                    } description: {
                         Text("Add projects on your Mac to see them here.")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
                     }
                 } else {
                     List(projects) { project in
@@ -74,9 +80,9 @@ struct ProjectListView: View {
     private func loadProjects() async {
         guard let client = connectionManager.apiClient else { return }
         isLoading = true
+        error = nil
         do {
             projects = try await client.listProjects()
-            error = nil
         } catch {
             self.error = error.localizedDescription
         }
