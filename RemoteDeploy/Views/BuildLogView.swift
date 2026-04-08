@@ -6,7 +6,7 @@ import Foundation
 /// Scrollable, color-coded build log output. Displayed as a sheet or standalone window.
 /// Auto-scrolls to the bottom as new output arrives. Provides "Clear" and "Copy" buttons.
 struct BuildLogView: View {
-    @ObservedObject var appState: AppState
+    @EnvironmentObject var buildManager: BuildManager
 
     /// Anchor ID for programmatic scrolling to the bottom of the log.
     private let bottomAnchorID = "log-bottom"
@@ -37,19 +37,19 @@ struct BuildLogView: View {
             // Copy entire log to clipboard
             Button {
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(appState.buildLog, forType: .string)
+                NSPasteboard.general.setString(buildManager.buildLog, forType: .string)
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }
-            .disabled(appState.buildLog.isEmpty)
+            .disabled(buildManager.buildLog.isEmpty)
 
             // Clear the log contents
             Button {
-                appState.buildLog = ""
+                buildManager.clearLog()
             } label: {
                 Label("Clear", systemImage: "trash")
             }
-            .disabled(appState.buildLog.isEmpty)
+            .disabled(buildManager.buildLog.isEmpty)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -83,7 +83,7 @@ struct BuildLogView: View {
             }
             .background(Color(nsColor: .textBackgroundColor))
             // Auto-scroll to bottom whenever the log text changes
-            .onChange(of: appState.buildLog) {
+            .onChange(of: buildManager.buildLog) {
                 withAnimation {
                     proxy.scrollTo(bottomAnchorID, anchor: .bottom)
                 }
@@ -98,7 +98,7 @@ struct BuildLogView: View {
 
     /// Splits the full log string into individual lines.
     private var logLines: [String] {
-        appState.buildLog.components(separatedBy: .newlines)
+        buildManager.buildLog.components(separatedBy: .newlines)
     }
 
     /// Returns a color based on the content of a log line.
