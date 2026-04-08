@@ -45,7 +45,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
             buildCanceler: NoopBuildCanceler(),
             buildHistory: EmptyBuildHistoryProvider.empty(),
             settingsProvider: StubSettingsProvider(),
-            settingsUpdater: DeferredSettingsUpdater(),
+            settingsUpdater: DeferredSettingsUpdater.noop(),
             serverName: "TestMac"
         )
         return APIRouterFactory.make(deps: deps)

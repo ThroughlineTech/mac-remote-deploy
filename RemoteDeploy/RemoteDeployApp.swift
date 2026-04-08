@@ -325,7 +325,19 @@ struct RemoteDeployApp: App {
             buildCanceler: NoopBuildCanceler(),
             buildHistory: EmptyBuildHistoryProvider(store: services.buildHistoryStore),
             settingsProvider: AppStateBridgeSettingsProvider(bridge: bridge),
-            settingsUpdater: DeferredSettingsUpdater(),
+            settingsUpdater: DeferredSettingsUpdater(
+                bridge: bridge,
+                applyOnMain: { [appState] settings in
+                    DispatchQueue.main.async {
+                        appState.serverPort = settings.serverPort
+                        appState.hostname = settings.hostname
+                        appState.certPath = settings.certPath
+                        appState.keyPath = settings.keyPath
+                        appState.pushNotificationConfig = settings.pushNotificationConfig
+                        NotificationCenter.default.post(name: .saveSettingsRequested, object: nil)
+                    }
+                }
+            ),
             serverName: Host.current().localizedName ?? "Mac"
         )
 
