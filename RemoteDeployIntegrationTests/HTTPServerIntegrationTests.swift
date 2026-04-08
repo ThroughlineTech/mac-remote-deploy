@@ -8,6 +8,50 @@ import RemoteDeployShared
 
 final class HTTPServerIntegrationTests: XCTestCase {
 
+    /// Builds a fully wired APIRouter via APIRouterFactory using stub adapters.
+    /// All four pre-existing test setups now share this helper, so they only need to
+    /// pass the deviceStore and tempDir they want exercised.
+    @MainActor
+    private static func makeTestRouter(deviceStore: any PairedDeviceStoring, tempDir: URL) -> APIRouterFactory.Output {
+        let stubStatus = ServerStatus(
+            serverRunning: true,
+            tailscaleConnected: false,
+            hostname: "",
+            serverPort: 8443,
+            buildStatus: BuildStatusInfo(state: "idle")
+        )
+        final class StubStatusProvider: StatusProviding, @unchecked Sendable {
+            let s: ServerStatus
+            init(_ s: ServerStatus) { self.s = s }
+            func currentStatus() -> ServerStatus { s }
+        }
+        final class StubBuildTrigger: BuildTriggering, @unchecked Sendable {
+            func triggerBuild(projectID: UUID, configuration: String?) -> String? { nil }
+        }
+        final class StubBuildStatus: BuildStatusProviding, @unchecked Sendable {
+            func currentBuildStatus() -> BuildStatusInfo { BuildStatusInfo(state: "idle") }
+        }
+        final class StubSettingsProvider: SettingsProviding, @unchecked Sendable {
+            func currentSettings() -> SettingsData { SettingsData() }
+        }
+        let deps = APIRouterFactory.Dependencies(
+            deviceStore: deviceStore,
+            projectStore: UserDefaultsProjectStore(directory: tempDir),
+            installTracker: ServerInstallTracker(directory: tempDir),
+            schemeDetector: XcodebuildSchemeDetector(),
+            statusProvider: StubStatusProvider(stubStatus),
+            buildTrigger: StubBuildTrigger(),
+            buildStatus: StubBuildStatus(),
+            buildCanceler: NoopBuildCanceler(),
+            buildHistory: EmptyBuildHistoryProvider(),
+            settingsProvider: StubSettingsProvider(),
+            settingsUpdater: DeferredSettingsUpdater(),
+            serverName: "TestMac"
+        )
+        return APIRouterFactory.make(deps: deps)
+    }
+
+
     // MARK: - Properties
 
     private var server: NIODeployServer!
@@ -264,30 +308,9 @@ final class HTTPServerIntegrationTests: XCTestCase {
     func testPairingOverHTTP() async throws {
         // Set up the server with an API router that includes pairing
         let deviceStore = JSONPairedDeviceStore(directory: tempDir)
-        let auth = AuthMiddleware(deviceStore: deviceStore)
-        let pairingHandler = PairingRouteHandler(deviceStore: deviceStore, serverName: "TestMac")
-        let statusHandler = StatusRouteHandler(statusProvider: {
-            ServerStatus(serverRunning: true, tailscaleConnected: false, hostname: "", serverPort: 8443, buildStatus: BuildStatusInfo(state: "idle"))
-        })
-        let projectsHandler = ProjectsRouteHandler(projectStore: UserDefaultsProjectStore(directory: tempDir))
-        let buildHandler = BuildRouteHandler(buildTrigger: { _, _ in nil }, buildStatusProvider: { BuildStatusInfo(state: "idle") }, buildCanceler: { false }, buildHistoryProvider: { [] })
-        let installsHandler = InstallsRouteHandler(installTracker: ServerInstallTracker(directory: tempDir))
-        let settingsHandler = SettingsRouteHandler(settingsProvider: { SettingsData() }, settingsUpdater: { _ in nil })
-        let filesystemHandler = FilesystemRouteHandler(schemeDetector: { _ in [] })
-        let devicesHandler = DevicesRouteHandler(deviceStore: deviceStore)
-
-        let router = APIRouter(
-            auth: auth,
-            pairingHandler: pairingHandler,
-            statusHandler: statusHandler,
-            projectsHandler: projectsHandler,
-            buildHandler: buildHandler,
-            installsHandler: installsHandler,
-            settingsHandler: settingsHandler,
-            filesystemHandler: filesystemHandler,
-            devicesHandler: devicesHandler
-        )
-        server.apiRouter = router
+        let output = await Self.makeTestRouter(deviceStore: deviceStore, tempDir: tempDir)
+        let pairingHandler = output.pairingHandler
+        server.apiRouter = output.router
 
         try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
 
@@ -332,18 +355,8 @@ final class HTTPServerIntegrationTests: XCTestCase {
 
     func testPairingWithInvalidToken() async throws {
         let deviceStore = JSONPairedDeviceStore(directory: tempDir)
-        let pairingHandler = PairingRouteHandler(deviceStore: deviceStore, serverName: "TestMac")
-        let auth = AuthMiddleware(deviceStore: deviceStore)
-        let statusHandler = StatusRouteHandler(statusProvider: { ServerStatus(serverRunning: true, tailscaleConnected: false, hostname: "", serverPort: 8443, buildStatus: BuildStatusInfo(state: "idle")) })
-        let projectsHandler = ProjectsRouteHandler(projectStore: UserDefaultsProjectStore(directory: tempDir))
-        let buildHandler = BuildRouteHandler(buildTrigger: { _, _ in nil }, buildStatusProvider: { BuildStatusInfo(state: "idle") }, buildCanceler: { false }, buildHistoryProvider: { [] })
-        let installsHandler = InstallsRouteHandler(installTracker: ServerInstallTracker(directory: tempDir))
-        let settingsHandler = SettingsRouteHandler(settingsProvider: { SettingsData() }, settingsUpdater: { _ in nil })
-        let filesystemHandler = FilesystemRouteHandler(schemeDetector: { _ in [] })
-        let devicesHandler = DevicesRouteHandler(deviceStore: deviceStore)
-
-        let router = APIRouter(auth: auth, pairingHandler: pairingHandler, statusHandler: statusHandler, projectsHandler: projectsHandler, buildHandler: buildHandler, installsHandler: installsHandler, settingsHandler: settingsHandler, filesystemHandler: filesystemHandler, devicesHandler: devicesHandler)
-        server.apiRouter = router
+        let output = await Self.makeTestRouter(deviceStore: deviceStore, tempDir: tempDir)
+        server.apiRouter = output.router
 
         try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
 
@@ -364,18 +377,8 @@ final class HTTPServerIntegrationTests: XCTestCase {
 
     func testUnauthenticatedRequestReturns401() async throws {
         let deviceStore = JSONPairedDeviceStore(directory: tempDir)
-        let auth = AuthMiddleware(deviceStore: deviceStore)
-        let pairingHandler = PairingRouteHandler(deviceStore: deviceStore, serverName: "TestMac")
-        let statusHandler = StatusRouteHandler(statusProvider: { ServerStatus(serverRunning: true, tailscaleConnected: false, hostname: "", serverPort: 8443, buildStatus: BuildStatusInfo(state: "idle")) })
-        let projectsHandler = ProjectsRouteHandler(projectStore: UserDefaultsProjectStore(directory: tempDir))
-        let buildHandler = BuildRouteHandler(buildTrigger: { _, _ in nil }, buildStatusProvider: { BuildStatusInfo(state: "idle") }, buildCanceler: { false }, buildHistoryProvider: { [] })
-        let installsHandler = InstallsRouteHandler(installTracker: ServerInstallTracker(directory: tempDir))
-        let settingsHandler = SettingsRouteHandler(settingsProvider: { SettingsData() }, settingsUpdater: { _ in nil })
-        let filesystemHandler = FilesystemRouteHandler(schemeDetector: { _ in [] })
-        let devicesHandler = DevicesRouteHandler(deviceStore: deviceStore)
-
-        let router = APIRouter(auth: auth, pairingHandler: pairingHandler, statusHandler: statusHandler, projectsHandler: projectsHandler, buildHandler: buildHandler, installsHandler: installsHandler, settingsHandler: settingsHandler, filesystemHandler: filesystemHandler, devicesHandler: devicesHandler)
-        server.apiRouter = router
+        let output = await Self.makeTestRouter(deviceStore: deviceStore, tempDir: tempDir)
+        server.apiRouter = output.router
 
         try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
 

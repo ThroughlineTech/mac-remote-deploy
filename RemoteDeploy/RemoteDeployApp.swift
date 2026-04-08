@@ -276,116 +276,33 @@ struct RemoteDeployApp: App {
     }
 }
 
-    /// Configures the API router on the deploy server with all route handlers.
+    /// Configures the API router on the deploy server by building real adapters
+    /// for every injectable seam and handing them to `APIRouterFactory`.
     @MainActor private func configureAPIRouter(on server: any DeployServerProtocol, appState: AppState, services: ServiceContainer) {
         guard let nioServer = server as? NIODeployServer else { return }
 
-        let deviceStore = services.pairedDeviceStore
-        let auth = AuthMiddleware(deviceStore: deviceStore)
-        let macName = Host.current().localizedName ?? "Mac"
+        // Thread-safe bridge so adapters can read live AppState from NIO's event loop.
+        let bridge = AppStateBridge(appState: appState)
 
-        // Create a thread-safe bridge to read live AppState values from NIO's event loop.
-        let stateBridge = AppStateBridge(appState: appState)
-        let deployServer = nioServer
-
-        // Build status provider closure — reads live values
-        let statusProvider: @Sendable () -> ServerStatus = {
-            let snapshot = stateBridge.snapshot()
-            return ServerStatus(
-                serverRunning: deployServer.isRunning,
-                tailscaleConnected: snapshot.tailscaleConnected,
-                hostname: snapshot.hostname,
-                serverPort: deployServer.port,
-                buildStatus: stateBridge.buildStatusInfo()
-            )
-        }
-
-        // Build trigger closure — posts a notification that MenuBarView handles
-        // so the API-triggered build goes through the same flow as the UI button.
-        let projectStore = services.projectStore
-        let buildTrigger: @Sendable (UUID, String?) -> String? = { projectID, config in
-            guard let project = projectStore.project(withID: projectID) else {
-                return "Project not found"
-            }
-            // Post notification on main thread to trigger the same build flow as the UI
-            DispatchQueue.main.async {
-                NotificationCenter.default.post(
-                    name: .apiBuildRequested,
-                    object: nil,
-                    userInfo: ["projectID": projectID, "configuration": config as Any]
-                )
-            }
-            return nil
-        }
-
-        // Settings closures — read live values via bridge
-        let settingsProvider: @Sendable () -> SettingsData = {
-            stateBridge.settings()
-        }
-
-        let settingsUpdater: @Sendable (SettingsData) -> String? = { _ in
-            // Settings update from API is deferred for now
-            return nil
-        }
-
-        // Scheme detection closure
-        let schemeDetector: @Sendable (String) -> [String] = { path in
-            // Use xcodebuild -list to detect schemes
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/xcodebuild")
-            process.arguments = ["-list", "-project", path]
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = Pipe()
-            try? process.run()
-            process.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8) ?? ""
-            // Parse schemes from xcodebuild -list output
-            var schemes: [String] = []
-            var inSchemes = false
-            for line in output.components(separatedBy: "\n") {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-                if trimmed == "Schemes:" {
-                    inSchemes = true
-                } else if inSchemes {
-                    if trimmed.isEmpty || trimmed.hasSuffix(":") { break }
-                    schemes.append(trimmed)
-                }
-            }
-            return schemes
-        }
-
-        let pairingHandler = PairingRouteHandler(deviceStore: deviceStore, serverName: macName)
-        let statusHandler = StatusRouteHandler(statusProvider: statusProvider)
-        let projectsHandler = ProjectsRouteHandler(projectStore: projectStore)
-        let buildHandler = BuildRouteHandler(
-            buildTrigger: buildTrigger,
-            buildStatusProvider: { stateBridge.buildStatusInfo() },
-            buildCanceler: { false },
-            buildHistoryProvider: { [] }
-        )
-        let installsHandler = InstallsRouteHandler(installTracker: services.installTracker)
-        let settingsHandler = SettingsRouteHandler(settingsProvider: settingsProvider, settingsUpdater: settingsUpdater)
-        let filesystemHandler = FilesystemRouteHandler(schemeDetector: schemeDetector)
-        let devicesHandler = DevicesRouteHandler(deviceStore: deviceStore)
-
-        let router = APIRouter(
-            auth: auth,
-            pairingHandler: pairingHandler,
-            statusHandler: statusHandler,
-            projectsHandler: projectsHandler,
-            buildHandler: buildHandler,
-            installsHandler: installsHandler,
-            settingsHandler: settingsHandler,
-            filesystemHandler: filesystemHandler,
-            devicesHandler: devicesHandler
+        let deps = APIRouterFactory.Dependencies(
+            deviceStore: services.pairedDeviceStore,
+            projectStore: services.projectStore,
+            installTracker: services.installTracker,
+            schemeDetector: XcodebuildSchemeDetector(),
+            statusProvider: AppStateStatusProvider(bridge: bridge, deployServer: nioServer),
+            buildTrigger: NotificationBuildTrigger(projectStore: services.projectStore),
+            buildStatus: AppStateBridgeBuildStatusProvider(bridge: bridge),
+            buildCanceler: NoopBuildCanceler(),
+            buildHistory: EmptyBuildHistoryProvider(),
+            settingsProvider: AppStateBridgeSettingsProvider(bridge: bridge),
+            settingsUpdater: DeferredSettingsUpdater(),
+            serverName: Host.current().localizedName ?? "Mac"
         )
 
-        nioServer.apiRouter = router
-
-        // Store pairingHandler reference for QR code generation
-        services.pairingHandler = pairingHandler
+        let output = APIRouterFactory.make(deps: deps)
+        nioServer.apiRouter = output.router
+        // Store pairingHandler reference so PairDeviceView can register pending tokens.
+        services.pairingHandler = output.pairingHandler
     }
 
 // MARK: - Service Container

@@ -6,19 +6,16 @@ import RemoteDeployShared
 /// Provides settings access to companion devices.
 final class SettingsRouteHandler: @unchecked Sendable {
 
-    /// Closure that returns the current settings.
-    private let settingsProvider: @Sendable () -> SettingsData
-
-    /// Closure that applies updated settings. Returns nil on success, error message on failure.
-    private let settingsUpdater: @Sendable (SettingsData) -> String?
+    private let settingsProvider: any SettingsProviding
+    private let settingsUpdater: any SettingsUpdating
 
     /// Creates a new settings route handler.
     ///
-    /// - Parameter settingsProvider: Returns the current server settings.
-    /// - Parameter settingsUpdater: Applies updated settings.
+    /// - Parameter settingsProvider: Source of the current server settings.
+    /// - Parameter settingsUpdater: Sink for applying updated settings.
     init(
-        settingsProvider: @escaping @Sendable () -> SettingsData,
-        settingsUpdater: @escaping @Sendable (SettingsData) -> String?
+        settingsProvider: any SettingsProviding,
+        settingsUpdater: any SettingsUpdating
     ) {
         self.settingsProvider = settingsProvider
         self.settingsUpdater = settingsUpdater
@@ -26,7 +23,7 @@ final class SettingsRouteHandler: @unchecked Sendable {
 
     /// GET /api/v1/settings — Return current settings with secrets redacted.
     func get(_ request: APIRequest) -> APIResponse {
-        var settings = settingsProvider()
+        var settings = settingsProvider.currentSettings()
         // Redact sensitive values — companion app only needs to know enabled/disabled status
         settings.certPath = settings.certPath.isEmpty ? "" : "[configured]"
         settings.keyPath = settings.keyPath.isEmpty ? "" : "[configured]"
@@ -43,7 +40,7 @@ final class SettingsRouteHandler: @unchecked Sendable {
             return .error(status: .badRequest, message: "Invalid settings data")
         }
 
-        if let errorMessage = settingsUpdater(settings) {
+        if let errorMessage = settingsUpdater.updateSettings(settings) {
             return .error(status: .internalServerError, message: errorMessage)
         }
 
