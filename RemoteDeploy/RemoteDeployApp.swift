@@ -26,6 +26,15 @@ struct RemoteDeployApp: App {
     var body: some Scene {
         // Wire state objects into the delegate on every body evaluation. The delegate
         // itself only triggers startup once per launch, so repeated calls are cheap.
+        //
+        // TKT-021: register() must stay here (not in .onAppear) because
+        // .onAppear on MenuBarExtra content only fires when the popover first
+        // renders (= first user click), which would regress TKT-019 — the
+        // server has to start at launch, not on first click. register() itself
+        // is side-effect-free in this context; the startup Task it spawns is
+        // deferred via DispatchQueue.main.async inside AppDelegate so it runs
+        // strictly after SwiftUI's first layout pass, avoiding the
+        // _NSDetectedLayoutRecursion warning.
         let _ = appDelegate.register(
             appState: appState,
             serviceContainer: serviceContainer,
