@@ -7,14 +7,12 @@ import RemoteDeployShared
 /// Provides filesystem browsing for Xcode project discovery.
 final class FilesystemRouteHandler: @unchecked Sendable {
 
-    /// Closure that detects available Xcode schemes for a project path.
-    /// Returns an array of scheme names or throws if detection fails.
-    private let schemeDetector: @Sendable (String) -> [String]
+    private let schemeDetector: any SchemeDetecting
 
     /// Creates a new filesystem route handler.
     ///
     /// - Parameter schemeDetector: Detects Xcode schemes at a given project path.
-    init(schemeDetector: @escaping @Sendable (String) -> [String]) {
+    init(schemeDetector: any SchemeDetecting) {
         self.schemeDetector = schemeDetector
     }
 
@@ -89,7 +87,7 @@ final class FilesystemRouteHandler: @unchecked Sendable {
             return .error(status: .forbidden, message: "Path must resolve to under /Users/")
         }
 
-        let schemes = schemeDetector(resolvedPath)
+        let schemes = schemeDetector.detectSchemes(atPath: resolvedPath)
         return .json(SchemesResponse(schemes: schemes))
     }
 }

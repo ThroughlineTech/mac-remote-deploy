@@ -7,20 +7,18 @@ import RemoteDeployShared
 /// Provides server status information to companion devices.
 final class StatusRouteHandler: @unchecked Sendable {
 
-    /// Closure that returns the current server status snapshot.
-    /// This avoids coupling the handler directly to AppState.
-    private let statusProvider: @Sendable () -> ServerStatus
+    private let statusProvider: any StatusProviding
 
     /// Creates a new status route handler.
     ///
-    /// - Parameter statusProvider: A closure that returns the current server status.
-    init(statusProvider: @escaping @Sendable () -> ServerStatus) {
+    /// - Parameter statusProvider: Source of the current server status snapshot.
+    init(statusProvider: any StatusProviding) {
         self.statusProvider = statusProvider
     }
 
     /// GET /api/v1/status — Returns server and build status.
     func getStatus(_ request: APIRequest) -> APIResponse {
-        let status = statusProvider()
+        let status = statusProvider.currentStatus()
         return .json(status)
     }
 }
