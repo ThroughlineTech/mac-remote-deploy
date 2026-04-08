@@ -29,41 +29,12 @@ struct ProjectSetupStep: View {
     @State private var isDragTargeted = false
 
     /// Validation errors per field; nil = valid. Computed inline as the user types.
+    /// Validators live in `ProjectSetupValidators` so tests can cover them directly.
     @State private var bundleIDError: String?
     @State private var teamIDError: String?
     @State private var pathError: String?
-
-    /// Validates a bundle ID against the reverse-DNS pattern (e.g. com.example.app).
-    /// Returns nil if valid, an error message otherwise.
-    private func validateBundleID(_ value: String) -> String? {
-        if value.isEmpty { return nil } // empty = no error yet, just incomplete
-        let pattern = #"^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*)+$"#
-        if value.range(of: pattern, options: .regularExpression) == nil {
-            return "Must be reverse-DNS format (e.g. com.example.app)"
-        }
-        return nil
-    }
-
-    /// Validates an Apple Developer Team ID — exactly 10 alphanumeric characters.
-    private func validateTeamID(_ value: String) -> String? {
-        if value.isEmpty { return nil }
-        if value.count != 10 {
-            return "Team ID must be exactly 10 characters"
-        }
-        if value.range(of: #"^[A-Z0-9]+$"#, options: .regularExpression) == nil {
-            return "Team ID must be uppercase alphanumeric"
-        }
-        return nil
-    }
-
-    /// Validates that the project path exists on disk.
-    private func validatePath(_ value: String) -> String? {
-        if value.isEmpty { return nil }
-        if !FileManager.default.fileExists(atPath: value) {
-            return "Path does not exist"
-        }
-        return nil
-    }
+    /// TKT-014: scheme is required — unlike the other fields, empty is an error.
+    @State private var schemeError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -176,19 +147,26 @@ struct ProjectSetupStep: View {
                         }
                     }
                     .onChange(of: selectedScheme) {
-                        // Re-detect build settings when scheme changes
+                        // Re-detect build settings when scheme changes.
                         bundleID = ""
                         teamID = ""
+                        schemeError = ProjectSetupValidators.validateScheme(selectedScheme)
                         detectBuildSettings()
                     }
                 }
+            }
+            // TKT-014: Inline error when no scheme is selected.
+            if let schemeError {
+                Text(schemeError)
+                    .font(.caption)
+                    .foregroundColor(.red)
             }
 
             // Bundle ID
             TextField("Bundle ID:", text: $bundleID)
                 .textFieldStyle(.roundedBorder)
                 .onChange(of: bundleID) { _, newValue in
-                    bundleIDError = validateBundleID(newValue)
+                    bundleIDError = ProjectSetupValidators.validateBundleID(newValue)
                 }
             if let bundleIDError {
                 Text(bundleIDError)
@@ -200,7 +178,7 @@ struct ProjectSetupStep: View {
             TextField("Team ID:", text: $teamID)
                 .textFieldStyle(.roundedBorder)
                 .onChange(of: teamID) { _, newValue in
-                    teamIDError = validateTeamID(newValue)
+                    teamIDError = ProjectSetupValidators.validateTeamID(newValue)
                 }
             if let teamIDError {
                 Text(teamIDError)
@@ -247,7 +225,7 @@ struct ProjectSetupStep: View {
     /// Sets the project path from the selected URL and kicks off scheme + build settings detection.
     private func applySelectedPath(_ url: URL) {
         projectPath = url.path
-        pathError = validatePath(projectPath)
+        pathError = ProjectSetupValidators.validatePath(projectPath)
         // Derive a default name from the directory/file name
         let name = url.deletingPathExtension().lastPathComponent
         if projectName.isEmpty {
@@ -347,12 +325,16 @@ struct ProjectSetupStep: View {
                         selectedScheme = first
                     }
                     isDetectingSchemes = false
+                    // TKT-014: refresh schemeError once detection completes so
+                    // the inline error appears if no schemes were found.
+                    schemeError = ProjectSetupValidators.validateScheme(selectedScheme)
                     // Auto-detect bundle ID and team ID now that we have a scheme
                     detectBuildSettings()
                 }
             } catch {
                 await MainActor.run {
                     isDetectingSchemes = false
+                    schemeError = ProjectSetupValidators.validateScheme(selectedScheme)
                 }
                 Logger.build.error("Scheme detection failed: \(error.localizedDescription, privacy: .public)")
             }
@@ -363,6 +345,10 @@ struct ProjectSetupStep: View {
     /// Called automatically when the user navigates forward from this step.
     func saveProject() {
         guard !projectName.isEmpty, !projectPath.isEmpty else { return }
+        // TKT-014: block save when no scheme has been selected. Mirrors the
+        // pattern used by bundleID/teamID fields — inline error + no-advance.
+        schemeError = ProjectSetupValidators.validateScheme(selectedScheme)
+        guard schemeError == nil else { return }
 
         var project = ProjectConfig(name: projectName, projectPath: projectPath)
         project.scheme = selectedScheme

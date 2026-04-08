@@ -79,6 +79,35 @@ final class DeferredSettingsUpdaterTests: XCTestCase {
         XCTAssertNil(updater.updateSettings(settings))
     }
 
+    // MARK: - Bundle ID scope note (TKT-009 / TKT-024)
+
+    /// Regression note — the original TKT-009 acceptance criterion said
+    /// `DeferredSettingsUpdater.updateSettings(_:)` should reject malformed
+    /// bundle IDs. But `SettingsData` has no `bundleID` field: bundle ID is a
+    /// **per-project** value on `ProjectConfig`, and its programmatic entry
+    /// point is `ProjectsRouteHandler.create` / `.update`. TKT-024 Commit 5
+    /// rescoped the fix there and added a shared `BundleIDValidator` in
+    /// `RemoteDeployShared` used by both the UI and the REST boundary.
+    ///
+    /// This test is deliberately trivial — it asserts that `SettingsData`'s
+    /// public surface does not contain a bundle ID, so anyone reading the
+    /// DeferredSettingsUpdater tests and looking for bundle-ID coverage gets
+    /// pointed at the right place (`ProjectsRouteHandlerTests`).
+    func test_settingsData_hasNoBundleIDSurface_regressionOnly() {
+        let settings = SettingsData(serverPort: 8443, hostname: "host", certPath: "", keyPath: "")
+        let mirror = Mirror(reflecting: settings)
+        let propertyNames = mirror.children.compactMap { $0.label }
+        XCTAssertFalse(
+            propertyNames.contains(where: { $0.localizedCaseInsensitiveContains("bundle") }),
+            """
+            SettingsData intentionally has no bundle-ID field. If you're here \
+            to add bundle-ID validation to settings updates, see \
+            ProjectsRouteHandlerTests.test_create_rejectsMalformedBundleID — \
+            TKT-024 Commit 5 rescoped TKT-009's AC there.
+            """
+        )
+    }
+
     // MARK: - Apply callback
 
     @MainActor

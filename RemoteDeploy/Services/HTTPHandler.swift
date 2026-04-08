@@ -19,7 +19,7 @@ import os
 /// This handler accumulates the full request (head + body + end) before responding.
 /// API requests under /api/ are delegated to the APIRouter. All other requests
 /// are handled as OTA deployment routes.
-final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
+final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler, @unchecked Sendable {
     typealias InboundIn = HTTPServerRequestPart
     typealias OutboundOut = HTTPServerResponsePart
 
@@ -105,6 +105,16 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
             let elapsedMs = (ContinuousClock.now - start).components.attoseconds / 1_000_000_000_000_000
             let statusCode = responseStatusForLogging?.code ?? 0
             Logger.api.info("\(head.method.rawValue, privacy: .public) \(path, privacy: .private) -> \(statusCode, privacy: .public) (\(elapsedMs, privacy: .public)ms)")
+        }
+
+        // TKT-011 / TKT-024 Commit 6: if a request to /api/v1/ws reaches here,
+        // the WebSocket upgrader in NIODeployServer rejected it (missing or
+        // invalid bearer token, or missing Upgrade header). Return 401 so
+        // clients see the intended error instead of a generic 404 from the
+        // fall-through below.
+        if path == "/api/v1/ws" {
+            sendResponse(context: context, status: .unauthorized, contentType: "text/plain", body: "Unauthorized")
+            return
         }
 
         // Delegate API requests to the router

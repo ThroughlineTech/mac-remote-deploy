@@ -93,7 +93,22 @@ final class WebSocketChannelHandler: ChannelInboundHandler, @unchecked Sendable 
         self.manager = manager
     }
 
+    /// Register the client with the manager as soon as the handler is
+    /// installed in the pipeline. `handlerAdded` is required in addition
+    /// to `channelActive` because WebSocket handlers are added AFTER the
+    /// HTTP upgrade completes, at which point the channel is already
+    /// active — so `channelActive` does not fire for this handler.
+    /// TKT-011 / TKT-024 Commit 6.
+    func handlerAdded(context: ChannelHandlerContext) {
+        if context.channel.isActive {
+            manager.addClient(context.channel)
+        }
+    }
+
     func channelActive(context: ChannelHandlerContext) {
+        // Covers the non-upgrade case where a channel becomes active
+        // with this handler already installed (not used in production
+        // today, but defensive).
         manager.addClient(context.channel)
     }
 
@@ -105,12 +120,18 @@ final class WebSocketChannelHandler: ChannelInboundHandler, @unchecked Sendable 
     ///
     /// Text frames are parsed as JSON WSMessage commands (subscribe/unsubscribe).
     /// Ping frames get a pong reply. Close frames close the connection.
+    ///
+    /// TKT-011 / TKT-024 Commit 6: client-to-server frames are MUST-masked
+    /// per RFC 6455 §5.3. Read from `unmaskedData` rather than `data` so
+    /// JSON decoding sees the cleartext payload. The existing
+    /// `WebSocketManagerTests` only exercise broadcast (server-to-client,
+    /// unmasked) which is why this bug wasn't caught earlier.
     func channelRead(context: ChannelHandlerContext, data: NIOAny) {
         let frame = unwrapInboundIn(data)
 
         switch frame.opcode {
         case .text:
-            var frameData = frame.data
+            var frameData = frame.unmaskedData
             guard let text = frameData.readString(length: frameData.readableBytes),
                   let msgData = text.data(using: .utf8),
                   let msg = try? JSONDecoder().decode(WSMessage.self, from: msgData) else {

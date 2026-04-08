@@ -28,6 +28,7 @@
 		1B63A9D4EE28B3C0AB3BEB54 /* DeferredSettingsUpdaterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD5B495CA2B6248B73639CC /* DeferredSettingsUpdaterTests.swift */; };
 		1BFE1FB1B7F06EE12EDF7418 /* RemoteSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0E84C0CBF2FF90F199DB14 /* RemoteSettingsView.swift */; };
 		1C1D27F97963188F2AE05F34 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C195939BE1405B9D18634CB /* SettingsView.swift */; };
+		1C21B0166623BB49A3B94F22 /* ProjectSetupValidators.swift in Sources */ = {isa = PBXBuildFile; fileRef = B80F03E0294CBF8288882CAC /* ProjectSetupValidators.swift */; };
 		1E4AC5A3F915EE5CE1FA6FED /* InstallTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E9A949DBC530810FF7E1CC /* InstallTracking.swift */; };
 		20A29FE4187D1F286F551BDE /* AppStateStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4439D3D0B8C531CE19EF15 /* AppStateStatusProvider.swift */; };
 		218FE184848F1564B00BC4B8 /* NIODeployServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59964712D89DB2DA34241AD5 /* NIODeployServer.swift */; };
@@ -39,6 +40,7 @@
 		287EB0837CADBA2532157311 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385627CB8E51DED915370DA0 /* AppDelegate.swift */; };
 		2B0BF259F00A371C281BA991 /* AuthMiddleware.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CC69B6268BBCA0C4D86BC09 /* AuthMiddleware.swift */; };
 		2CE1E84B0EC4F8F753E4F5F7 /* BuildCanceling.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5090D5CB8BFD09DCC9AF3DF /* BuildCanceling.swift */; };
+		2EB4CD0AF049FE6B3BD54DEB /* ProjectRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AEEDC8F15C4934D6BADE90 /* ProjectRowView.swift */; };
 		2F0BFA3D886DE2EBF4AC80FE /* MockBuildHistoryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B66C9243801D8E8F27DB0DA /* MockBuildHistoryProvider.swift */; };
 		2F6A5D04517CDA2A9422332A /* PairingRouteHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7B1BFE416750BFF523C941 /* PairingRouteHandlerTests.swift */; };
 		2F959B8525C5B500ADE39E86 /* BuildManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF49CC1B4C8288E434E8E7C /* BuildManager.swift */; };
@@ -48,6 +50,7 @@
 		37F22BD3FF1115C490911F7C /* BonjourAdvertiser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C44F3AF5ED2CE52038FCB87 /* BonjourAdvertiser.swift */; };
 		39424D793E2602F5A8FFEFB7 /* DeferredSettingsUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50E329C8138A0D2C2BDE574 /* DeferredSettingsUpdater.swift */; };
 		3A209EC90680437D5F9AD0BB /* InstallHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C98E31F3DA0E3F06382248 /* InstallHistoryView.swift */; };
+		3AFB29C0C5084D77F228F778 /* AppDelegateStartupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F05C642D4B8B63168A4D758B /* AppDelegateStartupTests.swift */; };
 		3CD7D0E088ACBC9CC482E417 /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D243FF3F39A57458A1ACE31 /* ProjectListView.swift */; };
 		3D1C555CCC197E1BFF8FDD53 /* ProjectsListSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA1CAA0F988BF9D0C969ED9 /* ProjectsListSection.swift */; };
 		41A1AA6E6E8AC7ED8B3D27C4 /* TailscaleSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C437FE67443E50301B2FBC1 /* TailscaleSetupStep.swift */; };
@@ -67,6 +70,7 @@
 		5BBDB4867CCE30B7DF52D071 /* NIOSSL in Frameworks */ = {isa = PBXBuildFile; productRef = DB64D8F4C5AB01C06783592B /* NIOSSL */; };
 		5EE1ECC8FA02C4BF3F03B20C /* MockBuildStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE018321B14C64CF18E5C8E /* MockBuildStatusProvider.swift */; };
 		610F3644E76DFA69BE68CE2D /* RemoteDeployErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */; };
+		616EA884C2FBD6C0C0B32107 /* ServerStatusSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3ADDD5C01113424BFAC47E /* ServerStatusSection.swift */; };
 		63132E57B18D20DDE8A98BD4 /* AppStateBridgeBuildStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 023DF562D6F2A60FAA292BA9 /* AppStateBridgeBuildStatusProvider.swift */; };
 		63BEFD3F1FC3D4A767BD073B /* PushNotificationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2342DB5A4C4015ED1C599FBC /* PushNotificationConfig.swift */; };
 		649F43875E37FDF25B29E9E6 /* SchemeDetecting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2983DAB3014C1F8C84AA016 /* SchemeDetecting.swift */; };
@@ -109,6 +113,7 @@
 		AA65810FF506F20B0442FD42 /* InstallPageGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */; };
 		AC62408866EA8A4BB8662703 /* SettingsProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255ECD576F080DF6FF651C2F /* SettingsProviding.swift */; };
 		B2E1DC71DEFF4511AFF4D184 /* BuildRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */; };
+		B3240FF5DD2384BA8F8B07B3 /* WebSocketUpgradeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C04B540D1201D07398DD7C /* WebSocketUpgradeTests.swift */; };
 		B450F190AE379CE7A3EB49C9 /* WebSocketManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB0319FCD8EFF8C73C54A4C /* WebSocketManagerTests.swift */; };
 		B5BBDDF0CDDA8D15998E1D67 /* FilesystemRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA40F77DFBF56FBBCE4301E /* FilesystemRouteHandler.swift */; };
 		B63331497F3FC2E9F1DDC680 /* PushNotifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7FE9D88C0571571898E928C /* PushNotifierTests.swift */; };
@@ -147,10 +152,12 @@
 		E7D9E0B71005CF3A6BEB7283 /* AppStateBridgeSettingsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5BF685BD3FB6A4A58AD7E1B6 /* AppStateBridgeSettingsProvider.swift */; };
 		E821FED832FFEE25C0AEA3BE /* pwa in Resources */ = {isa = PBXBuildFile; fileRef = 06F17616046388C32C137E57 /* pwa */; };
 		E889EE9E4D517706F6745D71 /* BuildControlsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE9BC52C3A4F05854326E33 /* BuildControlsSection.swift */; };
+		E9B6ADCDA4F6A3D768B03F49 /* JSONBuildHistoryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AAE0C1992386E96FB314963 /* JSONBuildHistoryStoreTests.swift */; };
 		E9BD2D4F02832B41482A8803 /* WebSocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD0EFFB2E04CB922D5E2A6C /* WebSocketClient.swift */; };
 		EA38A66DA644542DF8504687 /* JSONBuildHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4202CB6C40000D21D6D29C23 /* JSONBuildHistoryStore.swift */; };
 		EBBFEFEBC886A23A76FFCD08 /* MockTailscaleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E031F1B2F7D8B34B91EB95F /* MockTailscaleProvider.swift */; };
 		F11BA351A6F23B6BEEE311E6 /* RemoteDeployCompanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */; };
+		F1EC3A6E07BBBCBA2C07C829 /* ProjectSetupValidatorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36401330FE8925DC8182F2F /* ProjectSetupValidatorsTests.swift */; };
 		F33309DA202DB2E0982030E1 /* ManifestGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */; };
 		F6CDDEAEC7248F4E6128A1CE /* InstallRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29195CB416816AB0185DDF26 /* InstallRecord.swift */; };
 		F812611F3D7F1F8C74BDE55F /* TailscaleProviderProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */; };
@@ -198,6 +205,7 @@
 		0D82906145D9CDB3338CFC18 /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
 		10C0130D84B81C211BA76B3A /* BuildRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildRouteHandlerTests.swift; sourceTree = "<group>"; };
 		12B0BCF29AE933750587F18E /* BuildTriggering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildTriggering.swift; sourceTree = "<group>"; };
+		13C04B540D1201D07398DD7C /* WebSocketUpgradeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketUpgradeTests.swift; sourceTree = "<group>"; };
 		154315BEE4F2F035E35C3097 /* RemoteDeployIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteDeployIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildRouteHandler.swift; sourceTree = "<group>"; };
 		186DF59BC166A3203704C627 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -242,6 +250,7 @@
 		495CC99A1356A133ACC03C28 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		496B150612C0F0E52A65D199 /* ProjectsRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsRouteHandlerTests.swift; sourceTree = "<group>"; };
 		4AA1CAA0F988BF9D0C969ED9 /* ProjectsListSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsListSection.swift; sourceTree = "<group>"; };
+		4AAE0C1992386E96FB314963 /* JSONBuildHistoryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONBuildHistoryStoreTests.swift; sourceTree = "<group>"; };
 		4AE13591182653E83E1529A5 /* UserDefaultsProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsProjectStore.swift; sourceTree = "<group>"; };
 		4B22248C4A19F27D25FEC2A3 /* MockInstallTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockInstallTracker.swift; sourceTree = "<group>"; };
 		4CB0319FCD8EFF8C73C54A4C /* WebSocketManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketManagerTests.swift; sourceTree = "<group>"; };
@@ -301,8 +310,10 @@
 		B0C98E31F3DA0E3F06382248 /* InstallHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallHistoryView.swift; sourceTree = "<group>"; };
 		B223A9835076867EE2BCA306 /* MockProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockProjectStore.swift; sourceTree = "<group>"; };
 		B2983DAB3014C1F8C84AA016 /* SchemeDetecting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemeDetecting.swift; sourceTree = "<group>"; };
+		B36401330FE8925DC8182F2F /* ProjectSetupValidatorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupValidatorsTests.swift; sourceTree = "<group>"; };
 		B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEngineProtocol.swift; sourceTree = "<group>"; };
 		B5C83442A51AD2C39C5D7FC5 /* APIRouterFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRouterFactory.swift; sourceTree = "<group>"; };
+		B80F03E0294CBF8288882CAC /* ProjectSetupValidators.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupValidators.swift; sourceTree = "<group>"; };
 		B976E30E8F5281A40D7E129F /* StatusProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusProviding.swift; sourceTree = "<group>"; };
 		C2B144D783065CC4AC0F575C /* DevicesRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesRouteHandlerTests.swift; sourceTree = "<group>"; };
 		C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildEngineCancelTests.swift; sourceTree = "<group>"; };
@@ -310,6 +321,7 @@
 		C9003DF3FC9CE4215B3B4F10 /* FilesystemRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesystemRouteHandlerTests.swift; sourceTree = "<group>"; };
 		CA7B1BFE416750BFF523C941 /* PairingRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingRouteHandlerTests.swift; sourceTree = "<group>"; };
 		CB98A54ABF32CDC31FEDD180 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CF3ADDD5C01113424BFAC47E /* ServerStatusSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStatusSection.swift; sourceTree = "<group>"; };
 		CFDE9C59AB9FE5A6C7748558 /* XcodebuildSchemeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodebuildSchemeDetector.swift; sourceTree = "<group>"; };
 		D12338C042E71B355CC5F515 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		D3C9ED1D87408F37869FE473 /* RemoteDeployCompanion.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = RemoteDeployCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -333,6 +345,8 @@
 		EA5A883F3DF84EB00EE19999 /* ProjectSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupStep.swift; sourceTree = "<group>"; };
 		EB638F664A67F4373FEA58F9 /* ProwlNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProwlNotifier.swift; sourceTree = "<group>"; };
 		F056742F1EF33DD1800602E6 /* APIRouterFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRouterFactoryTests.swift; sourceTree = "<group>"; };
+		F05C642D4B8B63168A4D758B /* AppDelegateStartupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegateStartupTests.swift; sourceTree = "<group>"; };
+		F0AEEDC8F15C4934D6BADE90 /* ProjectRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectRowView.swift; sourceTree = "<group>"; };
 		F33445691F6AFF747BA18FA3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F33646F0F177BC5050D8DE93 /* BuildResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildResult.swift; sourceTree = "<group>"; };
 		F3BAFD6343E5678C93000CE0 /* InstallTrackerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallTrackerTests.swift; sourceTree = "<group>"; };
@@ -442,7 +456,9 @@
 			children = (
 				8DE9BC52C3A4F05854326E33 /* BuildControlsSection.swift */,
 				E1434875890822D7AF8AE9B8 /* MenuBarHeaderSection.swift */,
+				F0AEEDC8F15C4934D6BADE90 /* ProjectRowView.swift */,
 				4AA1CAA0F988BF9D0C969ED9 /* ProjectsListSection.swift */,
+				CF3ADDD5C01113424BFAC47E /* ServerStatusSection.swift */,
 				016632EFDE9FCDC5266E2EC0 /* UtilitiesSection.swift */,
 			);
 			path = MenuBar;
@@ -483,6 +499,7 @@
 			isa = PBXGroup;
 			children = (
 				22813FB29C8DC7BD7FF11D34 /* HTTPServerIntegrationTests.swift */,
+				13C04B540D1201D07398DD7C /* WebSocketUpgradeTests.swift */,
 			);
 			path = RemoteDeployIntegrationTests;
 			sourceTree = "<group>";
@@ -594,12 +611,15 @@
 			isa = PBXGroup;
 			children = (
 				F056742F1EF33DD1800602E6 /* APIRouterFactoryTests.swift */,
+				F05C642D4B8B63168A4D758B /* AppDelegateStartupTests.swift */,
 				DF1E54C911A24AC15A89473F /* BuildResultTests.swift */,
 				1AD5B495CA2B6248B73639CC /* DeferredSettingsUpdaterTests.swift */,
 				401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */,
 				F3BAFD6343E5678C93000CE0 /* InstallTrackerTests.swift */,
+				4AAE0C1992386E96FB314963 /* JSONBuildHistoryStoreTests.swift */,
 				DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */,
 				03D95AAD49CC7881D3034C63 /* ProjectConfigTests.swift */,
+				B36401330FE8925DC8182F2F /* ProjectSetupValidatorsTests.swift */,
 				36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */,
 				D7FE9D88C0571571898E928C /* PushNotifierTests.swift */,
 				994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */,
@@ -699,6 +719,7 @@
 			children = (
 				DABE1229131FA24AB6F6890B /* CertificateSetupStep.swift */,
 				EA5A883F3DF84EB00EE19999 /* ProjectSetupStep.swift */,
+				B80F03E0294CBF8288882CAC /* ProjectSetupValidators.swift */,
 				0B671A818A6D0055CA3DEB4B /* PushNotifSetupStep.swift */,
 				F7B83C2E31BD5EF9FA3AEE7A /* SetupCompleteStep.swift */,
 				1C437FE67443E50301B2FBC1 /* TailscaleSetupStep.swift */,
@@ -906,6 +927,9 @@
 						DevelopmentTeam = RDJQ523WP4;
 						ProvisioningStyle = Automatic;
 					};
+					AFA5AE57142B7F71846823A1 = {
+						DevelopmentTeam = RDJQ523WP4;
+					};
 					F9C7782EFD0ADEBCAD945DE7 = {
 						TestTargetID = AFA5AE57142B7F71846823A1;
 					};
@@ -966,6 +990,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				159C7B880F06DB98275651EF /* HTTPServerIntegrationTests.swift in Sources */,
+				B3240FF5DD2384BA8F8B07B3 /* WebSocketUpgradeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1027,7 +1052,9 @@
 				F99C13779BEF634640DA01C3 /* PairingRouteHandler.swift in Sources */,
 				D1EEC512B80AECC9EFABB44C /* ProjectConfig.swift in Sources */,
 				3568DECAAEB32EB450772544 /* ProjectFormView.swift in Sources */,
+				2EB4CD0AF049FE6B3BD54DEB /* ProjectRowView.swift in Sources */,
 				53C037A8761540A069FF09B6 /* ProjectSetupStep.swift in Sources */,
+				1C21B0166623BB49A3B94F22 /* ProjectSetupValidators.swift in Sources */,
 				BC644904AAC8040719D72531 /* ProjectStoring.swift in Sources */,
 				3D1C555CCC197E1BFF8FDD53 /* ProjectsListSection.swift in Sources */,
 				C245E317A246E70B1BFA57E5 /* ProjectsRouteHandler.swift in Sources */,
@@ -1041,6 +1068,7 @@
 				A80FF6755F6D189BF81B4CB9 /* RemoteDeployApp.swift in Sources */,
 				649F43875E37FDF25B29E9E6 /* SchemeDetecting.swift in Sources */,
 				D972D686D54D5B87671E071A /* ServerInstallTracker.swift in Sources */,
+				616EA884C2FBD6C0C0B32107 /* ServerStatusSection.swift in Sources */,
 				C7308DB2855727F742BE5D6B /* SettingsData.swift in Sources */,
 				AC62408866EA8A4BB8662703 /* SettingsProviding.swift in Sources */,
 				008DAAB9CBBAF9C0A6A284CE /* SettingsRouteHandler.swift in Sources */,
@@ -1068,6 +1096,7 @@
 				B6A3E6317012EFB2F0F746B7 /* APIRouterFactoryTests.swift in Sources */,
 				82F95CC166C89D53E30B9498 /* APIRouterTests.swift in Sources */,
 				CC4BF28C5FAC3F09804A66A3 /* APITestSupport.swift in Sources */,
+				3AFB29C0C5084D77F228F778 /* AppDelegateStartupTests.swift in Sources */,
 				C6D0E4C31AAFC86AE38C8A79 /* AuthMiddlewareTests.swift in Sources */,
 				754206C48F746015A018F469 /* BuildResultTests.swift in Sources */,
 				D33B964D11AF1C4F8C4CA077 /* BuildRouteHandlerTests.swift in Sources */,
@@ -1077,6 +1106,7 @@
 				AA65810FF506F20B0442FD42 /* InstallPageGeneratorTests.swift in Sources */,
 				6A5A61018B20ADA6DD71491D /* InstallTrackerTests.swift in Sources */,
 				A49E3C3BBB1F4F3DCF642969 /* InstallsRouteHandlerTests.swift in Sources */,
+				E9B6ADCDA4F6A3D768B03F49 /* JSONBuildHistoryStoreTests.swift in Sources */,
 				F33309DA202DB2E0982030E1 /* ManifestGeneratorTests.swift in Sources */,
 				010B6B29BA8403CB27BD347E /* MockBuildCanceler.swift in Sources */,
 				8AC9C0EDD8A39057243D0059 /* MockBuildEngine.swift in Sources */,
@@ -1095,6 +1125,7 @@
 				EBBFEFEBC886A23A76FFCD08 /* MockTailscaleProvider.swift in Sources */,
 				2F6A5D04517CDA2A9422332A /* PairingRouteHandlerTests.swift in Sources */,
 				0499B54ACBC5FBE45FF6FE4F /* ProjectConfigTests.swift in Sources */,
+				F1EC3A6E07BBBCBA2C07C829 /* ProjectSetupValidatorsTests.swift in Sources */,
 				456AB631D8EFB95038C042B7 /* ProjectStoreTests.swift in Sources */,
 				7B6870F10E1F0CD20FEF88F3 /* ProjectsRouteHandlerTests.swift in Sources */,
 				B63331497F3FC2E9F1DDC680 /* PushNotifierTests.swift in Sources */,
@@ -1336,6 +1367,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = RDJQ523WP4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RemoteDeployCompanion/Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "RemoteDeploy uses Face ID to protect your paired Mac's authentication token.";
@@ -1460,6 +1492,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = RDJQ523WP4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RemoteDeployCompanion/Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "RemoteDeploy uses Face ID to protect your paired Mac's authentication token.";

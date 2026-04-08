@@ -27,12 +27,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Set to true once performStartup() has run; prevents double-runs if the
     /// system calls applicationDidFinishLaunching multiple times (shouldn't
     /// happen but defensive).
-    private var didPerformStartup = false
+    /// Exposed `internal` for AppDelegateStartupTests (TKT-019).
+    internal private(set) var didPerformStartup = false
 
     /// Set to true once register() has been called with non-nil state objects.
     /// applicationDidFinishLaunching waits up to 2 seconds for this to flip
     /// in case the OS callback fires before SwiftUI has evaluated body.
     private var didRegister = false
+
+    /// Test-only override: when non-nil, `performStartup()` invokes this
+    /// closure instead of the real startup body. Lets AppDelegateStartupTests
+    /// verify the register/launch ordering guards without triggering real
+    /// side effects (Tailscale CLI, file I/O, server bind). TKT-019.
+    internal var performStartupOverrideForTests: (@MainActor () async -> Void)?
 
     // MARK: - Startup helpers
 
@@ -70,13 +77,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // If the OS lifecycle callback fired before SwiftUI evaluated body,
         // kick off startup now that we finally have the state objects.
         //
-        // TKT-021: DispatchQueue.main.async pushes the startup Task out of the
-        // current runloop turn so state mutations (loadSettings, loadProjects,
-        // etc.) don't land while SwiftUI is still mid-layout on the MenuBarExtra
-        // hosting view. Without this deferral, AppKit logs
-        // _NSDetectedLayoutRecursion at startup.
+        // TKT-021 / TKT-024 Commit 5a: a plain `DispatchQueue.main.async` hop
+        // wasn't enough to escape the MenuBarExtra's first layout pass — on
+        // device the `_NSDetectedLayoutRecursion` warning still fired. Bumping
+        // to an explicit 150ms `asyncAfter` gives AppKit room to complete its
+        // initial layout before any @Published mutations from performStartup()
+        // hit. 150ms is imperceptible to the user at launch.
         if !didPerformStartup, NSApp != nil {
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
                 Task { @MainActor [weak self] in
                     await self?.performStartup()
                 }
@@ -106,11 +114,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // evaluates before applicationDidFinishLaunching), run startup now.
         // Otherwise register() will kick it off when it's eventually called.
         //
-        // TKT-021: DispatchQueue.main.async defers the startup Task past the
-        // current layout pass so state mutations don't trigger AppKit layout
-        // recursion on the MenuBarExtra hosting view.
+        // TKT-021 / TKT-024 Commit 5a: 150ms asyncAfter (not plain async) so
+        // startup's @Published mutations don't interleave with the
+        // MenuBarExtra's first layout pass. See register() for the rationale.
         if didRegister, !didPerformStartup {
-            DispatchQueue.main.async { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
                 Task { @MainActor [weak self] in
                     await self?.performStartup()
                 }
@@ -125,6 +133,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func performStartup() async {
         guard !didPerformStartup else { return }
         didPerformStartup = true
+
+        // Test seam: AppDelegateStartupTests uses this to assert the
+        // register/launch ordering guards without touching real services. TKT-019.
+        if let override = performStartupOverrideForTests {
+            await override()
+            return
+        }
 
         guard let appState, let serviceContainer, let buildManager else {
             Logger.server.error("AppDelegate.performStartup called before register() completed")
@@ -397,5 +412,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let output = APIRouterFactory.make(deps: deps)
         nioServer.apiRouter = output.router
         services.pairingHandler = output.pairingHandler
+
+        // TKT-011 / TKT-024 Commit 6: share the REST routes' AuthMiddleware
+        // with the WebSocket upgrade path so both enforce the same
+        // paired-device token validation.
+        let auth = output.auth
+        nioServer.webSocketAuthenticator = { headers in
+            auth.authenticate(headers: headers) != nil
+        }
     }
 }

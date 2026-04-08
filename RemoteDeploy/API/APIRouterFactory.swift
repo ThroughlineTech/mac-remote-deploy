@@ -34,6 +34,10 @@ struct APIRouterFactory {
     struct Output {
         let router: APIRouter
         let pairingHandler: PairingRouteHandler
+        /// The bearer-token authenticator the router uses for REST routes.
+        /// Exposed so the WebSocket upgrade path in `NIODeployServer` can
+        /// reuse the same token validation logic. TKT-011 / TKT-024 Commit 6.
+        let auth: AuthMiddleware
     }
 
     /// Builds an `APIRouter` from the given dependencies.
@@ -75,6 +79,6 @@ struct APIRouterFactory {
             devicesHandler: devicesHandler
         )
 
-        return Output(router: router, pairingHandler: pairingHandler)
+        return Output(router: router, pairingHandler: pairingHandler, auth: auth)
     }
 }
