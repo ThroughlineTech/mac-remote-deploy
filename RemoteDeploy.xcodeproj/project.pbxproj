@@ -924,6 +924,9 @@
 						DevelopmentTeam = RDJQ523WP4;
 						ProvisioningStyle = Automatic;
 					};
+					AFA5AE57142B7F71846823A1 = {
+						DevelopmentTeam = RDJQ523WP4;
+					};
 					F9C7782EFD0ADEBCAD945DE7 = {
 						TestTargetID = AFA5AE57142B7F71846823A1;
 					};
@@ -1360,6 +1363,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = RDJQ523WP4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RemoteDeployCompanion/Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "RemoteDeploy uses Face ID to protect your paired Mac's authentication token.";
@@ -1484,6 +1488,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = RDJQ523WP4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RemoteDeployCompanion/Info.plist;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "RemoteDeploy uses Face ID to protect your paired Mac's authentication token.";
