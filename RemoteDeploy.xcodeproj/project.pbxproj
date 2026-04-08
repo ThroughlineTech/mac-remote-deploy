@@ -113,6 +113,7 @@
 		AA65810FF506F20B0442FD42 /* InstallPageGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */; };
 		AC62408866EA8A4BB8662703 /* SettingsProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255ECD576F080DF6FF651C2F /* SettingsProviding.swift */; };
 		B2E1DC71DEFF4511AFF4D184 /* BuildRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */; };
+		B3240FF5DD2384BA8F8B07B3 /* WebSocketUpgradeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C04B540D1201D07398DD7C /* WebSocketUpgradeTests.swift */; };
 		B450F190AE379CE7A3EB49C9 /* WebSocketManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB0319FCD8EFF8C73C54A4C /* WebSocketManagerTests.swift */; };
 		B5BBDDF0CDDA8D15998E1D67 /* FilesystemRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA40F77DFBF56FBBCE4301E /* FilesystemRouteHandler.swift */; };
 		B63331497F3FC2E9F1DDC680 /* PushNotifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7FE9D88C0571571898E928C /* PushNotifierTests.swift */; };
@@ -204,6 +205,7 @@
 		0D82906145D9CDB3338CFC18 /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
 		10C0130D84B81C211BA76B3A /* BuildRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildRouteHandlerTests.swift; sourceTree = "<group>"; };
 		12B0BCF29AE933750587F18E /* BuildTriggering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildTriggering.swift; sourceTree = "<group>"; };
+		13C04B540D1201D07398DD7C /* WebSocketUpgradeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketUpgradeTests.swift; sourceTree = "<group>"; };
 		154315BEE4F2F035E35C3097 /* RemoteDeployIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteDeployIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildRouteHandler.swift; sourceTree = "<group>"; };
 		186DF59BC166A3203704C627 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -497,6 +499,7 @@
 			isa = PBXGroup;
 			children = (
 				22813FB29C8DC7BD7FF11D34 /* HTTPServerIntegrationTests.swift */,
+				13C04B540D1201D07398DD7C /* WebSocketUpgradeTests.swift */,
 			);
 			path = RemoteDeployIntegrationTests;
 			sourceTree = "<group>";
@@ -987,6 +990,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				159C7B880F06DB98275651EF /* HTTPServerIntegrationTests.swift in Sources */,
+				B3240FF5DD2384BA8F8B07B3 /* WebSocketUpgradeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

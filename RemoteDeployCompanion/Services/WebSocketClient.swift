@@ -1,5 +1,11 @@
 // WebSocket client for receiving live build log and status updates from the Mac.
 // Uses URLSessionWebSocketTask for native iOS WebSocket support.
+//
+// TKT-011 / TKT-024 Commit 6: reconnect-with-backoff. When the connection
+// drops (e.g. server restart, Tailscale hiccup, transient network blip), the
+// client retries with exponential backoff capped at 16 seconds while the
+// caller still considers the client "active". Reconnect stops when
+// `disconnect()` is called explicitly.
 import Foundation
 import RemoteDeployShared
 
@@ -19,12 +25,53 @@ final class WebSocketClient: ObservableObject {
     private var task: URLSessionWebSocketTask?
     private var session: URLSession?
 
+    // MARK: - Reconnect state (TKT-011 / TKT-024 Commit 6)
+
+    /// True between `connect(...)` and `disconnect()`. Reconnect attempts
+    /// only run while this is true, so an explicit disconnect halts the
+    /// backoff loop even if a retry Task is already scheduled.
+    private var isActive = false
+
+    /// The last base URL passed to `connect(...)`. Retained so the
+    /// reconnect loop can rebuild the request.
+    private var savedBaseURL: URL?
+
+    /// The last bearer token passed to `connect(...)`. Retained so the
+    /// reconnect loop can rebuild the request.
+    private var savedToken: String?
+
+    /// Current backoff delay in seconds. Starts at 1, doubles after each
+    /// failure, caps at `maxReconnectDelay`. Reset to 1 on successful
+    /// connection.
+    private var reconnectDelay: TimeInterval = 1.0
+
+    /// Maximum backoff delay (16s per TKT-024 plan).
+    private static let maxReconnectDelay: TimeInterval = 16.0
+
     /// Connects to the server's WebSocket endpoint.
     ///
     /// - Parameter baseURL: The server's base URL.
     /// - Parameter token: The bearer token for authentication.
     func connect(baseURL: URL, token: String) {
-        disconnect()
+        isActive = true
+        savedBaseURL = baseURL
+        savedToken = token
+        reconnectDelay = 1.0
+        openSocket()
+    }
+
+    /// Opens (or re-opens) the WebSocket task using the saved baseURL/token.
+    /// Internal to `connect(...)` + the reconnect loop — external callers
+    /// always go through `connect(...)` so `isActive` is correctly set.
+    private func openSocket() {
+        guard let baseURL = savedBaseURL, let token = savedToken else { return }
+
+        // Tear down any prior task/session without clearing isActive —
+        // we're mid-reconnect, not shutting down.
+        task?.cancel(with: .normalClosure, reason: nil)
+        task = nil
+        session?.invalidateAndCancel()
+        session = nil
 
         var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)!
         components.scheme = baseURL.scheme == "https" ? "wss" : "ws"
@@ -43,14 +90,32 @@ final class WebSocketClient: ObservableObject {
         buildLogLines = []
 
         // Subscribe to channels and start receiving.
-        // If the handshake fails, we silently set isConnected = false.
+        // If the handshake fails, receiveMessages() will schedule a reconnect.
         subscribe(to: "buildlog")
         subscribe(to: "buildstatus")
         receiveMessages()
     }
 
-    /// Disconnects from the WebSocket.
+    /// Schedules a reconnect attempt after the current backoff delay, then
+    /// doubles the delay for the next failure (capped at `maxReconnectDelay`).
+    /// No-op if `isActive` is false (disconnect was called).
+    private func scheduleReconnect() {
+        guard isActive else { return }
+        let delay = reconnectDelay
+        reconnectDelay = min(delay * 2, Self.maxReconnectDelay)
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard let self, self.isActive else { return }
+            self.openSocket()
+        }
+    }
+
+    /// Disconnects from the WebSocket and stops any pending reconnect attempts.
     func disconnect() {
+        isActive = false
+        savedBaseURL = nil
+        savedToken = nil
+        reconnectDelay = 1.0
         task?.cancel(with: .normalClosure, reason: nil)
         task = nil
         session?.invalidateAndCancel()
@@ -78,17 +143,25 @@ final class WebSocketClient: ObservableObject {
                 switch result {
                 case .success(.string(let text)):
                     self?.isConnected = true
+                    // Successful frame = known-good connection. Reset backoff
+                    // so the next failure restarts from 1s. TKT-011 / TKT-024.
+                    self?.reconnectDelay = 1.0
                     self?.handleMessage(text)
                     self?.receiveMessages()
                 case .success(.data(let data)):
                     self?.isConnected = true
+                    self?.reconnectDelay = 1.0
                     if let text = String(data: data, encoding: .utf8) {
                         self?.handleMessage(text)
                     }
                     self?.receiveMessages()
                 case .failure:
-                    // Silently mark as disconnected — WS is optional
+                    // Handshake or mid-stream failure. Mark disconnected and
+                    // — if we're still supposed to be connected — schedule
+                    // a reconnect with the current backoff delay.
+                    // TKT-011 / TKT-024 Commit 6.
                     self?.isConnected = false
+                    self?.scheduleReconnect()
                 @unknown default:
                     break
                 }

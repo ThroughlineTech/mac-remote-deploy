@@ -412,5 +412,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let output = APIRouterFactory.make(deps: deps)
         nioServer.apiRouter = output.router
         services.pairingHandler = output.pairingHandler
+
+        // TKT-011 / TKT-024 Commit 6: share the REST routes' AuthMiddleware
+        // with the WebSocket upgrade path so both enforce the same
+        // paired-device token validation.
+        let auth = output.auth
+        nioServer.webSocketAuthenticator = { headers in
+            auth.authenticate(headers: headers) != nil
+        }
     }
 }

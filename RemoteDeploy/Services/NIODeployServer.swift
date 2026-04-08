@@ -52,6 +52,14 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
     /// WebSocket manager for live build log and status streaming.
     let webSocketManager = WebSocketManager()
 
+    /// Optional authenticator for WebSocket upgrade requests at `/api/v1/ws`.
+    /// Set by `AppDelegate.configureAPIRouter` alongside `apiRouter`. The
+    /// closure receives the HTTP request headers as (name, value) pairs and
+    /// returns `true` if the request carries a valid bearer token. Nil or
+    /// false rejects the upgrade, letting the HTTP pipeline fall through to
+    /// `HTTPHandler`, which returns 401 for `/api/v1/ws`. TKT-011 / TKT-024.
+    var webSocketAuthenticator: (@Sendable ([(String, String)]) -> Bool)?
+
     /// The plain HTTP port for local WiFi API access (no TLS).
     var httpPort: Int {
         lockedState.withLock { $0.httpPort }
@@ -169,17 +177,67 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
         // -- Bootstrap --
         let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
 
-        let handler = HTTPHandler(server: self)
-        handler.apiRouter = self.apiRouter
+        // TKT-011 / TKT-024 Commit 6: install a NIOWebSocketServerUpgrader on
+        // the HTTPS pipeline so /api/v1/ws upgrade requests that carry a valid
+        // bearer token are promoted to WebSocket connections. Failed upgrades
+        // (wrong path, missing/invalid auth) fall through to the normal HTTP
+        // pipeline, which in HTTPHandler returns 401 for /api/v1/ws so the
+        // client sees the intended error instead of a generic 404.
+        //
+        // We capture authenticator + manager + a server reference by value
+        // here so the @Sendable childChannelInitializer can build per-channel
+        // handlers without retaining `self` implicitly.
+        let wsAuth = self.webSocketAuthenticator
+        let wsManager = self.webSocketManager
+        let serverRef = self
+        let capturedAPIRouter = self.apiRouter
 
         let bootstrap = ServerBootstrap(group: group)
             .serverChannelOption(.backlog, value: 256)
             .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)
             .childChannelInitializer { channel in
                 let sslHandler = NIOSSLServerHandler(context: sslContext)
+                // TKT-011 / TKT-024 Commit 6: construct a fresh HTTPHandler
+                // per channel. Previously we shared a single instance across
+                // all connections, which was latently unsafe because
+                // HTTPHandler stores mutable per-request state (requestHead,
+                // requestBody). Per-channel instances also let us remove
+                // the handler from the pipeline cleanly on WS upgrade so it
+                // does not attempt to decode WebSocket frames as HTTP parts.
+                let perChannelHandler = HTTPHandler(server: serverRef)
+                perChannelHandler.apiRouter = capturedAPIRouter
+
+                let wsUpgrader = NIOWebSocketServerUpgrader(
+                    maxFrameSize: 16 * 1024,
+                    shouldUpgrade: { (ch: Channel, head: HTTPRequestHead) -> EventLoopFuture<HTTPHeaders?> in
+                        // Only upgrade the WebSocket endpoint.
+                        let path = head.uri.split(separator: "?").first.map(String.init) ?? head.uri
+                        guard path == "/api/v1/ws" else {
+                            return ch.eventLoop.makeSucceededFuture(nil)
+                        }
+                        // Enforce bearer token auth using the same authenticator
+                        // the REST routes use.
+                        let headers = head.headers.map { ($0.name, $0.value) }
+                        if wsAuth?(headers) == true {
+                            return ch.eventLoop.makeSucceededFuture(HTTPHeaders())
+                        }
+                        return ch.eventLoop.makeSucceededFuture(nil)
+                    },
+                    upgradePipelineHandler: { (ch: Channel, _: HTTPRequestHead) -> EventLoopFuture<Void> in
+                        // NIO's HTTPServerUpgradeHandler automatically removes
+                        // the HTTP decoder/encoder/upgrader after a successful
+                        // upgrade, but NOT any handler we added after it —
+                        // so perChannelHandler must be removed explicitly
+                        // or it will crash trying to decode WS frames.
+                        ch.pipeline.removeHandler(perChannelHandler).flatMap {
+                            ch.pipeline.addHandler(WebSocketChannelHandler(manager: wsManager))
+                        }
+                    }
+                )
+                let upgradeConfig: NIOHTTPServerUpgradeConfiguration = (upgraders: [wsUpgrader], completionHandler: { _ in })
                 return channel.pipeline.addHandler(sslHandler as RemovableChannelHandler).flatMap {
-                    channel.pipeline.configureHTTPServerPipeline().flatMap {
-                        channel.pipeline.addHandler(handler)
+                    channel.pipeline.configureHTTPServerPipeline(withServerUpgrade: upgradeConfig).flatMap {
+                        channel.pipeline.addHandler(perChannelHandler)
                     }
                 }
             }
@@ -189,18 +247,20 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
         let channel = try await bootstrap.bind(host: "0.0.0.0", port: port).get()
 
         // -- Secondary plain-HTTP listener for local WiFi API access --
-        // Restricted: no pairing endpoint over HTTP (tokens would be in cleartext)
-        let httpHandler = HTTPHandler(server: self)
-        httpHandler.apiRouter = self.apiRouter
-        httpHandler.rejectPairingOverHTTP = true
-
+        // Restricted: no pairing endpoint over HTTP (tokens would be in cleartext).
+        // TKT-011 / TKT-024 Commit 6: per-channel HTTPHandler to match the
+        // HTTPS listener and avoid sharing mutable per-request state across
+        // concurrent connections.
         let httpBootstrap = ServerBootstrap(group: group)
             .serverChannelOption(.backlog, value: 256)
             .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)
             .childChannelInitializer { channel in
                 // No TLS — plain HTTP for local WiFi
-                channel.pipeline.configureHTTPServerPipeline().flatMap {
-                    channel.pipeline.addHandler(httpHandler)
+                let perChannelHTTPHandler = HTTPHandler(server: serverRef)
+                perChannelHTTPHandler.apiRouter = capturedAPIRouter
+                perChannelHTTPHandler.rejectPairingOverHTTP = true
+                return channel.pipeline.configureHTTPServerPipeline().flatMap {
+                    channel.pipeline.addHandler(perChannelHTTPHandler)
                 }
             }
             .childChannelOption(.socketOption(.so_reuseaddr), value: 1)
