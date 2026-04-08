@@ -49,9 +49,9 @@ final class AppDelegateStartupTests: XCTestCase {
     /// Task { @MainActor in }. AppDelegate dispatches startup via both; this helper
     /// spins the run loop briefly so those continuations run before assertions.
     private func drainMainQueue() async {
-        // Two short yields catches: (a) the DispatchQueue.main.async hop, and
-        // (b) the Task { @MainActor in } hop that awaits performStartup().
-        for _ in 0..<10 {
+        // Must outlast the AppDelegate's 150ms asyncAfter delay (TKT-021
+        // fallback) plus a margin for the subsequent Task hop. 60 * 5ms = 300ms.
+        for _ in 0..<60 {
             await Task.yield()
             try? await Task.sleep(nanoseconds: 5_000_000) // 5 ms
         }
