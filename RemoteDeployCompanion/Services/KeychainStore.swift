@@ -23,6 +23,7 @@
 //   upgrade only shows one prompt.
 import Foundation
 import Security
+import os
 // TKT-026: @preconcurrency tells the compiler to treat LocalAuthentication
 // types (notably LAContext) as if they were Sendable for back-compat.
 // Silences the "capture of non-Sendable LAContext in a @Sendable closure"
@@ -56,11 +57,25 @@ final class KeychainStore {
 
     // MARK: - In-memory cache
 
+    /// Value type for the in-memory cache entry. Kept parallel to
+    /// `StoredCredentials` so the struct wrapping the cache has the same
+    /// shape as the on-disk format.
+    private struct CachedCredentials {
+        let url: String
+        let token: String
+        let serverName: String
+    }
+
     /// Thread-safe in-memory cache populated by the first successful `load()`.
     /// Subsequent `load()` calls return this without touching the keychain.
     /// `save()` and `clear()` keep it in sync.
-    private static let cacheLock = NSLock()
-    nonisolated(unsafe) private static var cached: (url: String, token: String, serverName: String)?
+    ///
+    /// TKT-026: migrated from `NSLock` + `nonisolated(unsafe) var cached` to
+    /// `OSAllocatedUnfairLock` so the lock is async-safe. `withLock { ... }`
+    /// is structurally scoped — the compiler can prove the lock isn't held
+    /// across an await — which is why it's allowed inside an `async` function
+    /// under Swift 6, unlike `NSLock.lock()` / `unlock()`.
+    private static let lockedCache = OSAllocatedUnfairLock<CachedCredentials?>(initialState: nil)
 
     // MARK: - Public API
 
@@ -78,9 +93,7 @@ final class KeychainStore {
         }
         setData(key: credentialsKey, data: data)
 
-        cacheLock.lock()
-        cached = (url, token, serverName)
-        cacheLock.unlock()
+        lockedCache.withLock { $0 = CachedCredentials(url: url, token: token, serverName: serverName) }
     }
 
     /// Loads the saved server connection details from the Keychain.
@@ -94,12 +107,9 @@ final class KeychainStore {
     /// - Returns: A tuple of (url, token, serverName), or nil if not saved or auth failed.
     static func load() async -> (url: String, token: String, serverName: String)? {
         // Fast path: in-memory cache.
-        cacheLock.lock()
-        if let cachedValue = cached {
-            cacheLock.unlock()
-            return cachedValue
+        if let cached = lockedCache.withLock({ $0 }) {
+            return (cached.url, cached.token, cached.serverName)
         }
-        cacheLock.unlock()
 
         #if targetEnvironment(simulator)
         // Simulator doesn't support biometric auth in a way that works for
@@ -142,9 +152,7 @@ final class KeychainStore {
     static func clear() {
         delete(key: credentialsKey)
         clearLegacy()
-        cacheLock.lock()
-        cached = nil
-        cacheLock.unlock()
+        lockedCache.withLock { $0 = nil }
     }
 
     // MARK: - LAContext authentication
@@ -221,9 +229,7 @@ final class KeychainStore {
     // MARK: - Cache update
 
     private static func updateCache(_ tuple: (url: String, token: String, serverName: String)) {
-        cacheLock.lock()
-        cached = tuple
-        cacheLock.unlock()
+        lockedCache.withLock { $0 = CachedCredentials(url: tuple.url, token: tuple.token, serverName: tuple.serverName) }
     }
 
     // MARK: - Generic keychain helpers
