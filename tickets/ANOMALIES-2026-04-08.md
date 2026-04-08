@@ -13,22 +13,24 @@ Second pass (TKT-008, 009, 011, 012, 014, 019, 020, 023) was performed after the
 | TKT-005 | PASS | `closed/` |
 | TKT-006 | PASS | `closed/` |
 | TKT-007 | PASS | `closed/` |
-| TKT-008 | ANOMALY (still) | `tickets/` |
-| TKT-009 | ANOMALY (still) | `tickets/` |
+| TKT-008 | RESOLVED (TKT-024 `c07d516`) | — |
+| TKT-009 | ANOMALY (pending TKT-024 Commit 5) | `tickets/` |
 | TKT-010 | PASS | `closed/` |
-| TKT-011 | ANOMALY (still) | `tickets/` |
-| TKT-012 | ANOMALY (still) | `tickets/` |
+| TKT-011 | ANOMALY (pending TKT-024 Commit 6) | `tickets/` |
+| TKT-012 | RESOLVED (TKT-024 `5a5f0ad`) | — |
 | TKT-013 | PASS | `closed/` |
-| TKT-014 | ANOMALY (still) | `tickets/` |
+| TKT-014 | RESOLVED (TKT-024 `a1ca280`) | — |
 | TKT-015 | PASS | `closed/` |
 | TKT-016 | PASS | `closed/` |
 | TKT-017 | PASS | `closed/` |
 | TKT-018 | PASS | `closed/` |
-| TKT-019 | ANOMALY (core fixed, promised test missing) | `tickets/` |
+| TKT-019 | RESOLVED (TKT-024 `ac8d2cf`) | — |
 | TKT-020 | PASS | `closed/` |
 | TKT-023 | PASS | `closed/` |
 
-Not audited: TKT-021 (`proposed`), TKT-022 (`in-progress`).
+Not audited: TKT-022 (`in-progress`).
+
+TKT-021 audit (performed 2026-04-08 as part of TKT-024): **ANOMALY** — code shipped without on-device verification; both AC warnings were still firing at launch. **RESOLVED** under TKT-024 commit `3f9c358` via the fallback path (NWListener Bonjour migration + 150ms startup dispatch delay). Verified on device: both warnings now absent.
 
 ## Anomalies
 
