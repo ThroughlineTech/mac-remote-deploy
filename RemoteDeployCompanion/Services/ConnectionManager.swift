@@ -120,6 +120,10 @@ final class ConnectionManager: ObservableObject {
         }
 
         logger.info("Pairing: success! Server name: \(response.serverName, privacy: .public)")
+
+        // Haptic feedback to celebrate the successful pairing (TKT-017).
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+
         // Save credentials and connect
         KeychainStore.save(url: url, token: token, serverName: response.serverName)
 

@@ -11,6 +11,12 @@ struct ProjectListView: View {
     @State private var isLoading = true
     @State private var error: String?
 
+    /// Most-recent install timestamp keyed by project name. Used to render
+    /// "Last installed N hours ago" under each project row (TKT-017).
+    /// We use install records as a proxy for "last activity" since the build
+    /// history endpoint is still a stub until TKT-008 ships.
+    @State private var lastInstallByProjectName: [String: Date] = [:]
+
     var body: some View {
         NavigationStack {
             Group {
@@ -48,6 +54,11 @@ struct ProjectListView: View {
                                 }
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
+                                if let lastInstall = lastInstallByProjectName[project.name] {
+                                    Text("Last installed \(lastInstall, format: .relative(presentation: .named))")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                             .padding(.vertical, 4)
                         }
@@ -83,6 +94,18 @@ struct ProjectListView: View {
         error = nil
         do {
             projects = try await client.listProjects()
+            // Best-effort: also fetch recent installs to populate the per-project
+            // "last installed" timestamps. Don't fail the whole load if this fails.
+            if let installs = try? await client.getInstalls() {
+                var byName: [String: Date] = [:]
+                for record in installs {
+                    if let existing = byName[record.projectName], existing > record.timestamp {
+                        continue
+                    }
+                    byName[record.projectName] = record.timestamp
+                }
+                lastInstallByProjectName = byName
+            }
         } catch {
             self.error = error.localizedDescription
         }
