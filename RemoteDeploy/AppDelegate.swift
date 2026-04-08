@@ -27,12 +27,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Set to true once performStartup() has run; prevents double-runs if the
     /// system calls applicationDidFinishLaunching multiple times (shouldn't
     /// happen but defensive).
-    private var didPerformStartup = false
+    /// Exposed `internal` for AppDelegateStartupTests (TKT-019).
+    internal private(set) var didPerformStartup = false
 
     /// Set to true once register() has been called with non-nil state objects.
     /// applicationDidFinishLaunching waits up to 2 seconds for this to flip
     /// in case the OS callback fires before SwiftUI has evaluated body.
     private var didRegister = false
+
+    /// Test-only override: when non-nil, `performStartup()` invokes this
+    /// closure instead of the real startup body. Lets AppDelegateStartupTests
+    /// verify the register/launch ordering guards without triggering real
+    /// side effects (Tailscale CLI, file I/O, server bind). TKT-019.
+    internal var performStartupOverrideForTests: (@MainActor () async -> Void)?
 
     // MARK: - Startup helpers
 
@@ -125,6 +132,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func performStartup() async {
         guard !didPerformStartup else { return }
         didPerformStartup = true
+
+        // Test seam: AppDelegateStartupTests uses this to assert the
+        // register/launch ordering guards without touching real services. TKT-019.
+        if let override = performStartupOverrideForTests {
+            await override()
+            return
+        }
 
         guard let appState, let serviceContainer, let buildManager else {
             Logger.server.error("AppDelegate.performStartup called before register() completed")

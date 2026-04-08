@@ -48,6 +48,7 @@
 		37F22BD3FF1115C490911F7C /* BonjourAdvertiser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C44F3AF5ED2CE52038FCB87 /* BonjourAdvertiser.swift */; };
 		39424D793E2602F5A8FFEFB7 /* DeferredSettingsUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50E329C8138A0D2C2BDE574 /* DeferredSettingsUpdater.swift */; };
 		3A209EC90680437D5F9AD0BB /* InstallHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C98E31F3DA0E3F06382248 /* InstallHistoryView.swift */; };
+		3AFB29C0C5084D77F228F778 /* AppDelegateStartupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F05C642D4B8B63168A4D758B /* AppDelegateStartupTests.swift */; };
 		3CD7D0E088ACBC9CC482E417 /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D243FF3F39A57458A1ACE31 /* ProjectListView.swift */; };
 		3D1C555CCC197E1BFF8FDD53 /* ProjectsListSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA1CAA0F988BF9D0C969ED9 /* ProjectsListSection.swift */; };
 		41A1AA6E6E8AC7ED8B3D27C4 /* TailscaleSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C437FE67443E50301B2FBC1 /* TailscaleSetupStep.swift */; };
@@ -335,6 +336,7 @@
 		EA5A883F3DF84EB00EE19999 /* ProjectSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupStep.swift; sourceTree = "<group>"; };
 		EB638F664A67F4373FEA58F9 /* ProwlNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProwlNotifier.swift; sourceTree = "<group>"; };
 		F056742F1EF33DD1800602E6 /* APIRouterFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRouterFactoryTests.swift; sourceTree = "<group>"; };
+		F05C642D4B8B63168A4D758B /* AppDelegateStartupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegateStartupTests.swift; sourceTree = "<group>"; };
 		F33445691F6AFF747BA18FA3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F33646F0F177BC5050D8DE93 /* BuildResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildResult.swift; sourceTree = "<group>"; };
 		F3BAFD6343E5678C93000CE0 /* InstallTrackerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallTrackerTests.swift; sourceTree = "<group>"; };
@@ -596,6 +598,7 @@
 			isa = PBXGroup;
 			children = (
 				F056742F1EF33DD1800602E6 /* APIRouterFactoryTests.swift */,
+				F05C642D4B8B63168A4D758B /* AppDelegateStartupTests.swift */,
 				DF1E54C911A24AC15A89473F /* BuildResultTests.swift */,
 				1AD5B495CA2B6248B73639CC /* DeferredSettingsUpdaterTests.swift */,
 				401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */,
@@ -1071,6 +1074,7 @@
 				B6A3E6317012EFB2F0F746B7 /* APIRouterFactoryTests.swift in Sources */,
 				82F95CC166C89D53E30B9498 /* APIRouterTests.swift in Sources */,
 				CC4BF28C5FAC3F09804A66A3 /* APITestSupport.swift in Sources */,
+				3AFB29C0C5084D77F228F778 /* AppDelegateStartupTests.swift in Sources */,
 				C6D0E4C31AAFC86AE38C8A79 /* AuthMiddlewareTests.swift in Sources */,
 				754206C48F746015A018F469 /* BuildResultTests.swift in Sources */,
 				D33B964D11AF1C4F8C4CA077 /* BuildRouteHandlerTests.swift in Sources */,
