@@ -2,10 +2,11 @@
 // Extracted from ProjectSetupStep.swift so RemoteDeployTests can cover them
 // without instantiating the SwiftUI view. TKT-014 / TKT-024.
 //
-// The `validateBundleID` regex is currently duplicated here; Commit 5 of
-// TKT-024 (TKT-009 cleanup) will reroute it to a shared `BundleIDValidator`
-// in RemoteDeployShared.
+// `validateBundleID` delegates to the shared `BundleIDValidator` in
+// `RemoteDeployShared` so the UI and the REST `ProjectsRouteHandler`
+// boundary use the same regex. TKT-009 / TKT-024 Commit 5.
 import Foundation
+import RemoteDeployShared
 
 /// Input validators for the Setup Assistant's project step. Each function
 /// returns `nil` for "valid or still-empty" and a user-facing error message
@@ -13,14 +14,9 @@ import Foundation
 enum ProjectSetupValidators {
 
     /// Validates a bundle ID against the reverse-DNS pattern (e.g. com.example.app).
-    /// Returns nil if valid or empty, an error message otherwise.
+    /// Delegates to the shared `BundleIDValidator`.
     static func validateBundleID(_ value: String) -> String? {
-        if value.isEmpty { return nil }
-        let pattern = #"^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*)+$"#
-        if value.range(of: pattern, options: .regularExpression) == nil {
-            return "Must be reverse-DNS format (e.g. com.example.app)"
-        }
-        return nil
+        BundleIDValidator.validate(value)
     }
 
     /// Validates an Apple Developer Team ID — exactly 10 uppercase alphanumeric characters.

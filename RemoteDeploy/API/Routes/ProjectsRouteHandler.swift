@@ -39,6 +39,13 @@ final class ProjectsRouteHandler: @unchecked Sendable {
             return .error(status: .badRequest, message: "Invalid project configuration")
         }
 
+        // TKT-009 / TKT-024 Commit 5: validate bundle ID at the programmatic
+        // boundary. Empty bundle IDs remain allowed (they represent the
+        // "not configured yet" state); malformed non-empty ones now 400.
+        if let bundleError = BundleIDValidator.validate(project.bundleID) {
+            return .error(status: .badRequest, message: "Invalid bundle ID: \(bundleError)")
+        }
+
         do {
             try projectStore.save(project: project)
             return .json(project, status: .created)
@@ -59,6 +66,11 @@ final class ProjectsRouteHandler: @unchecked Sendable {
 
         // Ensure the ID matches the URL
         project.id = projectID
+
+        // TKT-009 / TKT-024 Commit 5: same bundle-ID validation as create().
+        if let bundleError = BundleIDValidator.validate(project.bundleID) {
+            return .error(status: .badRequest, message: "Invalid bundle ID: \(bundleError)")
+        }
 
         do {
             try projectStore.save(project: project)

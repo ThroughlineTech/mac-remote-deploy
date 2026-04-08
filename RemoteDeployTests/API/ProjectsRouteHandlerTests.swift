@@ -100,6 +100,43 @@ final class ProjectsRouteHandlerTests: XCTestCase {
         XCTAssertEqual(response.status, .internalServerError)
     }
 
+    // MARK: - create bundle ID validation (TKT-009 / TKT-024)
+
+    func test_create_acceptsValidBundleID() {
+        let (handler, store) = makeHandler()
+        var project = ProjectConfig(name: "Valid", projectPath: "/Users/me/Valid.xcodeproj")
+        project.bundleID = "com.example.validapp"
+        let body = try! APITestSupport.encoder().encode(project)
+        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/projects", body: body)
+        let response = handler.create(req)
+        XCTAssertEqual(response.status, .created)
+        XCTAssertEqual(store.saveCallCount, 1)
+    }
+
+    func test_create_rejectsMalformedBundleID() {
+        let (handler, store) = makeHandler()
+        var project = ProjectConfig(name: "Bad", projectPath: "/Users/me/Bad.xcodeproj")
+        project.bundleID = "not a valid bundle id"
+        let body = try! APITestSupport.encoder().encode(project)
+        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/projects", body: body)
+        let response = handler.create(req)
+        XCTAssertEqual(response.status, .badRequest)
+        XCTAssertEqual(store.saveCallCount, 0, "Malformed bundle ID must not reach the store")
+    }
+
+    func test_create_allowsEmptyBundleIDAsUnset() {
+        // Empty bundle ID is the "not configured yet" state and must still be accepted.
+        let (handler, store) = makeHandler()
+        let project = ProjectConfig(name: "Fresh", projectPath: "/Users/me/Fresh.xcodeproj")
+        // ProjectConfig.init sets bundleID = "" by default; assert it for documentation.
+        XCTAssertEqual(project.bundleID, "")
+        let body = try! APITestSupport.encoder().encode(project)
+        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/projects", body: body)
+        let response = handler.create(req)
+        XCTAssertEqual(response.status, .created)
+        XCTAssertEqual(store.saveCallCount, 1)
+    }
+
     // MARK: - update
 
     func test_update_overwritesExistingProject() {
@@ -146,6 +183,20 @@ final class ProjectsRouteHandlerTests: XCTestCase {
         let response = handler.update(req, projectID: existing.id)
         XCTAssertEqual(response.status, .ok)
         XCTAssertEqual(store.lastSavedProject?.id, existing.id, "URL ID should win over body ID")
+    }
+
+    func test_update_rejectsMalformedBundleID() {
+        // PUT must enforce the same bundle-ID validation as POST. TKT-009 / TKT-024.
+        let (handler, store) = makeHandler()
+        let existing = ProjectConfig(name: "Existing", projectPath: "/Users/me/Existing.xcodeproj")
+        store.projects = [existing]
+        var updated = existing
+        updated.bundleID = "trailing.dot."
+        let body = try! APITestSupport.encoder().encode(updated)
+        let req = APITestSupport.makeRequest(method: .PUT, uri: "/api/v1/projects/\(existing.id)", body: body)
+        let response = handler.update(req, projectID: existing.id)
+        XCTAssertEqual(response.status, .badRequest)
+        XCTAssertEqual(store.saveCallCount, 0, "Malformed bundle ID must not reach the store")
     }
 
     func test_update_returns500WhenStoreSaveThrows() {
