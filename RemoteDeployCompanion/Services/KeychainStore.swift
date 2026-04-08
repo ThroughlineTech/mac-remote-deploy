@@ -23,7 +23,12 @@
 //   upgrade only shows one prompt.
 import Foundation
 import Security
-import LocalAuthentication
+// TKT-026: @preconcurrency tells the compiler to treat LocalAuthentication
+// types (notably LAContext) as if they were Sendable for back-compat.
+// Silences the "capture of non-Sendable LAContext in a @Sendable closure"
+// warning that fires on `withCheckedContinuation { ... context.evaluatePolicy ... }`.
+// Same pattern the host app uses for NIOSSL in NIODeployServer.swift.
+@preconcurrency import LocalAuthentication
 
 /// Manages Keychain storage for paired server credentials.
 final class KeychainStore {
