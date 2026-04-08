@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import os
+import RemoteDeployShared
 
 // MARK: - App State
 
@@ -20,6 +21,18 @@ final class AppState: ObservableObject {
     @Published var showSettings = false
     @Published var showBuildLog = false
     @Published var buildConfiguration: String = "Release"
+    /// Current boundary-level error, if any. Set by RemoteDeployApp when a boundary
+    /// operation (server start, settings save, Tailscale check, etc.) fails. MenuBarView
+    /// renders this via .alert() so the user sees what went wrong. TKT-007.
+    /// Named `currentError` (not `error`) to avoid shadowing the implicit `error`
+    /// binding in `catch` clauses at call sites.
+    @Published var currentError: RemoteDeployError?
+
+    /// Setter helper so non-view callers don't trip SwiftUI's dynamic-member-lookup
+    /// path on `@StateObject` when assigning to the published property directly.
+    func setError(_ err: RemoteDeployError?) {
+        self.currentError = err
+    }
     /// Absolute path to the TLS certificate PEM file.
     @Published var certPath: String = ""
     /// Absolute path to the TLS private key PEM file.
@@ -73,6 +86,26 @@ struct MenuBarView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .apiBuildRequested)) { notification in
             handleAPIBuildRequest(notification)
+        }
+        // TKT-007: surface boundary errors as an alert so the user sees what failed.
+        .alert(
+            appState.currentError?.errorDescription ?? "Error",
+            isPresented: Binding(
+                get: { appState.currentError != nil },
+                set: { if !$0 { appState.currentError = nil } }
+            ),
+            presenting: appState.currentError
+        ) { _ in
+            Button("Dismiss", role: .cancel) { appState.currentError = nil }
+        } message: { err in
+            VStack(alignment: .leading) {
+                if let reason = err.failureReason {
+                    Text(reason)
+                }
+                if let suggestion = err.recoverySuggestion {
+                    Text(suggestion)
+                }
+            }
         }
     }
 
