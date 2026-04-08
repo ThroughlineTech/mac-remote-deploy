@@ -141,9 +141,8 @@ struct RemoteDeployApp: App {
                 appState.selectedProjectID = first.id
             }
         } catch {
-            // Wrap module-specific errors into the unified boundary type so TKT-007 can plug
-            // this directly into AppState.error when it lands.
             let boundaryError = RemoteDeployError(wrapping: error)
+            _appState.wrappedValue.setError(boundaryError)
             Logger.storage.error("Failed to load projects: \(boundaryError.localizedDescription, privacy: .public)")
         }
     }
@@ -172,6 +171,9 @@ struct RemoteDeployApp: App {
                 appState.serverURL = "http://\(localIP):8080"
             }
             let boundaryError = RemoteDeployError.networkError(reason: error.localizedDescription)
+            // Intentionally do NOT set appState.error here — Tailscale not connected is a
+            // normal state (no network, VPN off), not an error the user needs to see as
+            // an alert. Just log it.
             Logger.tailscale.error("Tailscale check failed: \(boundaryError.failureReason ?? "", privacy: .public)")
         }
     }
@@ -207,6 +209,7 @@ struct RemoteDeployApp: App {
             }
         } catch {
             let boundaryError = RemoteDeployError(wrapping: error)
+            _appState.wrappedValue.setError(boundaryError)
             Logger.storage.error("Failed to load settings: \(boundaryError.localizedDescription, privacy: .public)")
         }
     }
@@ -234,6 +237,7 @@ struct RemoteDeployApp: App {
             )
         } catch {
             let boundaryError = RemoteDeployError(wrapping: error)
+            _appState.wrappedValue.setError(boundaryError)
             Logger.storage.error("Failed to save settings: \(boundaryError.localizedDescription, privacy: .public)")
         }
     }
@@ -291,8 +295,10 @@ struct RemoteDeployApp: App {
                     hostname: appState.hostname
                 )
             } catch {
-                // Wrap as serverStartFailed so TKT-007 can surface this in the menu bar UI.
                 let boundaryError = RemoteDeployError.serverStartFailed(reason: error.localizedDescription)
+                await MainActor.run {
+                    _appState.wrappedValue.setError(boundaryError)
+                }
                 Logger.server.error("Server failed to start: \(boundaryError.failureReason ?? "", privacy: .public)")
             }
         }
