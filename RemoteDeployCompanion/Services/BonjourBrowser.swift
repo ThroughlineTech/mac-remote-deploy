@@ -108,7 +108,15 @@ final class BonjourBrowser: ObservableObject {
         switch entry {
         case .string(let value):
             return value
-        case .none:
+        case .data(let data):
+            // Bonjour TXT values can be arbitrary bytes. Our publisher only
+            // ever writes UTF-8 strings via NWTXTRecord(_:), but a
+            // third-party responder could return raw data — decode as UTF-8
+            // and return nil if it's not valid UTF-8. TKT-026.
+            return String(data: data, encoding: .utf8)
+        case .none, .empty:
+            // `.none` = key present, value explicitly unset.
+            // `.empty` = key present, value is an empty string.
             return nil
         @unknown default:
             return nil
