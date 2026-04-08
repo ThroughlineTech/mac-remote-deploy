@@ -171,6 +171,7 @@ extension HTTPHandler {
         else if filename.hasSuffix(".svg") { contentType = "image/svg+xml" }
         else { contentType = "application/octet-stream" }
 
+        responseStatusForLogging = .ok
         var buffer = context.channel.allocator.buffer(capacity: fileData.count)
         buffer.writeBytes(fileData)
 

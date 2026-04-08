@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 /// RemoteDeploy Companion -- iOS app for remotely controlling builds on a Mac.
 @main
@@ -31,7 +32,7 @@ struct RemoteDeployCompanionApp: App {
             do {
                 try await connectionManager.pair(url: serverURL, token: token, serverName: name)
             } catch {
-                print("Deep link pairing failed: \(error.localizedDescription)")
+                Logger.pairing.error("Deep link pairing failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

@@ -1,5 +1,6 @@
 import Foundation
 import UserNotifications
+import os
 
 /// Manages macOS desktop notifications for build events.
 /// Posts native notifications that appear in Notification Center.
@@ -20,7 +21,7 @@ final class NotificationManager: NSObject, Sendable {
             options: [.alert, .sound, .badge]
         ) { granted, _ in
             if !granted {
-                print("NotificationManager: macOS notifications unavailable (enable in System Settings > Notifications)")
+                Logger.notifications.info("macOS notifications unavailable (enable in System Settings > Notifications)")
             }
         }
     }
@@ -44,7 +45,7 @@ final class NotificationManager: NSObject, Sendable {
 
         UNUserNotificationCenter.current().add(request) { error in
             if let error {
-                print("NotificationManager: failed to post notification – \(error.localizedDescription)")
+                Logger.notifications.error("Failed to post notification: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

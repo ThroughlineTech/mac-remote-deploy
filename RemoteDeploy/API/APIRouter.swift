@@ -4,6 +4,7 @@
 import Foundation
 import NIO
 import NIOHTTP1
+import os
 import RemoteDeployShared
 
 /// Represents a parsed API request with accumulated body data.
@@ -131,6 +132,7 @@ final class APIRouter: @unchecked Sendable {
             } else if method == "DELETE" {
                 // Unpair requires auth
                 guard let authedRequest = authenticate(request) else {
+                    Logger.pairing.warning("Auth failed for \(method, privacy: .public) \(path, privacy: .private)")
                     return .error(status: .unauthorized, message: "Invalid or missing bearer token")
                 }
                 return pairingHandler.unpair(authedRequest)
@@ -140,6 +142,7 @@ final class APIRouter: @unchecked Sendable {
 
         // All other endpoints require authentication
         guard let authedRequest = authenticate(request) else {
+            Logger.pairing.warning("Auth failed for \(method, privacy: .public) \(path, privacy: .private)")
             return .error(status: .unauthorized, message: "Invalid or missing bearer token")
         }
 

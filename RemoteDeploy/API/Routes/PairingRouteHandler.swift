@@ -69,7 +69,7 @@ final class PairingRouteHandler: @unchecked Sendable {
         do {
             try deviceStore.save(device: device)
         } catch {
-            print("Failed to save paired device: \(error.localizedDescription)")
+            Logger.pairing.error("Failed to save paired device: \(error.localizedDescription, privacy: .public)")
             return .error(status: .internalServerError, message: "Failed to save paired device")
         }
 

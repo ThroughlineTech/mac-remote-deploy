@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import os
 
 // MARK: - App State
 
@@ -371,7 +372,7 @@ struct MenuBarView: View {
                         )
                         appState.serverRunning = true
                     } catch {
-                        print("Server failed to start after build: \(error)")
+                        Logger.server.error("Server failed to start after build: \(error.localizedDescription, privacy: .public)")
                     }
                 }
 
@@ -440,7 +441,7 @@ struct MenuBarView: View {
         do {
             let info = try serviceContainer.ipaImporter.importIPA(from: url, to: slug, serveDirectory: serveDir)
             appState.buildStatus = .success(ipaPath: "\(serveDir)/\(slug)/app.ipa")
-            print("Imported IPA: \(info.bundleID) v\(info.version)")
+            Logger.build.info("Imported IPA: \(info.bundleID, privacy: .public) v\(info.version, privacy: .public)")
         } catch {
             appState.buildStatus = .failure(error: "Import failed: \(error.localizedDescription)")
         }
