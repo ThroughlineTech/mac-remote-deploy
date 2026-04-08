@@ -136,6 +136,7 @@
 		CC4BF28C5FAC3F09804A66A3 /* APITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 796214637A1EED18D4CA60E6 /* APITestSupport.swift */; };
 		CED1C923614AB4183924E740 /* MenuBarHeaderSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1434875890822D7AF8AE9B8 /* MenuBarHeaderSection.swift */; };
 		CEDA1858912760D527816AD7 /* MockSettingsUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CEBDE82839B91C83042D70 /* MockSettingsUpdater.swift */; };
+		CFEF520E716E53876572E190 /* BuildManagerWebSocketIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35622D117AD6952BA2F4E6D7 /* BuildManagerWebSocketIntegrationTests.swift */; };
 		D1EEC512B80AECC9EFABB44C /* ProjectConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9646E680B180ADA2F5925EE7 /* ProjectConfig.swift */; };
 		D33B964D11AF1C4F8C4CA077 /* BuildRouteHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10C0130D84B81C211BA76B3A /* BuildRouteHandlerTests.swift */; };
 		D50CBB9E697621C5571F2D2B /* PushNotifSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B671A818A6D0055CA3DEB4B /* PushNotifSetupStep.swift */; };
@@ -241,6 +242,7 @@
 		31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TailscaleProviderProtocol.swift; sourceTree = "<group>"; };
 		33821A2C8332679830A7E259 /* SettingsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsData.swift; sourceTree = "<group>"; };
 		34E4842FF711887F892FBE43 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		35622D117AD6952BA2F4E6D7 /* BuildManagerWebSocketIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildManagerWebSocketIntegrationTests.swift; sourceTree = "<group>"; };
 		36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStoreTests.swift; sourceTree = "<group>"; };
 		385627CB8E51DED915370DA0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		39785392E7242E37EB26B3DD /* NotificationBuildTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationBuildTrigger.swift; sourceTree = "<group>"; };
@@ -508,6 +510,7 @@
 		3788075EE6B6F3EBD789E239 /* RemoteDeployIntegrationTests */ = {
 			isa = PBXGroup;
 			children = (
+				35622D117AD6952BA2F4E6D7 /* BuildManagerWebSocketIntegrationTests.swift */,
 				22813FB29C8DC7BD7FF11D34 /* HTTPServerIntegrationTests.swift */,
 				13C04B540D1201D07398DD7C /* WebSocketUpgradeTests.swift */,
 			);
@@ -1004,6 +1007,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CFEF520E716E53876572E190 /* BuildManagerWebSocketIntegrationTests.swift in Sources */,
 				159C7B880F06DB98275651EF /* HTTPServerIntegrationTests.swift in Sources */,
 				B3240FF5DD2384BA8F8B07B3 /* WebSocketUpgradeTests.swift in Sources */,
 			);
