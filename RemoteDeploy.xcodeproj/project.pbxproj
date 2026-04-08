@@ -40,6 +40,7 @@
 		287EB0837CADBA2532157311 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385627CB8E51DED915370DA0 /* AppDelegate.swift */; };
 		2B0BF259F00A371C281BA991 /* AuthMiddleware.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CC69B6268BBCA0C4D86BC09 /* AuthMiddleware.swift */; };
 		2CE1E84B0EC4F8F753E4F5F7 /* BuildCanceling.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5090D5CB8BFD09DCC9AF3DF /* BuildCanceling.swift */; };
+		2EB4CD0AF049FE6B3BD54DEB /* ProjectRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0AEEDC8F15C4934D6BADE90 /* ProjectRowView.swift */; };
 		2F0BFA3D886DE2EBF4AC80FE /* MockBuildHistoryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B66C9243801D8E8F27DB0DA /* MockBuildHistoryProvider.swift */; };
 		2F6A5D04517CDA2A9422332A /* PairingRouteHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7B1BFE416750BFF523C941 /* PairingRouteHandlerTests.swift */; };
 		2F959B8525C5B500ADE39E86 /* BuildManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF49CC1B4C8288E434E8E7C /* BuildManager.swift */; };
@@ -69,6 +70,7 @@
 		5BBDB4867CCE30B7DF52D071 /* NIOSSL in Frameworks */ = {isa = PBXBuildFile; productRef = DB64D8F4C5AB01C06783592B /* NIOSSL */; };
 		5EE1ECC8FA02C4BF3F03B20C /* MockBuildStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE018321B14C64CF18E5C8E /* MockBuildStatusProvider.swift */; };
 		610F3644E76DFA69BE68CE2D /* RemoteDeployErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */; };
+		616EA884C2FBD6C0C0B32107 /* ServerStatusSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3ADDD5C01113424BFAC47E /* ServerStatusSection.swift */; };
 		63132E57B18D20DDE8A98BD4 /* AppStateBridgeBuildStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 023DF562D6F2A60FAA292BA9 /* AppStateBridgeBuildStatusProvider.swift */; };
 		63BEFD3F1FC3D4A767BD073B /* PushNotificationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2342DB5A4C4015ED1C599FBC /* PushNotificationConfig.swift */; };
 		649F43875E37FDF25B29E9E6 /* SchemeDetecting.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2983DAB3014C1F8C84AA016 /* SchemeDetecting.swift */; };
@@ -317,6 +319,7 @@
 		C9003DF3FC9CE4215B3B4F10 /* FilesystemRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesystemRouteHandlerTests.swift; sourceTree = "<group>"; };
 		CA7B1BFE416750BFF523C941 /* PairingRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingRouteHandlerTests.swift; sourceTree = "<group>"; };
 		CB98A54ABF32CDC31FEDD180 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		CF3ADDD5C01113424BFAC47E /* ServerStatusSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStatusSection.swift; sourceTree = "<group>"; };
 		CFDE9C59AB9FE5A6C7748558 /* XcodebuildSchemeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodebuildSchemeDetector.swift; sourceTree = "<group>"; };
 		D12338C042E71B355CC5F515 /* MenuBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarView.swift; sourceTree = "<group>"; };
 		D3C9ED1D87408F37869FE473 /* RemoteDeployCompanion.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = RemoteDeployCompanion.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -341,6 +344,7 @@
 		EB638F664A67F4373FEA58F9 /* ProwlNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProwlNotifier.swift; sourceTree = "<group>"; };
 		F056742F1EF33DD1800602E6 /* APIRouterFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRouterFactoryTests.swift; sourceTree = "<group>"; };
 		F05C642D4B8B63168A4D758B /* AppDelegateStartupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegateStartupTests.swift; sourceTree = "<group>"; };
+		F0AEEDC8F15C4934D6BADE90 /* ProjectRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectRowView.swift; sourceTree = "<group>"; };
 		F33445691F6AFF747BA18FA3 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		F33646F0F177BC5050D8DE93 /* BuildResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildResult.swift; sourceTree = "<group>"; };
 		F3BAFD6343E5678C93000CE0 /* InstallTrackerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallTrackerTests.swift; sourceTree = "<group>"; };
@@ -450,7 +454,9 @@
 			children = (
 				8DE9BC52C3A4F05854326E33 /* BuildControlsSection.swift */,
 				E1434875890822D7AF8AE9B8 /* MenuBarHeaderSection.swift */,
+				F0AEEDC8F15C4934D6BADE90 /* ProjectRowView.swift */,
 				4AA1CAA0F988BF9D0C969ED9 /* ProjectsListSection.swift */,
+				CF3ADDD5C01113424BFAC47E /* ServerStatusSection.swift */,
 				016632EFDE9FCDC5266E2EC0 /* UtilitiesSection.swift */,
 			);
 			path = MenuBar;
@@ -1039,6 +1045,7 @@
 				F99C13779BEF634640DA01C3 /* PairingRouteHandler.swift in Sources */,
 				D1EEC512B80AECC9EFABB44C /* ProjectConfig.swift in Sources */,
 				3568DECAAEB32EB450772544 /* ProjectFormView.swift in Sources */,
+				2EB4CD0AF049FE6B3BD54DEB /* ProjectRowView.swift in Sources */,
 				53C037A8761540A069FF09B6 /* ProjectSetupStep.swift in Sources */,
 				1C21B0166623BB49A3B94F22 /* ProjectSetupValidators.swift in Sources */,
 				BC644904AAC8040719D72531 /* ProjectStoring.swift in Sources */,
@@ -1054,6 +1061,7 @@
 				A80FF6755F6D189BF81B4CB9 /* RemoteDeployApp.swift in Sources */,
 				649F43875E37FDF25B29E9E6 /* SchemeDetecting.swift in Sources */,
 				D972D686D54D5B87671E071A /* ServerInstallTracker.swift in Sources */,
+				616EA884C2FBD6C0C0B32107 /* ServerStatusSection.swift in Sources */,
 				C7308DB2855727F742BE5D6B /* SettingsData.swift in Sources */,
 				AC62408866EA8A4BB8662703 /* SettingsProviding.swift in Sources */,
 				008DAAB9CBBAF9C0A6A284CE /* SettingsRouteHandler.swift in Sources */,

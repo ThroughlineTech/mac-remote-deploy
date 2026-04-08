@@ -1,13 +1,16 @@
-// The primary menu bar popover. Composes four sections defined under
-// RemoteDeploy/Views/MenuBar/: header, projects, build controls, utilities.
-// TKT-012 decomposed the original 450-line monolith into focused subviews.
+// The primary menu bar popover. Composes five sections defined under
+// RemoteDeploy/Views/MenuBar/: header, server status, projects, build
+// controls, utilities. TKT-012 decomposed the original 450-line monolith;
+// TKT-024 finished the decomposition (split header → ServerStatusSection
+// and extracted ProjectRowView into its own file) to hit the 5-subview,
+// <100-line bar.
 import SwiftUI
 import Foundation
 import RemoteDeployShared
 
 /// The primary menu bar dropdown displayed when the user clicks the status item.
 /// Provides a consolidated view of server status, project list, build controls,
-/// and navigation to settings/setup. Actual UI lives in the four MenuBar/ subviews.
+/// and navigation to settings/setup. Actual UI lives in the five MenuBar/ subviews.
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var serviceContainer: ServiceContainer
@@ -17,6 +20,7 @@ struct MenuBarView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             MenuBarHeaderSection()
+            ServerStatusSection()
             Divider().padding(.vertical, 4)
             ProjectsListSection()
             Divider().padding(.vertical, 4)
@@ -62,7 +66,6 @@ struct MenuBarView: View {
         if let config = notification.userInfo?["configuration"] as? String, !config.isEmpty {
             appState.buildConfiguration = config
         }
-        // Delegate to BuildControlsSection.performBuild via the build manager directly.
         guard let project = appState.selectedProject else { return }
         var buildProject = project
         buildProject.buildConfiguration = appState.buildConfiguration
@@ -77,36 +80,5 @@ struct MenuBarView: View {
                 appState.serverRunning = true
             }
         )
-    }
-}
-
-// MARK: - Project Row View
-
-/// A single row in the projects list showing name and truncated path.
-struct ProjectRowView: View {
-    let project: ProjectConfig
-    let isSelected: Bool
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(project.name)
-                    .font(.subheadline)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                Text(project.projectPath)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.head)
-            }
-            Spacer()
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .font(.caption)
-                    .foregroundColor(.accentColor)
-            }
-        }
-        .padding(.vertical, 2)
-        .contentShape(Rectangle())
     }
 }
