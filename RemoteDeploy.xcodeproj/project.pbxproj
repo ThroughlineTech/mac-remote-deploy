@@ -28,6 +28,7 @@
 		1B63A9D4EE28B3C0AB3BEB54 /* DeferredSettingsUpdaterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD5B495CA2B6248B73639CC /* DeferredSettingsUpdaterTests.swift */; };
 		1BFE1FB1B7F06EE12EDF7418 /* RemoteSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0E84C0CBF2FF90F199DB14 /* RemoteSettingsView.swift */; };
 		1C1D27F97963188F2AE05F34 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C195939BE1405B9D18634CB /* SettingsView.swift */; };
+		1C21B0166623BB49A3B94F22 /* ProjectSetupValidators.swift in Sources */ = {isa = PBXBuildFile; fileRef = B80F03E0294CBF8288882CAC /* ProjectSetupValidators.swift */; };
 		1E4AC5A3F915EE5CE1FA6FED /* InstallTracking.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7E9A949DBC530810FF7E1CC /* InstallTracking.swift */; };
 		20A29FE4187D1F286F551BDE /* AppStateStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4439D3D0B8C531CE19EF15 /* AppStateStatusProvider.swift */; };
 		218FE184848F1564B00BC4B8 /* NIODeployServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59964712D89DB2DA34241AD5 /* NIODeployServer.swift */; };
@@ -153,6 +154,7 @@
 		EA38A66DA644542DF8504687 /* JSONBuildHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4202CB6C40000D21D6D29C23 /* JSONBuildHistoryStore.swift */; };
 		EBBFEFEBC886A23A76FFCD08 /* MockTailscaleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E031F1B2F7D8B34B91EB95F /* MockTailscaleProvider.swift */; };
 		F11BA351A6F23B6BEEE311E6 /* RemoteDeployCompanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */; };
+		F1EC3A6E07BBBCBA2C07C829 /* ProjectSetupValidatorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B36401330FE8925DC8182F2F /* ProjectSetupValidatorsTests.swift */; };
 		F33309DA202DB2E0982030E1 /* ManifestGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */; };
 		F6CDDEAEC7248F4E6128A1CE /* InstallRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29195CB416816AB0185DDF26 /* InstallRecord.swift */; };
 		F812611F3D7F1F8C74BDE55F /* TailscaleProviderProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */; };
@@ -304,8 +306,10 @@
 		B0C98E31F3DA0E3F06382248 /* InstallHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallHistoryView.swift; sourceTree = "<group>"; };
 		B223A9835076867EE2BCA306 /* MockProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockProjectStore.swift; sourceTree = "<group>"; };
 		B2983DAB3014C1F8C84AA016 /* SchemeDetecting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemeDetecting.swift; sourceTree = "<group>"; };
+		B36401330FE8925DC8182F2F /* ProjectSetupValidatorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupValidatorsTests.swift; sourceTree = "<group>"; };
 		B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEngineProtocol.swift; sourceTree = "<group>"; };
 		B5C83442A51AD2C39C5D7FC5 /* APIRouterFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRouterFactory.swift; sourceTree = "<group>"; };
+		B80F03E0294CBF8288882CAC /* ProjectSetupValidators.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupValidators.swift; sourceTree = "<group>"; };
 		B976E30E8F5281A40D7E129F /* StatusProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusProviding.swift; sourceTree = "<group>"; };
 		C2B144D783065CC4AC0F575C /* DevicesRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesRouteHandlerTests.swift; sourceTree = "<group>"; };
 		C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildEngineCancelTests.swift; sourceTree = "<group>"; };
@@ -606,6 +610,7 @@
 				4AAE0C1992386E96FB314963 /* JSONBuildHistoryStoreTests.swift */,
 				DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */,
 				03D95AAD49CC7881D3034C63 /* ProjectConfigTests.swift */,
+				B36401330FE8925DC8182F2F /* ProjectSetupValidatorsTests.swift */,
 				36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */,
 				D7FE9D88C0571571898E928C /* PushNotifierTests.swift */,
 				994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */,
@@ -705,6 +710,7 @@
 			children = (
 				DABE1229131FA24AB6F6890B /* CertificateSetupStep.swift */,
 				EA5A883F3DF84EB00EE19999 /* ProjectSetupStep.swift */,
+				B80F03E0294CBF8288882CAC /* ProjectSetupValidators.swift */,
 				0B671A818A6D0055CA3DEB4B /* PushNotifSetupStep.swift */,
 				F7B83C2E31BD5EF9FA3AEE7A /* SetupCompleteStep.swift */,
 				1C437FE67443E50301B2FBC1 /* TailscaleSetupStep.swift */,
@@ -1034,6 +1040,7 @@
 				D1EEC512B80AECC9EFABB44C /* ProjectConfig.swift in Sources */,
 				3568DECAAEB32EB450772544 /* ProjectFormView.swift in Sources */,
 				53C037A8761540A069FF09B6 /* ProjectSetupStep.swift in Sources */,
+				1C21B0166623BB49A3B94F22 /* ProjectSetupValidators.swift in Sources */,
 				BC644904AAC8040719D72531 /* ProjectStoring.swift in Sources */,
 				3D1C555CCC197E1BFF8FDD53 /* ProjectsListSection.swift in Sources */,
 				C245E317A246E70B1BFA57E5 /* ProjectsRouteHandler.swift in Sources */,
@@ -1103,6 +1110,7 @@
 				EBBFEFEBC886A23A76FFCD08 /* MockTailscaleProvider.swift in Sources */,
 				2F6A5D04517CDA2A9422332A /* PairingRouteHandlerTests.swift in Sources */,
 				0499B54ACBC5FBE45FF6FE4F /* ProjectConfigTests.swift in Sources */,
+				F1EC3A6E07BBBCBA2C07C829 /* ProjectSetupValidatorsTests.swift in Sources */,
 				456AB631D8EFB95038C042B7 /* ProjectStoreTests.swift in Sources */,
 				7B6870F10E1F0CD20FEF88F3 /* ProjectsRouteHandlerTests.swift in Sources */,
 				B63331497F3FC2E9F1DDC680 /* PushNotifierTests.swift in Sources */,
