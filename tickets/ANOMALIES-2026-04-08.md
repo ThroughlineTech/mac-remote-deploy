@@ -14,9 +14,9 @@ Second pass (TKT-008, 009, 011, 012, 014, 019, 020, 023) was performed after the
 | TKT-006 | PASS | `closed/` |
 | TKT-007 | PASS | `closed/` |
 | TKT-008 | RESOLVED (TKT-024 `c07d516`) | — |
-| TKT-009 | ANOMALY (pending TKT-024 Commit 5) | `tickets/` |
+| TKT-009 | RESOLVED (TKT-024 `8a28588`) | — |
 | TKT-010 | PASS | `closed/` |
-| TKT-011 | ANOMALY (pending TKT-024 Commit 6) | `tickets/` |
+| TKT-011 | RESOLVED (TKT-024 `396fdb8`) | — |
 | TKT-012 | RESOLVED (TKT-024 `5a5f0ad`) | — |
 | TKT-013 | PASS | `closed/` |
 | TKT-014 | RESOLVED (TKT-024 `a1ca280`) | — |
