@@ -150,12 +150,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         serviceContainer.notificationManager.requestPermission()
 
         // Wire BuildManager's dependencies.
+        // TKT-027: the deploy server (NIODeployServer) also acts as the
+        // BuildEventBroadcasting sink, so live build log lines and status
+        // transitions fan out to subscribed WebSocket clients.
         buildManager.configure(
             buildEngine: serviceContainer.buildEngine,
             deployServer: serviceContainer.deployServer,
             notificationManager: serviceContainer.notificationManager,
             ipaImporter: serviceContainer.ipaImporter,
-            buildHistoryStore: serviceContainer.buildHistoryStore
+            buildHistoryStore: serviceContainer.buildHistoryStore,
+            buildEventBroadcaster: serviceContainer.deployServer as? BuildEventBroadcasting
         )
         buildManager.sendPushNotification = { [serviceContainer] title, message, priority, url in
             await serviceContainer.sendPushNotification(title: title, message: message, priority: priority, url: url)
@@ -325,6 +329,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         configureAPIRouter(on: server, appState: appState, buildManager: buildManager, services: serviceContainer)
 
+        // TKT-027: capture the broadcaster here so the onIPADownload
+        // closure can fan out install events without reaching back
+        // through serviceContainer.
+        let broadcaster = server as? any BuildEventBroadcasting
+
         server.onIPADownload = { [weak appState, serviceContainer] slug, ip, ua in
             Task {
                 await serviceContainer.installTracker.recordInstall(
@@ -336,6 +345,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await MainActor.run {
                     appState?.lastInstall = installs.first
                 }
+                // TKT-027: also fan the install out to WebSocket subscribers.
+                broadcaster?.broadcastInstall(slug: slug, sourceIP: ip)
             }
         }
 
