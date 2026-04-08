@@ -144,22 +144,23 @@ final class KeychainStore {
 
     // MARK: - LAContext authentication
 
-    /// Creates an LAContext and authenticates the user via biometrics (with
-    /// passcode fallback). Returns the authenticated context on success, nil on
-    /// failure or cancellation. One prompt per call.
+    /// Creates an LAContext and authenticates the user.
+    ///
+    /// Uses `.deviceOwnerAuthentication` — Apple's standard "biometrics first,
+    /// automatic passcode fallback on failure" pattern. On a Face-ID-enrolled
+    /// device, iOS shows Face ID first; if it fails (cover face, look away,
+    /// mismatch) iOS automatically transitions to the passcode screen without
+    /// any user action. This is the same pattern used by Apple Wallet, locked
+    /// Notes, and Keychain Access.
+    ///
+    /// Returns the authenticated context on success, nil on user-cancel or
+    /// double-failure. TKT-023.
     private static func authenticatedContext() async -> LAContext? {
         let context = LAContext()
         context.localizedFallbackTitle = "Use Passcode"
 
-        var policyError: NSError?
-        // Prefer biometrics with passcode fallback. If biometrics aren't available
-        // (e.g. not enrolled), .deviceOwnerAuthentication still offers passcode.
-        let policy: LAPolicy = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &policyError)
-            ? .deviceOwnerAuthenticationWithBiometrics
-            : .deviceOwnerAuthentication
-
         return await withCheckedContinuation { continuation in
-            context.evaluatePolicy(policy, localizedReason: authReason) { success, error in
+            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: authReason) { success, error in
                 if success {
                     continuation.resume(returning: context)
                 } else {
