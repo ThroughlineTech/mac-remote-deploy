@@ -126,7 +126,10 @@ struct RemoteDeployApp: App {
                 appState.selectedProjectID = first.id
             }
         } catch {
-            print("Failed to load projects: \(error.localizedDescription)")
+            // Wrap module-specific errors into the unified boundary type so TKT-007 can plug
+            // this directly into AppState.error when it lands.
+            let boundaryError = RemoteDeployError(wrapping: error)
+            print("Failed to load projects: \(boundaryError.localizedDescription)")
         }
     }
 
@@ -153,7 +156,8 @@ struct RemoteDeployApp: App {
             if let localIP = QRCodeGenerator.localIPAddress() {
                 appState.serverURL = "http://\(localIP):8080"
             }
-            print("Tailscale check failed: \(error.localizedDescription)")
+            let boundaryError = RemoteDeployError.networkError(reason: error.localizedDescription)
+            print("Tailscale check failed: \(boundaryError.localizedDescription)")
         }
     }
 
@@ -187,7 +191,8 @@ struct RemoteDeployApp: App {
                 appState.serverURL = "https://\(settings.hostname):\(settings.serverPort)"
             }
         } catch {
-            print("Failed to load settings: \(error.localizedDescription)")
+            let boundaryError = RemoteDeployError(wrapping: error)
+            print("Failed to load settings: \(boundaryError.localizedDescription)")
         }
     }
 
@@ -213,7 +218,8 @@ struct RemoteDeployApp: App {
                 ofItemAtPath: Self.settingsFilePath
             )
         } catch {
-            print("Failed to save settings: \(error.localizedDescription)")
+            let boundaryError = RemoteDeployError(wrapping: error)
+            print("Failed to save settings: \(boundaryError.localizedDescription)")
         }
     }
 
@@ -270,7 +276,9 @@ struct RemoteDeployApp: App {
                     hostname: appState.hostname
                 )
             } catch {
-                print("Server failed to start: \(error)")
+                // Wrap as serverStartFailed so TKT-007 can surface this in the menu bar UI.
+                let boundaryError = RemoteDeployError.serverStartFailed(reason: error.localizedDescription)
+                print("Server failed to start: \(boundaryError.localizedDescription) — \(boundaryError.failureReason ?? "")")
             }
         }
     }
