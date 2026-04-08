@@ -99,6 +99,7 @@
 		9B21B84DA504D8DD613216E1 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309133F494431F7EC9140CCD /* SplashView.swift */; };
 		9D8B460D454E8F79A0D29218 /* PairDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E998EFEF8906090CC462E132 /* PairDeviceView.swift */; };
 		9DB0609CD66AEF99E28639CB /* StatusProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = B976E30E8F5281A40D7E129F /* StatusProviding.swift */; };
+		A1B4F601A2F371E50C216107 /* BuildHistoryStoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD6D282869D123B392EAB0D3 /* BuildHistoryStoring.swift */; };
 		A49E3C3BBB1F4F3DCF642969 /* InstallsRouteHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C9700FCC775785F187AFE46 /* InstallsRouteHandlerTests.swift */; };
 		A6CC57CC2F60E25A03C5CED9 /* EmptyBuildHistoryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28A4FC3A772764F2BD197F8B /* EmptyBuildHistoryProvider.swift */; };
 		A80FF6755F6D189BF81B4CB9 /* RemoteDeployApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A6D36C679876DC789D03BA2 /* RemoteDeployApp.swift */; };
@@ -144,6 +145,7 @@
 		E821FED832FFEE25C0AEA3BE /* pwa in Resources */ = {isa = PBXBuildFile; fileRef = 06F17616046388C32C137E57 /* pwa */; };
 		E889EE9E4D517706F6745D71 /* BuildControlsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DE9BC52C3A4F05854326E33 /* BuildControlsSection.swift */; };
 		E9BD2D4F02832B41482A8803 /* WebSocketClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CD0EFFB2E04CB922D5E2A6C /* WebSocketClient.swift */; };
+		EA38A66DA644542DF8504687 /* JSONBuildHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4202CB6C40000D21D6D29C23 /* JSONBuildHistoryStore.swift */; };
 		EBBFEFEBC886A23A76FFCD08 /* MockTailscaleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E031F1B2F7D8B34B91EB95F /* MockTailscaleProvider.swift */; };
 		F11BA351A6F23B6BEEE311E6 /* RemoteDeployCompanionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */; };
 		F33309DA202DB2E0982030E1 /* ManifestGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */; };
@@ -227,6 +229,7 @@
 		3B2B0FECA392A23BF8455185 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
 		3F88DC1A592D457DDBA4360A /* DeployServerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeployServerProtocol.swift; sourceTree = "<group>"; };
 		401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallPageGeneratorTests.swift; sourceTree = "<group>"; };
+		4202CB6C40000D21D6D29C23 /* JSONBuildHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONBuildHistoryStore.swift; sourceTree = "<group>"; };
 		4339E627499951F26144AC1B /* PairedDeviceStoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairedDeviceStoring.swift; sourceTree = "<group>"; };
 		47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDeployCompanionApp.swift; sourceTree = "<group>"; };
 		48677B76639F8593AF6C0336 /* BuildLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildLogView.swift; sourceTree = "<group>"; };
@@ -309,6 +312,7 @@
 		D91B9C5E6B3976E7E1C65FBC /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		DA955EAB30E67230572C98B7 /* WebSocketHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketHandler.swift; sourceTree = "<group>"; };
 		DABE1229131FA24AB6F6890B /* CertificateSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertificateSetupStep.swift; sourceTree = "<group>"; };
+		DD6D282869D123B392EAB0D3 /* BuildHistoryStoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildHistoryStoring.swift; sourceTree = "<group>"; };
 		DEA47DFCA9B5079A893AEE6A /* ProjectStoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStoring.swift; sourceTree = "<group>"; };
 		DEBB5893B7D475E4702B2405 /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
 		DEFE237F3F6262EABFA04D8A /* SettingsRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouteHandlerTests.swift; sourceTree = "<group>"; };
@@ -608,6 +612,7 @@
 				7656ADD5088EE62CEE2EDA27 /* HTTPHandler.swift */,
 				232FBCD51AAB989747FBCD32 /* InstallPageGenerator.swift */,
 				90AA426A4B6723150D61BF97 /* IPAImporter.swift */,
+				4202CB6C40000D21D6D29C23 /* JSONBuildHistoryStore.swift */,
 				9FF6629262E737F32BF1B707 /* JSONPairedDeviceStore.swift */,
 				7BCC1DD0A91B6D40F002CFF9 /* ManifestGenerator.swift */,
 				59964712D89DB2DA34241AD5 /* NIODeployServer.swift */,
@@ -638,6 +643,7 @@
 			isa = PBXGroup;
 			children = (
 				B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */,
+				DD6D282869D123B392EAB0D3 /* BuildHistoryStoring.swift */,
 				92BCC65C66A3D556B6D32ADF /* CertificateProviding.swift */,
 				3F88DC1A592D457DDBA4360A /* DeployServerProtocol.swift */,
 				71692AD69CDCB450DA1618BE /* InstallPageGenerating.swift */,
@@ -970,6 +976,7 @@
 				E889EE9E4D517706F6745D71 /* BuildControlsSection.swift in Sources */,
 				D8042E38E7C31561D24712D9 /* BuildEngineProtocol.swift in Sources */,
 				8DFA9AD9743E35A8B601CB12 /* BuildHistoryProviding.swift in Sources */,
+				A1B4F601A2F371E50C216107 /* BuildHistoryStoring.swift in Sources */,
 				DDB9A247587E7B578CDBD33A /* BuildLogView.swift in Sources */,
 				FD3204C72009CF17A398B303 /* BuildManager.swift in Sources */,
 				96AEC7C7D68921DC5C08B5D0 /* BuildResult.swift in Sources */,
@@ -991,6 +998,7 @@
 				F6CDDEAEC7248F4E6128A1CE /* InstallRecord.swift in Sources */,
 				1E4AC5A3F915EE5CE1FA6FED /* InstallTracking.swift in Sources */,
 				0DDC9A9AB7E22338D004E220 /* InstallsRouteHandler.swift in Sources */,
+				EA38A66DA644542DF8504687 /* JSONBuildHistoryStore.swift in Sources */,
 				823E3790257BCF616C9910DD /* JSONPairedDeviceStore.swift in Sources */,
 				C9701C3F02B92BF7669E2CC0 /* Logging.swift in Sources */,
 				5906E3FE183F04C9A4C4C7C5 /* ManifestGenerating.swift in Sources */,

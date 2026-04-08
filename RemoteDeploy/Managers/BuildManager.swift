@@ -51,6 +51,9 @@ final class BuildManager: ObservableObject {
     /// IPA importer for the "Import IPA..." menu action.
     var ipaImporter: IPAImporter?
 
+    /// Persistent store for completed build records. TKT-008.
+    private var buildHistoryStore: (any BuildHistoryStoring)?
+
     // MARK: - Setup
 
     /// Wires in the dependencies this manager needs. Called once at app launch.
@@ -58,12 +61,14 @@ final class BuildManager: ObservableObject {
         buildEngine: any BuildEngineProtocol,
         deployServer: any DeployServerProtocol,
         notificationManager: NotificationManager,
-        ipaImporter: IPAImporter
+        ipaImporter: IPAImporter,
+        buildHistoryStore: any BuildHistoryStoring
     ) {
         self.buildEngine = buildEngine
         self.deployServer = deployServer
         self.notificationManager = notificationManager
         self.ipaImporter = ipaImporter
+        self.buildHistoryStore = buildHistoryStore
     }
 
     // MARK: - Build Orchestration
@@ -117,7 +122,7 @@ final class BuildManager: ObservableObject {
                 let endTime = Date()
                 logTask.cancel()
                 buildStatus = .success(ipaPath: ipaPath)
-                lastBuildResult = BuildResult(
+                let result = BuildResult(
                     id: UUID(),
                     projectID: project.id,
                     success: true,
@@ -129,6 +134,8 @@ final class BuildManager: ObservableObject {
                     version: nil,
                     buildNumber: nil
                 )
+                lastBuildResult = result
+                buildHistoryStore?.append(result)
 
                 // Register project with deploy server and start server if needed.
                 deployServer.registerProject(project)
@@ -163,7 +170,7 @@ final class BuildManager: ObservableObject {
                 let endTime = Date()
                 logTask.cancel()
                 buildStatus = .failure(error: error.localizedDescription)
-                lastBuildResult = BuildResult(
+                let result = BuildResult(
                     id: UUID(),
                     projectID: project.id,
                     success: false,
@@ -175,6 +182,8 @@ final class BuildManager: ObservableObject {
                     version: nil,
                     buildNumber: nil
                 )
+                lastBuildResult = result
+                buildHistoryStore?.append(result)
 
                 notificationManager.notifyBuildFailure(
                     projectName: project.name,

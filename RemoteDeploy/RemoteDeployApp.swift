@@ -101,7 +101,8 @@ struct RemoteDeployApp: App {
             buildEngine: serviceContainer.buildEngine,
             deployServer: serviceContainer.deployServer,
             notificationManager: serviceContainer.notificationManager,
-            ipaImporter: serviceContainer.ipaImporter
+            ipaImporter: serviceContainer.ipaImporter,
+            buildHistoryStore: serviceContainer.buildHistoryStore
         )
         buildManager.sendPushNotification = { [serviceContainer] title, message, priority, url in
             await serviceContainer.sendPushNotification(title: title, message: message, priority: priority, url: url)
@@ -322,7 +323,7 @@ struct RemoteDeployApp: App {
             buildTrigger: NotificationBuildTrigger(projectStore: services.projectStore),
             buildStatus: AppStateBridgeBuildStatusProvider(bridge: bridge),
             buildCanceler: NoopBuildCanceler(),
-            buildHistory: EmptyBuildHistoryProvider(),
+            buildHistory: EmptyBuildHistoryProvider(store: services.buildHistoryStore),
             settingsProvider: AppStateBridgeSettingsProvider(bridge: bridge),
             settingsUpdater: DeferredSettingsUpdater(),
             serverName: Host.current().localizedName ?? "Mac"
@@ -376,6 +377,9 @@ final class ServiceContainer: ObservableObject {
     /// Storage for paired companion devices.
     let pairedDeviceStore: any PairedDeviceStoring
 
+    /// Persistent store for the last N completed build results. TKT-008.
+    let buildHistoryStore: any BuildHistoryStoring
+
     /// QR code generator for device pairing.
     let qrCodeGenerator: QRCodeGenerator
 
@@ -405,6 +409,7 @@ final class ServiceContainer: ObservableObject {
         self.pushNotifiers = []
         self.ipaImporter = IPAImporter()
         self.pairedDeviceStore = JSONPairedDeviceStore()
+        self.buildHistoryStore = JSONBuildHistoryStore()
         self.qrCodeGenerator = QRCodeGenerator()
         self.bonjourAdvertiser = BonjourAdvertiser()
     }
