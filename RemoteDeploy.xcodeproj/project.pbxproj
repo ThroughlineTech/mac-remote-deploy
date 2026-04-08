@@ -78,6 +78,7 @@
 		6A5A61018B20ADA6DD71491D /* InstallTrackerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3BAFD6343E5678C93000CE0 /* InstallTrackerTests.swift */; };
 		6ABB387F26712A7861105E4E /* StatusRouteHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D2818AE9DDCDA8AA04E36AE /* StatusRouteHandlerTests.swift */; };
 		6B1DBFE9301284D7EFDA226B /* MockPairedDeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 098613ACF27F4D70DA77D355 /* MockPairedDeviceStore.swift */; };
+		6C23FB08464B26781081AD76 /* BuildEventBroadcasting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F7E7CA8D909FC593594BB4E /* BuildEventBroadcasting.swift */; };
 		6F0BBDE9AC635FF4F1068B97 /* ConnectionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9796786DAAB99C929734C0A8 /* ConnectionManager.swift */; };
 		6F90C3D743B618438E697EE1 /* MockDeployServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3CFA7588BD9D19BBF95BF0F /* MockDeployServer.swift */; };
 		70A76E24FDF4C330FB87216C /* SetupCompleteStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7B83C2E31BD5EF9FA3AEE7A /* SetupCompleteStep.swift */; };
@@ -162,6 +163,7 @@
 		F6CDDEAEC7248F4E6128A1CE /* InstallRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29195CB416816AB0185DDF26 /* InstallRecord.swift */; };
 		F812611F3D7F1F8C74BDE55F /* TailscaleProviderProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31861C51E3D13CB6400BCE71 /* TailscaleProviderProtocol.swift */; };
 		F99C13779BEF634640DA01C3 /* PairingRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 222E4A0816DEF5C1D9DEB3EE /* PairingRouteHandler.swift */; };
+		FAFC1EBB49DEFC57E1EFE888 /* MockBuildEventBroadcaster.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9D5B2A4147785B5A9FA2AD7 /* MockBuildEventBroadcaster.swift */; };
 		FC2F6D861481C7A500A68888 /* XcodeBuildEngineCancelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */; };
 		FC4274EA8184A79AC0993DCD /* CertificateSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = DABE1229131FA24AB6F6890B /* CertificateSetupStep.swift */; };
 		FD3204C72009CF17A398B303 /* BuildManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5864C52F2776A20414E93C79 /* BuildManager.swift */; };
@@ -258,6 +260,7 @@
 		4D243FF3F39A57458A1ACE31 /* ProjectListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectListView.swift; sourceTree = "<group>"; };
 		4E031F1B2F7D8B34B91EB95F /* MockTailscaleProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTailscaleProvider.swift; sourceTree = "<group>"; };
 		4F551EA6D97CE1FBD36A73C1 /* PushNotifHelpPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifHelpPopover.swift; sourceTree = "<group>"; };
+		4F7E7CA8D909FC593594BB4E /* BuildEventBroadcasting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEventBroadcasting.swift; sourceTree = "<group>"; };
 		4FE018321B14C64CF18E5C8E /* MockBuildStatusProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildStatusProvider.swift; sourceTree = "<group>"; };
 		558DD3356CFB9F90A420C6DF /* MockBuildTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildTrigger.swift; sourceTree = "<group>"; };
 		56053E0D824141AE58369035 /* MockSchemeDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockSchemeDetector.swift; sourceTree = "<group>"; };
@@ -353,6 +356,7 @@
 		F435987DA2280FC6218ADA10 /* MockBuildCanceler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildCanceler.swift; sourceTree = "<group>"; };
 		F7B83C2E31BD5EF9FA3AEE7A /* SetupCompleteStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupCompleteStep.swift; sourceTree = "<group>"; };
 		F870159B1150DCAC3BB67AD3 /* ProjectFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectFormView.swift; sourceTree = "<group>"; };
+		F9D5B2A4147785B5A9FA2AD7 /* MockBuildEventBroadcaster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildEventBroadcaster.swift; sourceTree = "<group>"; };
 		FAA40F77DFBF56FBBCE4301E /* FilesystemRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesystemRouteHandler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -671,6 +675,7 @@
 			isa = PBXGroup;
 			children = (
 				B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */,
+				4F7E7CA8D909FC593594BB4E /* BuildEventBroadcasting.swift */,
 				DD6D282869D123B392EAB0D3 /* BuildHistoryStoring.swift */,
 				92BCC65C66A3D556B6D32ADF /* CertificateProviding.swift */,
 				3F88DC1A592D457DDBA4360A /* DeployServerProtocol.swift */,
@@ -732,6 +737,7 @@
 			children = (
 				F435987DA2280FC6218ADA10 /* MockBuildCanceler.swift */,
 				2C2B345C171BB6F51C0366B5 /* MockBuildEngine.swift */,
+				F9D5B2A4147785B5A9FA2AD7 /* MockBuildEventBroadcaster.swift */,
 				5B66C9243801D8E8F27DB0DA /* MockBuildHistoryProvider.swift */,
 				4FE018321B14C64CF18E5C8E /* MockBuildStatusProvider.swift */,
 				558DD3356CFB9F90A420C6DF /* MockBuildTrigger.swift */,
@@ -1010,6 +1016,7 @@
 				2CE1E84B0EC4F8F753E4F5F7 /* BuildCanceling.swift in Sources */,
 				E889EE9E4D517706F6745D71 /* BuildControlsSection.swift in Sources */,
 				D8042E38E7C31561D24712D9 /* BuildEngineProtocol.swift in Sources */,
+				6C23FB08464B26781081AD76 /* BuildEventBroadcasting.swift in Sources */,
 				8DFA9AD9743E35A8B601CB12 /* BuildHistoryProviding.swift in Sources */,
 				A1B4F601A2F371E50C216107 /* BuildHistoryStoring.swift in Sources */,
 				DDB9A247587E7B578CDBD33A /* BuildLogView.swift in Sources */,
@@ -1110,6 +1117,7 @@
 				F33309DA202DB2E0982030E1 /* ManifestGeneratorTests.swift in Sources */,
 				010B6B29BA8403CB27BD347E /* MockBuildCanceler.swift in Sources */,
 				8AC9C0EDD8A39057243D0059 /* MockBuildEngine.swift in Sources */,
+				FAFC1EBB49DEFC57E1EFE888 /* MockBuildEventBroadcaster.swift in Sources */,
 				2F0BFA3D886DE2EBF4AC80FE /* MockBuildHistoryProvider.swift in Sources */,
 				5EE1ECC8FA02C4BF3F03B20C /* MockBuildStatusProvider.swift in Sources */,
 				023D2BFC3CB547D579189E6B /* MockBuildTrigger.swift in Sources */,
