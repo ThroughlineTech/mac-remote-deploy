@@ -356,6 +356,40 @@ xcodebuild test -scheme RemoteDeployIntegrationTests -destination 'platform=macO
 
 ---
 
+## Logging
+
+RemoteDeploy uses Apple's `os.Logger` (unified logging) for all production logs. Both targets are organized by subsystem and category so you can filter to exactly what you care about.
+
+**Subsystems:**
+- `com.remotedeploy.host` — the macOS app
+- `com.remotedeploy.companion` — the iOS companion app
+
+**macOS host categories:** `server`, `api`, `pairing`, `build`, `tailscale`, `storage`, `notifications`, `bonjour`, `ui`
+
+**iOS companion categories:** `pairing`, `api`, `ui`
+
+**Streaming logs from the terminal:**
+
+```sh
+# Everything from the macOS host
+log stream --subsystem com.remotedeploy.host
+
+# Just the API request log lines
+log stream --subsystem com.remotedeploy.host --predicate 'category == "api"'
+
+# Build engine errors only, with debug detail
+log stream --subsystem com.remotedeploy.host --predicate 'category == "build"' --level debug
+
+# iOS companion (when the device is connected)
+log stream --subsystem com.remotedeploy.companion --predicate 'category == "pairing"'
+```
+
+**Console.app:** open Console, click your Mac in the sidebar, and filter the search field with `subsystem:com.remotedeploy.host` or `subsystem:com.remotedeploy.companion`.
+
+**Privacy:** by default `os.Logger` redacts user-identifying values (paths, hostnames, project names) in release builds — they show up as `<private>` in Console unless you've enabled the private-data debug profile. Status codes, HTTP methods, and durations are always public.
+
+---
+
 ## Contributing
 
 Contributions are welcome. Here's how to get started:

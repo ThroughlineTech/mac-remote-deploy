@@ -5,7 +5,8 @@ import SwiftUI
 import os
 import RemoteDeployShared
 
-private let logger = Logger(subsystem: "com.remotedeploy.companion", category: "pairing")
+// Use the shared Logger.pairing extension defined in RemoteDeployCompanion/Logging.swift.
+private let logger = Logger.pairing
 
 /// Manages the connection to a paired RemoteDeploy Mac server.
 @MainActor

@@ -1,5 +1,6 @@
 import SwiftUI
 import Foundation
+import os
 
 // MARK: - Project Setup Step
 
@@ -212,7 +213,7 @@ struct ProjectSetupStep: View {
                     }
                 }
             } catch {
-                print("Build settings detection failed: \(error.localizedDescription)")
+                Logger.build.error("Build settings detection failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -293,7 +294,7 @@ struct ProjectSetupStep: View {
                 await MainActor.run {
                     isDetectingSchemes = false
                 }
-                print("Scheme detection failed: \(error.localizedDescription)")
+                Logger.build.error("Scheme detection failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
@@ -311,7 +312,7 @@ struct ProjectSetupStep: View {
         do {
             try serviceContainer.projectStore.save(project: project)
         } catch {
-            print("Failed to save project: \(error.localizedDescription)")
+            Logger.storage.error("Failed to save project: \(error.localizedDescription, privacy: .public)")
         }
 
         // Add to appState if not already present

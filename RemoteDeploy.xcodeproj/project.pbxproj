@@ -14,6 +14,7 @@
 		036FDDEC04B64DBCF565C7BD /* NIOWebSocket in Frameworks */ = {isa = PBXBuildFile; productRef = 69EB868986FC32E0A6458AA0 /* NIOWebSocket */; };
 		0499B54ACBC5FBE45FF6FE4F /* ProjectConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03D95AAD49CC7881D3034C63 /* ProjectConfigTests.swift */; };
 		0831A0EE47AAEC483A360657 /* BuildControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6536341DB69DEC4E0783F486 /* BuildControlView.swift */; };
+		08475A8BFC1FD94414F4CEC0 /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEBB5893B7D475E4702B2405 /* Logging.swift */; };
 		09D31BA35FDDB486A6C5EE90 /* DeployServerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F88DC1A592D457DDBA4360A /* DeployServerProtocol.swift */; };
 		0D42060EA0BB42473044DA32 /* ManifestGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BCC1DD0A91B6D40F002CFF9 /* ManifestGenerator.swift */; };
 		0DDC9A9AB7E22338D004E220 /* InstallsRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3092237771744E80C980CCA7 /* InstallsRouteHandler.swift */; };
@@ -115,6 +116,7 @@
 		C6D0E4C31AAFC86AE38C8A79 /* AuthMiddlewareTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4CDBCB8C51A6A9D6474C9E /* AuthMiddlewareTests.swift */; };
 		C7308DB2855727F742BE5D6B /* SettingsData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33821A2C8332679830A7E259 /* SettingsData.swift */; };
 		C93B7E6B4EBC92CE8557FBD4 /* DevicesRouteHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2B144D783065CC4AC0F575C /* DevicesRouteHandlerTests.swift */; };
+		C9701C3F02B92BF7669E2CC0 /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D82906145D9CDB3338CFC18 /* Logging.swift */; };
 		C97AC4C1E29984DE8B675E59 /* UserDefaultsProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AE13591182653E83E1529A5 /* UserDefaultsProjectStore.swift */; };
 		CC4BF28C5FAC3F09804A66A3 /* APITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 796214637A1EED18D4CA60E6 /* APITestSupport.swift */; };
 		CEDA1858912760D527816AD7 /* MockSettingsUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3CEBDE82839B91C83042D70 /* MockSettingsUpdater.swift */; };
@@ -180,6 +182,7 @@
 		06F17616046388C32C137E57 /* pwa */ = {isa = PBXFileReference; lastKnownFileType = folder; name = pwa; path = RemoteDeploy/Resources/pwa; sourceTree = SOURCE_ROOT; };
 		098613ACF27F4D70DA77D355 /* MockPairedDeviceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockPairedDeviceStore.swift; sourceTree = "<group>"; };
 		0B671A818A6D0055CA3DEB4B /* PushNotifSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifSetupStep.swift; sourceTree = "<group>"; };
+		0D82906145D9CDB3338CFC18 /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
 		10C0130D84B81C211BA76B3A /* BuildRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildRouteHandlerTests.swift; sourceTree = "<group>"; };
 		12B0BCF29AE933750587F18E /* BuildTriggering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildTriggering.swift; sourceTree = "<group>"; };
 		154315BEE4F2F035E35C3097 /* RemoteDeployIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteDeployIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -294,6 +297,7 @@
 		DA955EAB30E67230572C98B7 /* WebSocketHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketHandler.swift; sourceTree = "<group>"; };
 		DABE1229131FA24AB6F6890B /* CertificateSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertificateSetupStep.swift; sourceTree = "<group>"; };
 		DEA47DFCA9B5079A893AEE6A /* ProjectStoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStoring.swift; sourceTree = "<group>"; };
+		DEBB5893B7D475E4702B2405 /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
 		DEFE237F3F6262EABFA04D8A /* SettingsRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouteHandlerTests.swift; sourceTree = "<group>"; };
 		DF1E54C911A24AC15A89473F /* BuildResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildResultTests.swift; sourceTree = "<group>"; };
 		DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestGeneratorTests.swift; sourceTree = "<group>"; };
@@ -617,6 +621,7 @@
 			children = (
 				CB98A54ABF32CDC31FEDD180 /* Assets.xcassets */,
 				F33445691F6AFF747BA18FA3 /* Info.plist */,
+				0D82906145D9CDB3338CFC18 /* Logging.swift */,
 				783972E0E13988A70F5E76B5 /* RemoteDeploy.entitlements */,
 				6A6D36C679876DC789D03BA2 /* RemoteDeployApp.swift */,
 				FC5FD63F2E06AEEF92CDE763 /* API */,
@@ -692,6 +697,7 @@
 			children = (
 				489A6CB77F32B387688FC39D /* Assets.xcassets */,
 				186DF59BC166A3203704C627 /* Info.plist */,
+				DEBB5893B7D475E4702B2405 /* Logging.swift */,
 				47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */,
 				F270FF736141F30ED08002AC /* Services */,
 				13570E3579B261E6010B5C21 /* ViewModels */,
@@ -946,6 +952,7 @@
 				1E4AC5A3F915EE5CE1FA6FED /* InstallTracking.swift in Sources */,
 				0DDC9A9AB7E22338D004E220 /* InstallsRouteHandler.swift in Sources */,
 				823E3790257BCF616C9910DD /* JSONPairedDeviceStore.swift in Sources */,
+				C9701C3F02B92BF7669E2CC0 /* Logging.swift in Sources */,
 				5906E3FE183F04C9A4C4C7C5 /* ManifestGenerating.swift in Sources */,
 				0D42060EA0BB42473044DA32 /* ManifestGenerator.swift in Sources */,
 				249E98F1EF39325A33D7582D /* MenuBarView.swift in Sources */,
@@ -1055,6 +1062,7 @@
 				6F0BBDE9AC635FF4F1068B97 /* ConnectionManager.swift in Sources */,
 				3A209EC90680437D5F9AD0BB /* InstallHistoryView.swift in Sources */,
 				DA4541B6B11BF92BC6A10562 /* KeychainStore.swift in Sources */,
+				08475A8BFC1FD94414F4CEC0 /* Logging.swift in Sources */,
 				3CD7D0E088ACBC9CC482E417 /* ProjectListView.swift in Sources */,
 				D84BF1DA80310136177ED71F /* QRScannerView.swift in Sources */,
 				F11BA351A6F23B6BEEE311E6 /* RemoteDeployCompanionApp.swift in Sources */,

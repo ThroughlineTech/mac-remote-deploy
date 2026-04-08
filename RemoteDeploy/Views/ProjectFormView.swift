@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 /// Form view for adding or editing a project configuration.
 /// Used both in the settings window and the setup assistant.
@@ -219,7 +220,7 @@ struct ProjectFormView: View {
                     }
                 }
             } catch {
-                print("Build settings detection failed: \(error.localizedDescription)")
+                Logger.build.error("Build settings detection failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 import RemoteDeployShared
 
 /// RemoteDeploy — A macOS menu bar app for one-click iOS app deployment over Tailscale.
@@ -129,7 +130,7 @@ struct RemoteDeployApp: App {
             // Wrap module-specific errors into the unified boundary type so TKT-007 can plug
             // this directly into AppState.error when it lands.
             let boundaryError = RemoteDeployError(wrapping: error)
-            print("Failed to load projects: \(boundaryError.localizedDescription)")
+            Logger.storage.error("Failed to load projects: \(boundaryError.localizedDescription, privacy: .public)")
         }
     }
 
@@ -157,7 +158,7 @@ struct RemoteDeployApp: App {
                 appState.serverURL = "http://\(localIP):8080"
             }
             let boundaryError = RemoteDeployError.networkError(reason: error.localizedDescription)
-            print("Tailscale check failed: \(boundaryError.localizedDescription)")
+            Logger.tailscale.error("Tailscale check failed: \(boundaryError.failureReason ?? "", privacy: .public)")
         }
     }
 
@@ -192,7 +193,7 @@ struct RemoteDeployApp: App {
             }
         } catch {
             let boundaryError = RemoteDeployError(wrapping: error)
-            print("Failed to load settings: \(boundaryError.localizedDescription)")
+            Logger.storage.error("Failed to load settings: \(boundaryError.localizedDescription, privacy: .public)")
         }
     }
 
@@ -219,7 +220,7 @@ struct RemoteDeployApp: App {
             )
         } catch {
             let boundaryError = RemoteDeployError(wrapping: error)
-            print("Failed to save settings: \(boundaryError.localizedDescription)")
+            Logger.storage.error("Failed to save settings: \(boundaryError.localizedDescription, privacy: .public)")
         }
     }
 
@@ -278,7 +279,7 @@ struct RemoteDeployApp: App {
             } catch {
                 // Wrap as serverStartFailed so TKT-007 can surface this in the menu bar UI.
                 let boundaryError = RemoteDeployError.serverStartFailed(reason: error.localizedDescription)
-                print("Server failed to start: \(boundaryError.localizedDescription) — \(boundaryError.failureReason ?? "")")
+                Logger.server.error("Server failed to start: \(boundaryError.failureReason ?? "", privacy: .public)")
             }
         }
     }
@@ -419,7 +420,7 @@ final class ServiceContainer: ObservableObject {
             do {
                 try await notifier.send(title: title, message: message, priority: priority, url: url)
             } catch {
-                print("Push notification failed: \(error.localizedDescription)")
+                Logger.notifications.error("Push notification failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

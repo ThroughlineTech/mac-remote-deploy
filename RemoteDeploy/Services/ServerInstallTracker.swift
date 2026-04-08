@@ -2,6 +2,7 @@
 // records as a JSON file in Application Support. Uses Swift's actor
 // model for thread-safe file access.
 import Foundation
+import os
 
 actor ServerInstallTracker: InstallTracking {
 
@@ -106,7 +107,7 @@ actor ServerInstallTracker: InstallTracking {
             )
         } catch {
             // Log but do not propagate — install tracking is non-critical.
-            print("ServerInstallTracker: failed to write installs: \(error.localizedDescription)")
+            Logger.storage.error("ServerInstallTracker: failed to write installs: \(error.localizedDescription, privacy: .public)")
         }
     }
 

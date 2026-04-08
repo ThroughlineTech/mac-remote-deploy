@@ -2,6 +2,7 @@
 // companion devices on the same local network can discover the Mac
 // without needing to know its IP address or Tailscale hostname.
 import Foundation
+import os
 
 /// Advertises the RemoteDeploy service via Bonjour for local network discovery.
 /// Uses NetService which is designed for pure advertisement without accepting connections.
@@ -108,10 +109,10 @@ final class BonjourAdvertiser: NSObject, @unchecked Sendable, NetServiceDelegate
     // MARK: - NetServiceDelegate
 
     func netServiceDidPublish(_ sender: NetService) {
-        print("Bonjour: advertising as '\(sender.name)' on \(Self.serviceType)")
+        Logger.bonjour.info("Advertising as '\(sender.name, privacy: .private)' on \(Self.serviceType, privacy: .public)")
     }
 
     func netService(_ sender: NetService, didNotPublish errorDict: [String: NSNumber]) {
-        print("Bonjour: advertisement failed: \(errorDict)")
+        Logger.bonjour.error("Advertisement failed: \(errorDict, privacy: .public)")
     }
 }

@@ -2,6 +2,7 @@
 // Uses AVFoundation to detect QR codes and parse the pairing JSON payload.
 import SwiftUI
 import AVFoundation
+import os
 
 /// QR code scanner for pairing with a Mac server.
 struct QRScannerView: View {
@@ -99,7 +100,7 @@ struct QRScannerView: View {
                 return
             } catch {
                 #if DEBUG
-                print("Pairing via Tailscale URL failed: \(error.localizedDescription)")
+                Logger.pairing.error("Pairing via Tailscale URL failed: \(error.localizedDescription, privacy: .public)")
                 #endif
             }
 

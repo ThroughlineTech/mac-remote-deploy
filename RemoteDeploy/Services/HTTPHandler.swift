@@ -10,6 +10,7 @@ import Foundation
 import NIO
 import NIOHTTP1
 import NIOFoundationCompat
+import os
 
 /// Channel handler that processes incoming HTTP/1.1 requests and routes them to the
 /// appropriate response: API endpoints, index page, project install page, OTA manifest,
@@ -40,6 +41,12 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     /// When true, rejects pairing requests over this handler (used for the plain-HTTP listener
     /// to prevent bearer tokens from being transmitted in cleartext).
     var rejectPairingOverHTTP = false
+
+    /// Resolved HTTP response status for the in-flight request, set by each `send*` writer
+    /// (and by `servePWAFile` in the extension file) just before flushing. Read by
+    /// `handleRequest`'s `defer` block to log the request line. Internal so the response
+    /// generators in `NIOResponseGenerator.swift` can update it.
+    var responseStatusForLogging: HTTPResponseStatus?
 
     init(server: NIODeployServer) {
         self.server = server
@@ -89,6 +96,16 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
     /// - Parameter body: The accumulated request body.
     private func handleRequest(context: ChannelHandlerContext, head: HTTPRequestHead, body: Data) {
         let path = head.uri.split(separator: "?").first.map(String.init) ?? head.uri
+
+        // Log request method/path/status/duration on the way out, regardless of which response
+        // writer fired. Status is captured by the writers via responseStatusForLogging.
+        let start = ContinuousClock.now
+        responseStatusForLogging = nil
+        defer {
+            let elapsedMs = (ContinuousClock.now - start).components.attoseconds / 1_000_000_000_000_000
+            let statusCode = responseStatusForLogging?.code ?? 0
+            Logger.api.info("\(head.method.rawValue, privacy: .public) \(path, privacy: .private) -> \(statusCode, privacy: .public) (\(elapsedMs, privacy: .public)ms)")
+        }
 
         // Delegate API requests to the router
         if let router = apiRouter, router.shouldHandle(path: path) {
@@ -176,6 +193,7 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         contentType: String,
         data: Data
     ) {
+        responseStatusForLogging = status
         var buffer = context.channel.allocator.buffer(capacity: data.count)
         buffer.writeBytes(data)
 
@@ -208,6 +226,7 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
         contentType: String,
         body: String
     ) {
+        responseStatusForLogging = status
         let bodyData = Data(body.utf8)
         var buffer = context.channel.allocator.buffer(capacity: bodyData.count)
         buffer.writeBytes(bodyData)
@@ -241,6 +260,7 @@ final class HTTPHandler: ChannelInboundHandler, @unchecked Sendable {
             return
         }
 
+        responseStatusForLogging = .ok
         var buffer = context.channel.allocator.buffer(capacity: fileData.count)
         buffer.writeBytes(fileData)
 

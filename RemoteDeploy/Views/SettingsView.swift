@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import ServiceManagement
+import os
 
 // MARK: - Settings View
 
@@ -153,7 +154,7 @@ struct ServerSettingsTab: View {
                 updateServerURL()
                 requestSaveSettings()
             } catch {
-                print("Hostname detection failed: \(error.localizedDescription)")
+                Logger.tailscale.error("Hostname detection failed: \(error.localizedDescription, privacy: .public)")
             }
             isDetectingHostname = false
         }
@@ -474,7 +475,7 @@ struct GeneralSettingsTab: View {
                     try SMAppService.mainApp.unregister()
                 }
             } catch {
-                print("Failed to \(enabled ? "enable" : "disable") launch at login: \(error.localizedDescription)")
+                Logger.ui.error("Failed to \(enabled ? "enable" : "disable", privacy: .public) launch at login: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
