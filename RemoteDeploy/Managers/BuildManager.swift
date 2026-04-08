@@ -54,6 +54,13 @@ final class BuildManager: ObservableObject {
     /// Persistent store for completed build records. TKT-008.
     private var buildHistoryStore: (any BuildHistoryStoring)?
 
+    /// Optional sink for live build events (log lines + status transitions).
+    /// Set via `configure(...)` to the server's `BuildEventBroadcasting`
+    /// adapter so subscribed WebSocket clients on the companion see
+    /// xcodebuild output in real time. Nil in tests that don't care.
+    /// TKT-027.
+    private var buildEventBroadcaster: (any BuildEventBroadcasting)?
+
     // MARK: - Setup
 
     /// Wires in the dependencies this manager needs. Called once at app launch.
@@ -62,13 +69,26 @@ final class BuildManager: ObservableObject {
         deployServer: any DeployServerProtocol,
         notificationManager: NotificationManager,
         ipaImporter: IPAImporter,
-        buildHistoryStore: any BuildHistoryStoring
+        buildHistoryStore: any BuildHistoryStoring,
+        buildEventBroadcaster: (any BuildEventBroadcasting)? = nil
     ) {
         self.buildEngine = buildEngine
         self.deployServer = deployServer
         self.notificationManager = notificationManager
         self.ipaImporter = ipaImporter
         self.buildHistoryStore = buildHistoryStore
+        self.buildEventBroadcaster = buildEventBroadcaster
+    }
+
+    // MARK: - Status helper
+
+    /// Assigns a new build status and fans it out to the event broadcaster
+    /// in one place, so every transition automatically broadcasts. Use
+    /// this in preference to writing `buildStatus = ...` directly.
+    /// TKT-027.
+    private func setBuildStatus(_ new: BuildStatus) {
+        buildStatus = new
+        buildEventBroadcaster?.broadcastBuildStatus(new)
     }
 
     // MARK: - Build Orchestration
@@ -99,16 +119,23 @@ final class BuildManager: ObservableObject {
         }
 
         Task { @MainActor in
-            buildStatus = .building(progress: "Starting build...")
+            setBuildStatus(.building(progress: "Starting build..."))
             buildLog = ""
 
             // Get the log stream BEFORE starting the build so the continuation is ready.
             let logStream = buildEngine.buildLogStream
 
+            // Capture the broadcaster locally so the inner Task closure
+            // doesn't have to hop back through `self` for every line.
+            // TKT-027: fans each xcodebuild line out to WebSocket
+            // subscribers as it arrives.
+            let broadcaster = buildEventBroadcaster
+
             // Consume build log stream in a background task.
             let logTask = Task { @MainActor in
                 for await line in logStream {
                     buildLog += line + "\n"
+                    broadcaster?.broadcastBuildLog(line)
                 }
             }
 
@@ -121,7 +148,7 @@ final class BuildManager: ObservableObject {
                 let ipaPath = try await buildEngine.build(project: project)
                 let endTime = Date()
                 logTask.cancel()
-                buildStatus = .success(ipaPath: ipaPath)
+                setBuildStatus(.success(ipaPath: ipaPath))
                 let result = BuildResult(
                     id: UUID(),
                     projectID: project.id,
@@ -169,7 +196,7 @@ final class BuildManager: ObservableObject {
             } catch {
                 let endTime = Date()
                 logTask.cancel()
-                buildStatus = .failure(error: error.localizedDescription)
+                setBuildStatus(.failure(error: error.localizedDescription))
                 let result = BuildResult(
                     id: UUID(),
                     projectID: project.id,
@@ -203,12 +230,12 @@ final class BuildManager: ObservableObject {
     /// Updates build status to reflect a successfully imported IPA file.
     /// Used by the "Import IPA..." menu action which bypasses the archive/export pipeline.
     func markImportSucceeded(ipaPath: String) {
-        buildStatus = .success(ipaPath: ipaPath)
+        setBuildStatus(.success(ipaPath: ipaPath))
     }
 
     /// Updates build status to reflect a failed IPA import.
     func markImportFailed(reason: String) {
-        buildStatus = .failure(error: "Import failed: \(reason)")
+        setBuildStatus(.failure(error: "Import failed: \(reason)"))
     }
 
     /// Clears the accumulated build log. Used by the build-log window's Clear button.

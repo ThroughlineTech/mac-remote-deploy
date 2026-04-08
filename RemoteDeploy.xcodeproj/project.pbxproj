@@ -90,6 +90,7 @@
 		781BEB1DA79C908730C34701 /* NIOHTTP1 in Frameworks */ = {isa = PBXBuildFile; productRef = BDBF8EEF824FC2161D84A4C1 /* NIOHTTP1 */; };
 		792434EFEF1642985DE64E0B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 489A6CB77F32B387688FC39D /* Assets.xcassets */; };
 		7B6870F10E1F0CD20FEF88F3 /* ProjectsRouteHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496B150612C0F0E52A65D199 /* ProjectsRouteHandlerTests.swift */; };
+		7D66396D819A965E6D6711CB /* BuildManagerBroadcastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C261765B23D562C44FC9351 /* BuildManagerBroadcastTests.swift */; };
 		823E3790257BCF616C9910DD /* JSONPairedDeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FF6629262E737F32BF1B707 /* JSONPairedDeviceStore.swift */; };
 		82F95CC166C89D53E30B9498 /* APIRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E01ABCFB258D8316A6F3B04 /* APIRouterTests.swift */; };
 		84E44B81ED14A9840DB75345 /* NIOResponseGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0464D1E9EB161D57ECF00BBB /* NIOResponseGenerator.swift */; };
@@ -233,6 +234,7 @@
 		28A4FC3A772764F2BD197F8B /* EmptyBuildHistoryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyBuildHistoryProvider.swift; sourceTree = "<group>"; };
 		29195CB416816AB0185DDF26 /* InstallRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallRecord.swift; sourceTree = "<group>"; };
 		2A0E84C0CBF2FF90F199DB14 /* RemoteSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteSettingsView.swift; sourceTree = "<group>"; };
+		2C261765B23D562C44FC9351 /* BuildManagerBroadcastTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildManagerBroadcastTests.swift; sourceTree = "<group>"; };
 		2C2B345C171BB6F51C0366B5 /* MockBuildEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildEngine.swift; sourceTree = "<group>"; };
 		309133F494431F7EC9140CCD /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		3092237771744E80C980CCA7 /* InstallsRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallsRouteHandler.swift; sourceTree = "<group>"; };
@@ -620,6 +622,7 @@
 			children = (
 				F056742F1EF33DD1800602E6 /* APIRouterFactoryTests.swift */,
 				F05C642D4B8B63168A4D758B /* AppDelegateStartupTests.swift */,
+				2C261765B23D562C44FC9351 /* BuildManagerBroadcastTests.swift */,
 				DF1E54C911A24AC15A89473F /* BuildResultTests.swift */,
 				1AD5B495CA2B6248B73639CC /* DeferredSettingsUpdaterTests.swift */,
 				401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */,
@@ -1112,6 +1115,7 @@
 				CC4BF28C5FAC3F09804A66A3 /* APITestSupport.swift in Sources */,
 				3AFB29C0C5084D77F228F778 /* AppDelegateStartupTests.swift in Sources */,
 				C6D0E4C31AAFC86AE38C8A79 /* AuthMiddlewareTests.swift in Sources */,
+				7D66396D819A965E6D6711CB /* BuildManagerBroadcastTests.swift in Sources */,
 				754206C48F746015A018F469 /* BuildResultTests.swift in Sources */,
 				D33B964D11AF1C4F8C4CA077 /* BuildRouteHandlerTests.swift in Sources */,
 				1B63A9D4EE28B3C0AB3BEB54 /* DeferredSettingsUpdaterTests.swift in Sources */,
