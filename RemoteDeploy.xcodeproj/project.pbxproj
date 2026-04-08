@@ -108,6 +108,7 @@
 		AA65810FF506F20B0442FD42 /* InstallPageGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */; };
 		AC62408866EA8A4BB8662703 /* SettingsProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255ECD576F080DF6FF651C2F /* SettingsProviding.swift */; };
 		B2E1DC71DEFF4511AFF4D184 /* BuildRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */; };
+		B450F190AE379CE7A3EB49C9 /* WebSocketManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB0319FCD8EFF8C73C54A4C /* WebSocketManagerTests.swift */; };
 		B5BBDDF0CDDA8D15998E1D67 /* FilesystemRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA40F77DFBF56FBBCE4301E /* FilesystemRouteHandler.swift */; };
 		B63331497F3FC2E9F1DDC680 /* PushNotifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7FE9D88C0571571898E928C /* PushNotifierTests.swift */; };
 		B6A3E6317012EFB2F0F746B7 /* APIRouterFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F056742F1EF33DD1800602E6 /* APIRouterFactoryTests.swift */; };
@@ -241,6 +242,7 @@
 		4AA1CAA0F988BF9D0C969ED9 /* ProjectsListSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsListSection.swift; sourceTree = "<group>"; };
 		4AE13591182653E83E1529A5 /* UserDefaultsProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsProjectStore.swift; sourceTree = "<group>"; };
 		4B22248C4A19F27D25FEC2A3 /* MockInstallTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockInstallTracker.swift; sourceTree = "<group>"; };
+		4CB0319FCD8EFF8C73C54A4C /* WebSocketManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketManagerTests.swift; sourceTree = "<group>"; };
 		4CDF361E12AFD78F0E5CCAE7 /* install-template.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "install-template.html"; sourceTree = "<group>"; };
 		4D243FF3F39A57458A1ACE31 /* ProjectListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectListView.swift; sourceTree = "<group>"; };
 		4E031F1B2F7D8B34B91EB95F /* MockTailscaleProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockTailscaleProvider.swift; sourceTree = "<group>"; };
@@ -599,6 +601,7 @@
 				36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */,
 				D7FE9D88C0571571898E928C /* PushNotifierTests.swift */,
 				994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */,
+				4CB0319FCD8EFF8C73C54A4C /* WebSocketManagerTests.swift */,
 				C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */,
 				5CCDEDFEDA2820CD165CA1DD /* API */,
 				D1B31D03DE6F82D06FB3BB47 /* Mocks */,
@@ -1094,6 +1097,7 @@
 				610F3644E76DFA69BE68CE2D /* RemoteDeployErrorTests.swift in Sources */,
 				BBBE6BA26787E2374F9C6A2B /* SettingsRouteHandlerTests.swift in Sources */,
 				6ABB387F26712A7861105E4E /* StatusRouteHandlerTests.swift in Sources */,
+				B450F190AE379CE7A3EB49C9 /* WebSocketManagerTests.swift in Sources */,
 				FC2F6D861481C7A500A68888 /* XcodeBuildEngineCancelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
