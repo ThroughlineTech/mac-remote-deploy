@@ -36,6 +36,7 @@
 		253A7DB9B384563DE59ABC69 /* MockSettingsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 240066D56FA517529905F621 /* MockSettingsProvider.swift */; };
 		2740844711D86B9F73A070F5 /* QRCodeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C82B7886011CA021EFA3B01 /* QRCodeGenerator.swift */; };
 		286BC2DE7C33DA2E2A90470A /* CertificateProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92BCC65C66A3D556B6D32ADF /* CertificateProviding.swift */; };
+		287EB0837CADBA2532157311 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385627CB8E51DED915370DA0 /* AppDelegate.swift */; };
 		2B0BF259F00A371C281BA991 /* AuthMiddleware.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CC69B6268BBCA0C4D86BC09 /* AuthMiddleware.swift */; };
 		2CE1E84B0EC4F8F753E4F5F7 /* BuildCanceling.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5090D5CB8BFD09DCC9AF3DF /* BuildCanceling.swift */; };
 		2F0BFA3D886DE2EBF4AC80FE /* MockBuildHistoryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B66C9243801D8E8F27DB0DA /* MockBuildHistoryProvider.swift */; };
@@ -227,6 +228,7 @@
 		33821A2C8332679830A7E259 /* SettingsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsData.swift; sourceTree = "<group>"; };
 		34E4842FF711887F892FBE43 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectStoreTests.swift; sourceTree = "<group>"; };
+		385627CB8E51DED915370DA0 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		39785392E7242E37EB26B3DD /* NotificationBuildTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationBuildTrigger.swift; sourceTree = "<group>"; };
 		3A1994B92AF39E656EAE156B /* BuildStatusProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildStatusProviding.swift; sourceTree = "<group>"; };
 		3B2B0FECA392A23BF8455185 /* QRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerView.swift; sourceTree = "<group>"; };
@@ -667,6 +669,7 @@
 		9FDA166706DF4343A5C1B0E0 /* RemoteDeploy */ = {
 			isa = PBXGroup;
 			children = (
+				385627CB8E51DED915370DA0 /* AppDelegate.swift */,
 				CB98A54ABF32CDC31FEDD180 /* Assets.xcassets */,
 				F33445691F6AFF747BA18FA3 /* Info.plist */,
 				0D82906145D9CDB3338CFC18 /* Logging.swift */,
@@ -972,6 +975,7 @@
 			files = (
 				B90E71A01018EBBD14DF2101 /* APIRouter.swift in Sources */,
 				A90A784C2B7AF77FCAF4EBB3 /* APIRouterFactory.swift in Sources */,
+				287EB0837CADBA2532157311 /* AppDelegate.swift in Sources */,
 				042873A03CD9C322BBCFDEA2 /* AppState.swift in Sources */,
 				63132E57B18D20DDE8A98BD4 /* AppStateBridgeBuildStatusProvider.swift in Sources */,
 				E7D9E0B71005CF3A6BEB7283 /* AppStateBridgeSettingsProvider.swift in Sources */,

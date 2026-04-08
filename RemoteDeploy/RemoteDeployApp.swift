@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import os
 import RemoteDeployShared
 
@@ -6,49 +7,37 @@ import RemoteDeployShared
 ///
 /// This is the app entry point. It creates a menu bar item (no dock icon, no main window)
 /// and manages the app's lifecycle including the HTTPS server, build engine, and settings.
+///
+/// Startup work (settings load, project load, Tailscale check, server start, status polling)
+/// runs from `AppDelegate.applicationDidFinishLaunching(_:)` via `@NSApplicationDelegateAdaptor`
+/// so the server is listening the moment the app finishes launching, NOT when the user
+/// first clicks the menu bar icon. TKT-019.
 @main
 struct RemoteDeployApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var serviceContainer = ServiceContainer()
     @StateObject private var buildManager = BuildManager()
 
-    /// Tracks whether performStartup() has already been called.
-    @State private var hasLaunched = false
-
-    /// The directory where settings.json is stored.
-    private static var settingsDirectory: String {
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first!.path
-        return "\(appSupport)/RemoteDeploy"
-    }
-
-    /// Full path to the settings JSON file.
-    private static var settingsFilePath: String {
-        "\(settingsDirectory)/settings.json"
-    }
+    /// AppDelegate wired up via SwiftUI's @NSApplicationDelegateAdaptor so we can run
+    /// startup logic in `applicationDidFinishLaunching(_:)` — independent of whether
+    /// the user has clicked the menu bar icon yet.
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
+        // Wire state objects into the delegate on every body evaluation. The delegate
+        // itself only triggers startup once per launch, so repeated calls are cheap.
+        let _ = appDelegate.register(
+            appState: appState,
+            serviceContainer: serviceContainer,
+            buildManager: buildManager
+        )
+
         // Menu bar item — the primary (and only) UI entry point
         MenuBarExtra {
             MenuBarView()
                 .environmentObject(appState)
                 .environmentObject(serviceContainer)
                 .environmentObject(buildManager)
-                .task {
-                    // Guard ensures startup runs only once across popover open/close cycles
-                    guard !hasLaunched else { return }
-                    hasLaunched = true
-                    await performStartup()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .startServerRequested)) { _ in
-                    saveSettings()
-                    startServer()
-                }
-                .onReceive(NotificationCenter.default.publisher(for: .saveSettingsRequested)) { _ in
-                    saveSettings()
-                }
         } label: {
             Label("RemoteDeploy", systemImage: appState.menuBarIconName)
         }
@@ -87,265 +76,7 @@ struct RemoteDeployApp: App {
         .windowResizability(.contentMinSize)
         .defaultSize(width: 600, height: 400)
     }
-
-    // MARK: - Startup
-
-    /// Runs once at launch: loads settings, checks Tailscale, loads projects,
-    /// starts the server if configured, and begins periodic status polling.
-    private func performStartup() async {
-        // Request notification permissions
-        serviceContainer.notificationManager.requestPermission()
-
-        // Wire BuildManager's dependencies once we have the service container.
-        buildManager.configure(
-            buildEngine: serviceContainer.buildEngine,
-            deployServer: serviceContainer.deployServer,
-            notificationManager: serviceContainer.notificationManager,
-            ipaImporter: serviceContainer.ipaImporter,
-            buildHistoryStore: serviceContainer.buildHistoryStore
-        )
-        buildManager.sendPushNotification = { [serviceContainer] title, message, priority, url in
-            await serviceContainer.sendPushNotification(title: title, message: message, priority: priority, url: url)
-        }
-
-        // Load persisted settings (cert paths, hostname, push config, etc.)
-        loadSettings()
-
-        // Load saved projects from disk
-        loadSavedProjects()
-
-        // Configure push notifiers from saved config
-        serviceContainer.configurePushNotifiers(from: appState.pushNotificationConfig)
-
-        // Check Tailscale status and detect hostname
-        await checkTailscaleStatus()
-
-        // Start the HTTPS server if certificates are already configured
-        startServer()
-
-        // Show setup assistant if no projects are configured.
-        // Post a notification so the MenuBarView can call openWindow(id:).
-        if appState.projects.isEmpty {
-            NotificationCenter.default.post(name: .openSetupAssistant, object: nil)
-        }
-
-        // Start periodic Tailscale status polling (every 30 seconds)
-        startStatusPolling()
-    }
-
-    /// Loads projects from the persistent store into app state.
-    private func loadSavedProjects() {
-        do {
-            let projects = try serviceContainer.projectStore.loadProjects()
-            appState.projects = projects
-            if let first = projects.first {
-                appState.selectedProjectID = first.id
-            }
-        } catch {
-            let boundaryError = RemoteDeployError(wrapping: error)
-            _appState.wrappedValue.setError(boundaryError)
-            Logger.storage.error("Failed to load projects: \(boundaryError.localizedDescription, privacy: .public)")
-        }
-    }
-
-    /// Queries Tailscale CLI to update connection status and hostname.
-    private func checkTailscaleStatus() async {
-        do {
-            let connected = await serviceContainer.tailscaleProvider.isConnected()
-            appState.tailscaleConnected = connected
-
-            if connected {
-                let hostname = try await serviceContainer.tailscaleProvider.detectHostname()
-                appState.hostname = hostname
-                let port = appState.serverPort
-                appState.serverURL = "https://\(hostname):\(port)"
-            } else {
-                // No Tailscale — use local IP so QR codes and the API still work
-                if let localIP = QRCodeGenerator.localIPAddress() {
-                    appState.serverURL = "http://\(localIP):8080"
-                }
-            }
-        } catch {
-            appState.tailscaleConnected = false
-            // Fall back to local IP
-            if let localIP = QRCodeGenerator.localIPAddress() {
-                appState.serverURL = "http://\(localIP):8080"
-            }
-            let boundaryError = RemoteDeployError.networkError(reason: error.localizedDescription)
-            // Intentionally do NOT set appState.error here — Tailscale not connected is a
-            // normal state (no network, VPN off), not an error the user needs to see as
-            // an alert. Just log it.
-            Logger.tailscale.error("Tailscale check failed: \(boundaryError.failureReason ?? "", privacy: .public)")
-        }
-    }
-
-    /// Polls Tailscale status every 30 seconds using an async Task loop.
-    private func startStatusPolling() {
-        Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
-                await checkTailscaleStatus()
-            }
-        }
-    }
-
-    // MARK: - Settings Persistence
-
-    /// Loads settings from the JSON file on disk and applies them to AppState.
-    private func loadSettings() {
-        let path = Self.settingsFilePath
-        guard FileManager.default.fileExists(atPath: path),
-              let data = FileManager.default.contents(atPath: path) else {
-            return
-        }
-        do {
-            let settings = try JSONDecoder().decode(SettingsData.self, from: data)
-            appState.serverPort = settings.serverPort
-            appState.hostname = settings.hostname
-            appState.certPath = settings.certPath
-            appState.keyPath = settings.keyPath
-            appState.pushNotificationConfig = settings.pushNotificationConfig
-            if !settings.hostname.isEmpty {
-                appState.serverURL = "https://\(settings.hostname):\(settings.serverPort)"
-            }
-        } catch {
-            let boundaryError = RemoteDeployError(wrapping: error)
-            _appState.wrappedValue.setError(boundaryError)
-            Logger.storage.error("Failed to load settings: \(boundaryError.localizedDescription, privacy: .public)")
-        }
-    }
-
-    /// Persists current AppState settings to the JSON file on disk.
-    func saveSettings() {
-        let settings = SettingsData(
-            serverPort: appState.serverPort,
-            hostname: appState.hostname,
-            certPath: appState.certPath,
-            keyPath: appState.keyPath,
-            pushNotificationConfig: appState.pushNotificationConfig
-        )
-        do {
-            let dir = Self.settingsDirectory
-            try FileManager.default.createDirectory(
-                atPath: dir,
-                withIntermediateDirectories: true
-            )
-            let data = try JSONEncoder().encode(settings)
-            try data.write(to: URL(fileURLWithPath: Self.settingsFilePath))
-            try FileManager.default.setAttributes(
-                [.posixPermissions: 0o600],
-                ofItemAtPath: Self.settingsFilePath
-            )
-        } catch {
-            let boundaryError = RemoteDeployError(wrapping: error)
-            _appState.wrappedValue.setError(boundaryError)
-            Logger.storage.error("Failed to save settings: \(boundaryError.localizedDescription, privacy: .public)")
-        }
-    }
-
-    // MARK: - Server Lifecycle
-
-    /// Starts the HTTPS deploy server if certificates are configured and the server is not already running.
-    /// Registers all known projects, wires up the API router, and sets up the IPA download callback.
-    func startServer() {
-        guard !appState.certPath.isEmpty, !appState.keyPath.isEmpty else { return }
-        guard !appState.serverRunning else { return }
-
-        let server = serviceContainer.deployServer
-
-        // Register all known projects so their routes are available
-        for project in appState.projects {
-            server.registerProject(project)
-        }
-        server.setBaseURL(appState.serverURL)
-
-        // Configure the API router for companion device access
-        configureAPIRouter(on: server, appState: appState, buildManager: buildManager, services: serviceContainer)
-
-        // Wire up IPA download callback for install tracking
-        server.onIPADownload = { [weak appState, serviceContainer] slug, ip, ua in
-            Task {
-                await serviceContainer.installTracker.recordInstall(
-                    projectName: slug,
-                    sourceIP: ip,
-                    userAgent: ua
-                )
-                let installs = await serviceContainer.installTracker.recentInstalls(limit: 1)
-                await MainActor.run {
-                    appState?.lastInstall = installs.first
-                }
-            }
-        }
-
-        Task {
-            do {
-                try await server.start(
-                    port: appState.serverPort,
-                    certPath: appState.certPath,
-                    keyPath: appState.keyPath
-                )
-                await MainActor.run {
-                    appState.serverRunning = true
-                }
-
-                // Start Bonjour advertisement for local network discovery
-                serviceContainer.bonjourAdvertiser.start(
-                    name: Host.current().localizedName ?? "RemoteDeploy",
-                    httpsPort: appState.serverPort,
-                    httpPort: 8080,
-                    hostname: appState.hostname
-                )
-            } catch {
-                let boundaryError = RemoteDeployError.serverStartFailed(reason: error.localizedDescription)
-                await MainActor.run {
-                    _appState.wrappedValue.setError(boundaryError)
-                }
-                Logger.server.error("Server failed to start: \(boundaryError.failureReason ?? "", privacy: .public)")
-            }
-        }
-    }
 }
-
-    /// Configures the API router on the deploy server by building real adapters
-    /// for every injectable seam and handing them to `APIRouterFactory`.
-    @MainActor private func configureAPIRouter(on server: any DeployServerProtocol, appState: AppState, buildManager: BuildManager, services: ServiceContainer) {
-        guard let nioServer = server as? NIODeployServer else { return }
-
-        // Thread-safe bridge so adapters can read live AppState + BuildManager from NIO's event loop.
-        let bridge = AppStateBridge(appState: appState, buildManager: buildManager)
-
-        let deps = APIRouterFactory.Dependencies(
-            deviceStore: services.pairedDeviceStore,
-            projectStore: services.projectStore,
-            installTracker: services.installTracker,
-            schemeDetector: XcodebuildSchemeDetector(),
-            statusProvider: AppStateStatusProvider(bridge: bridge, deployServer: nioServer),
-            buildTrigger: NotificationBuildTrigger(projectStore: services.projectStore),
-            buildStatus: AppStateBridgeBuildStatusProvider(bridge: bridge),
-            buildCanceler: NoopBuildCanceler(),
-            buildHistory: EmptyBuildHistoryProvider(store: services.buildHistoryStore),
-            settingsProvider: AppStateBridgeSettingsProvider(bridge: bridge),
-            settingsUpdater: DeferredSettingsUpdater(
-                bridge: bridge,
-                applyOnMain: { [appState] settings in
-                    DispatchQueue.main.async {
-                        appState.serverPort = settings.serverPort
-                        appState.hostname = settings.hostname
-                        appState.certPath = settings.certPath
-                        appState.keyPath = settings.keyPath
-                        appState.pushNotificationConfig = settings.pushNotificationConfig
-                        NotificationCenter.default.post(name: .saveSettingsRequested, object: nil)
-                    }
-                }
-            ),
-            serverName: Host.current().localizedName ?? "Mac"
-        )
-
-        let output = APIRouterFactory.make(deps: deps)
-        nioServer.apiRouter = output.router
-        // Store pairingHandler reference so PairDeviceView can register pending tokens.
-        services.pairingHandler = output.pairingHandler
-    }
 
 // MARK: - Service Container
 
@@ -399,7 +130,7 @@ final class ServiceContainer: ObservableObject {
     let bonjourAdvertiser: BonjourAdvertiser
 
     /// Pairing route handler reference for registering pending tokens.
-    /// Set by RemoteDeployApp when the API router is configured.
+    /// Set by AppDelegate when the API router is configured.
     var pairingHandler: PairingRouteHandler?
 
     init() {
@@ -526,7 +257,7 @@ final class AppStateBridge: @unchecked Sendable {
 
 extension Notification.Name {
     /// Posted when the setup wizard or other UI requests that the server be started
-    /// and settings be saved. Handled by RemoteDeployApp.
+    /// and settings be saved. Handled by AppDelegate.
     static let startServerRequested = Notification.Name("RemoteDeploy.startServerRequested")
     /// Posted when settings have been changed and need to be persisted.
     static let saveSettingsRequested = Notification.Name("RemoteDeploy.saveSettingsRequested")
