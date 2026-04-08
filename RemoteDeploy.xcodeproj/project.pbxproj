@@ -61,6 +61,7 @@
 		531CCB51E106CEA864BF3768 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91B9C5E6B3976E7E1C65FBC /* APIClient.swift */; };
 		53C037A8761540A069FF09B6 /* ProjectSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5A883F3DF84EB00EE19999 /* ProjectSetupStep.swift */; };
 		540B519C7BAA9046D04E29A1 /* MockProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B223A9835076867EE2BCA306 /* MockProjectStore.swift */; };
+		549B5D96666E0F7B122D8FA8 /* NIODeployServerBuildEventBroadcastingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B672B2B791A8157F8C29D9C9 /* NIODeployServerBuildEventBroadcastingTests.swift */; };
 		56AAE79A65F4819F16288744 /* IPAImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90AA426A4B6723150D61BF97 /* IPAImporter.swift */; };
 		571141FE23BF2B3A9022131D /* BuildStatusProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A1994B92AF39E656EAE156B /* BuildStatusProviding.swift */; };
 		57B9515C8306AD8179402668 /* install-template.html in Resources */ = {isa = PBXBuildFile; fileRef = 4CDF361E12AFD78F0E5CCAE7 /* install-template.html */; };
@@ -143,6 +144,7 @@
 		D972D686D54D5B87671E071A /* ServerInstallTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80A2461C0A040726D284136C /* ServerInstallTracker.swift */; };
 		D9BD165235870A3635E885DC /* CLITailscaleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C95C1E39804894283DF74ED /* CLITailscaleProvider.swift */; };
 		DA4541B6B11BF92BC6A10562 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FD535B366F2DA93C36C95B3 /* KeychainStore.swift */; };
+		DB2EFDE2CE9A2AB1E1624326 /* NIODeployServer+BuildEventBroadcasting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8737FC28ABF98E52B42BC686 /* NIODeployServer+BuildEventBroadcasting.swift */; };
 		DCAA6A13446910C00F707E4C /* TailscaleCertificateProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288C1C0CEA5603E381143EAB /* TailscaleCertificateProvider.swift */; };
 		DD954B218490E3FD62449AFD /* PushNotifHelpPopover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F551EA6D97CE1FBD36A73C1 /* PushNotifHelpPopover.swift */; };
 		DDB9A247587E7B578CDBD33A /* BuildLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48677B76639F8593AF6C0336 /* BuildLogView.swift */; };
@@ -290,6 +292,7 @@
 		80A2461C0A040726D284136C /* ServerInstallTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerInstallTracker.swift; sourceTree = "<group>"; };
 		85A299F63D82BB4D6CC669C1 /* ManifestGenerating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestGenerating.swift; sourceTree = "<group>"; };
 		870CF4245A54F95A64644B20 /* NoopBuildCanceler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoopBuildCanceler.swift; sourceTree = "<group>"; };
+		8737FC28ABF98E52B42BC686 /* NIODeployServer+BuildEventBroadcasting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NIODeployServer+BuildEventBroadcasting.swift"; sourceTree = "<group>"; };
 		8A4439D3D0B8C531CE19EF15 /* AppStateStatusProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateStatusProvider.swift; sourceTree = "<group>"; };
 		8CD0EFFB2E04CB922D5E2A6C /* WebSocketClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketClient.swift; sourceTree = "<group>"; };
 		8D2818AE9DDCDA8AA04E36AE /* StatusRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusRouteHandlerTests.swift; sourceTree = "<group>"; };
@@ -316,6 +319,7 @@
 		B36401330FE8925DC8182F2F /* ProjectSetupValidatorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupValidatorsTests.swift; sourceTree = "<group>"; };
 		B453E5FEDE28AF500D7AE332 /* BuildEngineProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEngineProtocol.swift; sourceTree = "<group>"; };
 		B5C83442A51AD2C39C5D7FC5 /* APIRouterFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRouterFactory.swift; sourceTree = "<group>"; };
+		B672B2B791A8157F8C29D9C9 /* NIODeployServerBuildEventBroadcastingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NIODeployServerBuildEventBroadcastingTests.swift; sourceTree = "<group>"; };
 		B80F03E0294CBF8288882CAC /* ProjectSetupValidators.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupValidators.swift; sourceTree = "<group>"; };
 		B976E30E8F5281A40D7E129F /* StatusProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusProviding.swift; sourceTree = "<group>"; };
 		C2B144D783065CC4AC0F575C /* DevicesRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesRouteHandlerTests.swift; sourceTree = "<group>"; };
@@ -622,6 +626,7 @@
 				F3BAFD6343E5678C93000CE0 /* InstallTrackerTests.swift */,
 				4AAE0C1992386E96FB314963 /* JSONBuildHistoryStoreTests.swift */,
 				DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */,
+				B672B2B791A8157F8C29D9C9 /* NIODeployServerBuildEventBroadcastingTests.swift */,
 				03D95AAD49CC7881D3034C63 /* ProjectConfigTests.swift */,
 				B36401330FE8925DC8182F2F /* ProjectSetupValidatorsTests.swift */,
 				36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */,
@@ -648,6 +653,7 @@
 				9FF6629262E737F32BF1B707 /* JSONPairedDeviceStore.swift */,
 				7BCC1DD0A91B6D40F002CFF9 /* ManifestGenerator.swift */,
 				59964712D89DB2DA34241AD5 /* NIODeployServer.swift */,
+				8737FC28ABF98E52B42BC686 /* NIODeployServer+BuildEventBroadcasting.swift */,
 				0464D1E9EB161D57ECF00BBB /* NIOResponseGenerator.swift */,
 				495CC99A1356A133ACC03C28 /* NotificationManager.swift */,
 				1F9384DF1F6D26C1009DB991 /* NtfyNotifier.swift */,
@@ -1047,6 +1053,7 @@
 				0D42060EA0BB42473044DA32 /* ManifestGenerator.swift in Sources */,
 				CED1C923614AB4183924E740 /* MenuBarHeaderSection.swift in Sources */,
 				249E98F1EF39325A33D7582D /* MenuBarView.swift in Sources */,
+				DB2EFDE2CE9A2AB1E1624326 /* NIODeployServer+BuildEventBroadcasting.swift in Sources */,
 				218FE184848F1564B00BC4B8 /* NIODeployServer.swift in Sources */,
 				84E44B81ED14A9840DB75345 /* NIOResponseGenerator.swift in Sources */,
 				1A3EDE0BCBDAC49302C3028D /* NoopBuildCanceler.swift in Sources */,
@@ -1131,6 +1138,7 @@
 				CEDA1858912760D527816AD7 /* MockSettingsUpdater.swift in Sources */,
 				496C185E676B7FC55E272054 /* MockStatusProvider.swift in Sources */,
 				EBBFEFEBC886A23A76FFCD08 /* MockTailscaleProvider.swift in Sources */,
+				549B5D96666E0F7B122D8FA8 /* NIODeployServerBuildEventBroadcastingTests.swift in Sources */,
 				2F6A5D04517CDA2A9422332A /* PairingRouteHandlerTests.swift in Sources */,
 				0499B54ACBC5FBE45FF6FE4F /* ProjectConfigTests.swift in Sources */,
 				F1EC3A6E07BBBCBA2C07C829 /* ProjectSetupValidatorsTests.swift in Sources */,
