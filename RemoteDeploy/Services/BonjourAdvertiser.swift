@@ -53,6 +53,14 @@ final class BonjourAdvertiser: NSObject, @unchecked Sendable, NetServiceDelegate
         if let localIP = QRCodeGenerator.localIPAddress() {
             txtDict["localIP"] = Data(localIP.utf8)
         }
+
+        // TKT-021: defensively drop any empty TXT values. The legacy
+        // NetService / dnssd client reports "send failed: Invalid argument"
+        // when handed an empty-value TXT entry, and the existing guards above
+        // already skip empty hostname / missing localIP — but this filter is
+        // cheap insurance against future additions forgetting to check.
+        txtDict = txtDict.filter { !$0.value.isEmpty }
+
         let txtData = NetService.data(fromTXTRecord: txtDict)
 
         // Advertise on the HTTP port so Bonjour resolves to something reachable

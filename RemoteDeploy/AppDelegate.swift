@@ -69,9 +69,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // If the OS lifecycle callback fired before SwiftUI evaluated body,
         // kick off startup now that we finally have the state objects.
+        //
+        // TKT-021: DispatchQueue.main.async pushes the startup Task out of the
+        // current runloop turn so state mutations (loadSettings, loadProjects,
+        // etc.) don't land while SwiftUI is still mid-layout on the MenuBarExtra
+        // hosting view. Without this deferral, AppKit logs
+        // _NSDetectedLayoutRecursion at startup.
         if !didPerformStartup, NSApp != nil {
-            Task { @MainActor in
-                await self.performStartup()
+            DispatchQueue.main.async { [weak self] in
+                Task { @MainActor [weak self] in
+                    await self?.performStartup()
+                }
             }
         }
     }
@@ -97,9 +105,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // If register() has already been called (normal case — SwiftUI body
         // evaluates before applicationDidFinishLaunching), run startup now.
         // Otherwise register() will kick it off when it's eventually called.
+        //
+        // TKT-021: DispatchQueue.main.async defers the startup Task past the
+        // current layout pass so state mutations don't trigger AppKit layout
+        // recursion on the MenuBarExtra hosting view.
         if didRegister, !didPerformStartup {
-            Task { @MainActor in
-                await self.performStartup()
+            DispatchQueue.main.async { [weak self] in
+                Task { @MainActor [weak self] in
+                    await self?.performStartup()
+                }
             }
         }
     }
@@ -319,12 +333,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 )
                 appState.serverRunning = true
 
-                serviceContainer.bonjourAdvertiser.start(
-                    name: Host.current().localizedName ?? "RemoteDeploy",
-                    httpsPort: appState.serverPort,
-                    httpPort: 8080,
-                    hostname: appState.hostname
-                )
+                // TKT-021: defer Bonjour advertisement by a short interval so
+                // the HTTP listener on :8080 has time to fully finish binding
+                // before mDNSResponder is told about the service. Without this,
+                // publishing races the bind and Darwin logs two benign but
+                // noisy "send failed: Invalid argument" lines at startup.
+                let serverName = Host.current().localizedName ?? "RemoteDeploy"
+                let httpsPort = appState.serverPort
+                let hostname = appState.hostname
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    serviceContainer.bonjourAdvertiser.start(
+                        name: serverName,
+                        httpsPort: httpsPort,
+                        httpPort: 8080,
+                        hostname: hostname
+                    )
+                }
             } catch {
                 let boundaryError = RemoteDeployError.serverStartFailed(reason: error.localizedDescription)
                 self?.appState?.setError(boundaryError)
