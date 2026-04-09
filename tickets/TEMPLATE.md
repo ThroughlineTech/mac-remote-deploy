@@ -4,6 +4,7 @@ title: ""
 type: bug | feature | enhancement
 status: open
 priority: low | medium | high | critical
+app: macos
 branch: ""
 created: YYYY-MM-DD
 updated: YYYY-MM-DD

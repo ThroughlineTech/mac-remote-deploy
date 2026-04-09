@@ -30,6 +30,18 @@ For testing the decision without actually building:
     scripts/ship-deploy.sh --dry-run
     SHIP_DEPLOY_REF=<some-sha> scripts/ship-deploy.sh --dry-run
 
+## Preview settings
+- Preview mode: individual
+- Preview port base: 3000
+
+## Preview profiles
+
+### macos  (atomic, default)
+- Command: pkill -x RemoteDeploy 2>/dev/null; sleep 1; xcodegen generate && xcodebuild build -project RemoteDeploy.xcodeproj -scheme RemoteDeploy -destination 'platform=macOS' -configuration Debug -derivedDataPath /tmp/RemoteDeployPreview && open /tmp/RemoteDeployPreview/Build/Products/Debug/RemoteDeploy.app
+- Port offset: 0
+- Ready when: command-exit
+- Sequential: true
+
 ## Key source locations
 - RemoteDeploy/ — macOS host app (SwiftUI, NIO server, Bonjour advertiser)
 - RemoteDeployCompanion/ — iOS companion app (SwiftUI, Bonjour browser)
