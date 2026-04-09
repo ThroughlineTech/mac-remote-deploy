@@ -115,6 +115,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .refreshTailscaleStatus,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRestartServerRequested),
+            name: .restartServerRequested,
+            object: nil
+        )
 
         // If register() has already been called (normal case — SwiftUI body
         // evaluates before applicationDidFinishLaunching), run startup now.
@@ -210,6 +216,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleRefreshTailscaleStatus() {
         Task { @MainActor [weak self] in
             await self?.checkTailscaleStatus()
+        }
+    }
+
+    /// Stops the running server, then restarts it with current settings. TKT-037.
+    @objc private func handleRestartServerRequested() {
+        Task { @MainActor [weak self] in
+            guard let self, let appState = self.appState, let serviceContainer = self.serviceContainer else { return }
+            await serviceContainer.deployServer.stop()
+            appState.serverRunning = false
+            self.saveSettings()
+            self.startServer()
         }
     }
 

@@ -50,7 +50,9 @@ struct SettingsView: View {
 
 // MARK: - Server Settings Tab
 
-/// Configures the HTTPS server: port, hostname, and TLS certificate paths.
+/// Configures the HTTPS server: port, hostname, TLS certificate paths,
+/// and launch-at-login preference. Grouped into visual sections with a
+/// server status card at the top. TKT-037.
 struct ServerSettingsTab: View {
     @ObservedObject var appState: AppState
     @EnvironmentObject var serviceContainer: ServiceContainer
@@ -60,83 +62,154 @@ struct ServerSettingsTab: View {
     @State private var certPath: String = ""
     @State private var keyPath: String = ""
     @State private var isDetectingHostname = false
+    @State private var hostnameDetected = false
     @State private var launchAtLogin = false
 
     var body: some View {
-        Form {
-            // Port number field
-            TextField("Port:", text: $port)
-                .frame(width: 80)
-                .onChange(of: port) {
-                    if let p = Int(port) {
-                        appState.serverPort = p
-                        updateServerURL()
-                        requestSaveSettings()
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+
+                // MARK: Server Status Card
+
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(appState.serverRunning ? Color.green : Color.red)
+                            .frame(width: 8, height: 8)
+                        Text(appState.serverRunning ? "Server Running" : "Server Stopped")
+                            .font(.headline)
+                        Spacer()
+                        if appState.serverRunning {
+                            Text("Port \(appState.serverPort)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
+
+                    if !appState.serverURL.isEmpty {
+                        Text(appState.serverURL)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                    }
+
+                    HStack {
+                        Button("Restart Server") {
+                            NotificationCenter.default.post(name: .restartServerRequested, object: nil)
+                        }
+                        .disabled(!appState.serverRunning)
+                    }
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(.controlBackgroundColor))
+                )
+
+                // MARK: Server Identity
+
+                GroupBox("Server Identity") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Port number field
+                        HStack {
+                            Text("Port:")
+                                .frame(width: 70, alignment: .trailing)
+                            TextField("", text: $port)
+                                .frame(width: 80)
+                                .textFieldStyle(.roundedBorder)
+                                .onChange(of: port) {
+                                    if let p = Int(port) {
+                                        appState.serverPort = p
+                                        updateServerURL()
+                                        requestSaveSettings()
+                                    }
+                                }
+                        }
+
+                        // Hostname with auto-detect button
+                        HStack {
+                            Text("Hostname:")
+                                .frame(width: 70, alignment: .trailing)
+                            TextField("", text: $hostname)
+                                .textFieldStyle(.roundedBorder)
+                                .onChange(of: hostname) {
+                                    appState.hostname = hostname
+                                    updateServerURL()
+                                    requestSaveSettings()
+                                }
+                            Button {
+                                detectHostname()
+                            } label: {
+                                if isDetectingHostname {
+                                    ProgressView().controlSize(.small)
+                                } else if hostnameDetected {
+                                    Label("Detected", systemImage: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                } else {
+                                    Text("Auto-Detect")
+                                }
+                            }
+                            .disabled(isDetectingHostname)
+                        }
+                    }
+                    .padding(.vertical, 4)
                 }
 
-            // Hostname with auto-detect button
-            HStack {
-                TextField("Hostname:", text: $hostname)
-                    .onChange(of: hostname) {
-                        appState.hostname = hostname
-                        updateServerURL()
-                        requestSaveSettings()
+                // MARK: TLS Certificate
+
+                GroupBox("TLS Certificate") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Certificate file path with browse button
+                        HStack {
+                            Text("Certificate:")
+                                .frame(width: 70, alignment: .trailing)
+                            Text(certFilename)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .help(certPath)
+                            Button("Browse...") {
+                                if let url = openFilePanel(title: "Select Certificate PEM", types: ["pem", "crt"]) {
+                                    certPath = url.path
+                                    appState.certPath = url.path
+                                    requestSaveSettings()
+                                }
+                            }
+                        }
+
+                        // Private key file path with browse button
+                        HStack {
+                            Text("Private Key:")
+                                .frame(width: 70, alignment: .trailing)
+                            Text(keyFilename)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .help(keyPath)
+                            Button("Browse...") {
+                                if let url = openFilePanel(title: "Select Private Key PEM", types: ["pem", "key"]) {
+                                    keyPath = url.path
+                                    appState.keyPath = url.path
+                                    requestSaveSettings()
+                                }
+                            }
+                        }
                     }
-                Button {
-                    detectHostname()
-                } label: {
-                    if isDetectingHostname {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Text("Auto-Detect")
-                    }
+                    .padding(.vertical, 4)
                 }
-                .disabled(isDetectingHostname)
+
+                // MARK: General
+
+                GroupBox("General") {
+                    Toggle("Launch at Login", isOn: $launchAtLogin)
+                        .onChange(of: launchAtLogin) {
+                            setLaunchAtLogin(launchAtLogin)
+                        }
+                        .padding(.vertical, 4)
+                }
             }
-
-            Divider()
-
-            // TLS certificate file path with browse button
-            HStack {
-                TextField("Certificate:", text: $certPath)
-                    .onChange(of: certPath) {
-                        appState.certPath = certPath
-                        requestSaveSettings()
-                    }
-                Button("Browse...") {
-                    if let url = openFilePanel(title: "Select Certificate PEM", types: ["pem", "crt"]) {
-                        certPath = url.path
-                        appState.certPath = url.path
-                        requestSaveSettings()
-                    }
-                }
-            }
-
-            // TLS private key file path with browse button
-            HStack {
-                TextField("Private Key:", text: $keyPath)
-                    .onChange(of: keyPath) {
-                        appState.keyPath = keyPath
-                        requestSaveSettings()
-                    }
-                Button("Browse...") {
-                    if let url = openFilePanel(title: "Select Private Key PEM", types: ["pem", "key"]) {
-                        keyPath = url.path
-                        appState.keyPath = url.path
-                        requestSaveSettings()
-                    }
-                }
-            }
-
-            Divider()
-
-            Toggle("Launch at Login", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) {
-                    setLaunchAtLogin(launchAtLogin)
-                }
+            .padding()
         }
-        .padding()
+        .frame(maxHeight: .infinity, alignment: .top)
         .onAppear {
             // Load current values from appState
             port = String(appState.serverPort)
@@ -147,9 +220,21 @@ struct ServerSettingsTab: View {
         }
     }
 
+    /// The filename portion of the certificate path, or a placeholder.
+    private var certFilename: String {
+        certPath.isEmpty ? "No certificate selected" : URL(fileURLWithPath: certPath).lastPathComponent
+    }
+
+    /// The filename portion of the private key path, or a placeholder.
+    private var keyFilename: String {
+        keyPath.isEmpty ? "No key selected" : URL(fileURLWithPath: keyPath).lastPathComponent
+    }
+
     /// Auto-detects the Tailscale hostname using the provider service.
+    /// Shows a brief checkmark confirmation on success.
     private func detectHostname() {
         isDetectingHostname = true
+        hostnameDetected = false
         Task {
             do {
                 let detected = try await serviceContainer.tailscaleProvider.detectHostname()
@@ -157,6 +242,12 @@ struct ServerSettingsTab: View {
                 appState.hostname = detected
                 updateServerURL()
                 requestSaveSettings()
+                hostnameDetected = true
+                // Reset the checkmark after 3 seconds
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    hostnameDetected = false
+                }
             } catch {
                 Logger.tailscale.error("Hostname detection failed: \(error.localizedDescription, privacy: .public)")
             }

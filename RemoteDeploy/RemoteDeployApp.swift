@@ -276,4 +276,6 @@ extension Notification.Name {
     static let apiBuildRequested = Notification.Name("RemoteDeploy.apiBuildRequested")
     /// Posted when the menu bar popover opens to trigger a fresh Tailscale status check.
     static let refreshTailscaleStatus = Notification.Name("RemoteDeploy.refreshTailscaleStatus")
+    /// Posted from the Server settings tab to stop and restart the HTTPS server.
+    static let restartServerRequested = Notification.Name("RemoteDeploy.restartServerRequested")
 }
