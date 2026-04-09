@@ -12,16 +12,6 @@ struct BuildControlsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if appState.projects.count > 1 {
-                Picker("Project:", selection: $appState.selectedProjectID) {
-                    ForEach(appState.projects) { project in
-                        Text(project.name).tag(project.id as UUID?)
-                    }
-                }
-                .pickerStyle(.menu)
-                .font(.subheadline)
-            }
-
             Picker("Configuration:", selection: $appState.buildConfiguration) {
                 Text("Debug").tag("Debug")
                 Text("Release").tag("Release")

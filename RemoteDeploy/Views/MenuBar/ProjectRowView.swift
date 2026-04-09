@@ -14,7 +14,7 @@ struct ProjectRowView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(project.name)
                     .font(.subheadline)
-                    .fontWeight(isSelected ? .semibold : .regular)
+                    .fontWeight(isSelected ? .bold : .regular)
                 Text(project.projectPath)
                     .font(.caption2)
                     .foregroundColor(.secondary)
@@ -23,12 +23,14 @@ struct ProjectRowView: View {
             }
             Spacer()
             if isSelected {
-                Image(systemName: "checkmark")
-                    .font(.caption)
-                    .foregroundColor(.accentColor)
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.body)
+                    .foregroundColor(.blue)
             }
         }
         .padding(.vertical, 2)
+        .background(isSelected ? Color.accentColor.opacity(0.10) : Color.clear)
+        .cornerRadius(4)
         .contentShape(Rectangle())
     }
 }
