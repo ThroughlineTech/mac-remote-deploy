@@ -284,7 +284,7 @@ struct PushSettingsTab: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 // --- Prowl ---
                 PushProviderSection(
                     providerName: "Prowl",
@@ -292,10 +292,8 @@ struct PushSettingsTab: View {
                     enabled: $config.prowlEnabled,
                     onSendTest: { sendTest(for: .prowl) }
                 ) {
-                    TextField("API Key:", text: $config.prowlAPIKey)
+                    SecretField(label: "API Key:", text: $config.prowlAPIKey)
                 }
-
-                Divider()
 
                 // --- Pushover ---
                 PushProviderSection(
@@ -304,11 +302,9 @@ struct PushSettingsTab: View {
                     enabled: $config.pushoverEnabled,
                     onSendTest: { sendTest(for: .pushover) }
                 ) {
-                    TextField("App Token:", text: $config.pushoverAppToken)
-                    TextField("User Key:", text: $config.pushoverUserKey)
+                    SecretField(label: "App Token:", text: $config.pushoverAppToken)
+                    SecretField(label: "User Key:", text: $config.pushoverUserKey)
                 }
-
-                Divider()
 
                 // --- ntfy ---
                 PushProviderSection(
@@ -320,8 +316,6 @@ struct PushSettingsTab: View {
                     TextField("Server URL:", text: $config.ntfyServerURL)
                     TextField("Topic:", text: $config.ntfyTopic)
                 }
-
-                Divider()
 
                 // --- Event Toggles ---
                 GroupBox("Notify On") {
@@ -391,6 +385,7 @@ struct PushSettingsTab: View {
 /// A reusable section for a single push notification provider.
 /// Includes an enable toggle, configuration fields (injected via content closure),
 /// a "Send Test" button, and a "?" help popover.
+/// Styled as a rounded card with subtle background when enabled.
 struct PushProviderSection<Content: View>: View {
     let providerName: String
     let providerType: PushProvider
@@ -400,39 +395,71 @@ struct PushProviderSection<Content: View>: View {
     @ViewBuilder var content: Content
 
     @State private var showHelp = false
+    @State private var showSecret = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                // Enable/disable toggle for this provider
-                Toggle(providerName, isOn: $enabled)
-                    .font(.headline)
+            // Enable/disable toggle for this provider
+            Toggle(providerName, isOn: $enabled)
+                .font(.headline)
 
-                Spacer()
-
-                // Help popover button showing setup instructions
-                Button {
-                    showHelp.toggle()
-                } label: {
-                    Image(systemName: "questionmark.circle")
-                }
-                .buttonStyle(.borderless)
-                .popover(isPresented: $showHelp) {
-                    PushNotifHelpPopover(provider: providerType)
-                }
-
-                // Send test notification button
-                Button("Send Test") {
-                    onSendTest?()
-                }
-                .disabled(!enabled)
-            }
-
-            // Provider-specific configuration fields, dimmed when disabled
+            // Provider-specific configuration fields, help, and test button
             if enabled {
                 content
                     .textFieldStyle(.roundedBorder)
+
+                HStack {
+                    // Help popover button showing setup instructions
+                    Button {
+                        showHelp.toggle()
+                    } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .popover(isPresented: $showHelp) {
+                        PushNotifHelpPopover(provider: providerType)
+                    }
+
+                    Spacer()
+
+                    // Send test notification button
+                    Button("Send Test") {
+                        onSendTest?()
+                    }
+                }
             }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(enabled ? Color(.controlBackgroundColor) : Color.clear)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .opacity(enabled ? 1.0 : 0.6)
+    }
+}
+
+/// A text field that toggles between SecureField (masked) and TextField (plain)
+/// for displaying sensitive credentials like API keys and tokens.
+private struct SecretField: View {
+    let label: String
+    @Binding var text: String
+    @State private var showSecret = false
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if showSecret {
+                TextField(label, text: $text)
+            } else {
+                SecureField(label, text: $text)
+            }
+            Button {
+                showSecret.toggle()
+            } label: {
+                Image(systemName: showSecret ? "eye.slash" : "eye")
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.borderless)
         }
     }
 }
