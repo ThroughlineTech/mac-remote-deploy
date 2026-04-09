@@ -19,7 +19,7 @@ struct UtilitiesSection: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: { openWindow(id: "setup-assistant") }) {
+            Button(action: { NSApp.activate(); openWindow(id: "setup-assistant") }) {
                 Label("Setup Guide", systemImage: "questionmark.circle")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
