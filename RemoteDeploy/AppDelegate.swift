@@ -109,6 +109,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .saveSettingsRequested,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRefreshTailscaleStatus),
+            name: .refreshTailscaleStatus,
+            object: nil
+        )
 
         // If register() has already been called (normal case — SwiftUI body
         // evaluates before applicationDidFinishLaunching), run startup now.
@@ -185,7 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             NotificationCenter.default.post(name: .openSetupAssistant, object: nil)
         }
 
-        // Start periodic Tailscale status polling (every 30 seconds)
+        // Start periodic Tailscale status polling (every 10 seconds)
         startStatusPolling()
     }
 
@@ -198,6 +204,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func handleSaveSettingsRequested() {
         saveSettings()
+    }
+
+    /// Triggers a fresh Tailscale status check when the popover opens. TKT-030.
+    @objc private func handleRefreshTailscaleStatus() {
+        Task { @MainActor [weak self] in
+            await self?.checkTailscaleStatus()
+        }
     }
 
     // MARK: - Loaders
@@ -246,11 +259,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Polls Tailscale status every 30 seconds using an async Task loop.
+    /// Polls Tailscale status every 10 seconds using an async Task loop.
     private func startStatusPolling() {
         Task { @MainActor [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
+                try? await Task.sleep(for: .seconds(10))
                 await self?.checkTailscaleStatus()
             }
         }

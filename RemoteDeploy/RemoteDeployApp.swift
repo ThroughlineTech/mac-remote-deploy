@@ -274,4 +274,6 @@ extension Notification.Name {
     static let openSetupAssistant = Notification.Name("RemoteDeploy.openSetupAssistant")
     /// Posted by the API when a build is triggered remotely from a companion device.
     static let apiBuildRequested = Notification.Name("RemoteDeploy.apiBuildRequested")
+    /// Posted when the menu bar popover opens to trigger a fresh Tailscale status check.
+    static let refreshTailscaleStatus = Notification.Name("RemoteDeploy.refreshTailscaleStatus")
 }

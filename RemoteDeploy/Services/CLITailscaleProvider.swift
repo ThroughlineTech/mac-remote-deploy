@@ -7,6 +7,7 @@ struct CLITailscaleProvider: TailscaleProviderProtocol {
 
     /// Paths to search for the Tailscale CLI binary, in priority order.
     private static let binarySearchPaths = [
+        "/opt/homebrew/bin/tailscale",
         "/usr/local/bin/tailscale",
         "/Applications/Tailscale.app/Contents/MacOS/Tailscale"
     ]

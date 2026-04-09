@@ -36,6 +36,14 @@ struct MenuBarView: View {
         .onReceive(NotificationCenter.default.publisher(for: .apiBuildRequested)) { notification in
             handleAPIBuildRequest(notification)
         }
+        .task {
+            // TKT-030: trigger a fresh Tailscale status check each time the
+            // popover appears so the indicator is never stale from the
+            // 10-second poll gap. Posts a notification handled by AppDelegate,
+            // keeping the view decoupled from the delegate. Runs post-layout
+            // (not during body evaluation) to avoid TKT-021 layout recursion.
+            NotificationCenter.default.post(name: .refreshTailscaleStatus, object: nil)
+        }
         // TKT-007: surface boundary errors as an alert so the user sees what failed.
         .alert(
             appState.currentError?.errorDescription ?? "Error",
