@@ -32,4 +32,35 @@ final class InstallsRouteHandler: @unchecked Sendable {
 
         return .json(records)
     }
+
+    /// DELETE /api/v1/installs/:id — Delete a single install record.
+    func delete(_ request: APIRequest, installID: UUID) -> APIResponse {
+        let semaphore = DispatchSemaphore(value: 0)
+        var found = false
+
+        Task {
+            found = await installTracker.deleteInstall(id: installID)
+            semaphore.signal()
+        }
+        semaphore.wait()
+
+        if found {
+            return .json(["deleted": true])
+        } else {
+            return .error(status: .notFound, message: "Install record not found")
+        }
+    }
+
+    /// DELETE /api/v1/installs — Delete all install records.
+    func deleteAll(_ request: APIRequest) -> APIResponse {
+        let semaphore = DispatchSemaphore(value: 0)
+
+        Task {
+            await installTracker.deleteAllInstalls()
+            semaphore.signal()
+        }
+        semaphore.wait()
+
+        return .json(["deleted": true])
+    }
 }

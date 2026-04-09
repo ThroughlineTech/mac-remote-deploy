@@ -76,4 +76,46 @@ final class InstallsRouteHandlerTests: XCTestCase {
         let decoded = try? APITestSupport.decoder().decode([InstallRecord].self, from: response.body)
         XCTAssertEqual(decoded?.count, 3, "Large limit returns however many records exist")
     }
+
+    // MARK: - delete single
+
+    func test_delete_removesExistingRecord() async {
+        let (handler, tracker) = makeHandler()
+        await seedInstalls(in: tracker, count: 3)
+        let targetID = tracker.records[1].id
+        let req = APITestSupport.makeRequest(method: .DELETE, uri: "/api/v1/installs/\(targetID.uuidString)")
+        let response = handler.delete(req, installID: targetID)
+        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(tracker.deleteInstallCallCount, 1)
+        XCTAssertEqual(tracker.lastDeletedInstallID, targetID)
+        XCTAssertEqual(tracker.records.count, 2, "One record should have been removed")
+    }
+
+    func test_delete_returns404ForUnknownID() {
+        let (handler, _) = makeHandler()
+        let unknownID = UUID()
+        let req = APITestSupport.makeRequest(method: .DELETE, uri: "/api/v1/installs/\(unknownID.uuidString)")
+        let response = handler.delete(req, installID: unknownID)
+        XCTAssertEqual(response.status, .notFound)
+    }
+
+    // MARK: - delete all
+
+    func test_deleteAll_removesAllRecords() async {
+        let (handler, tracker) = makeHandler()
+        await seedInstalls(in: tracker, count: 5)
+        let req = APITestSupport.makeRequest(method: .DELETE, uri: "/api/v1/installs")
+        let response = handler.deleteAll(req)
+        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(tracker.deleteAllInstallsCallCount, 1)
+        XCTAssertTrue(tracker.records.isEmpty, "All records should have been removed")
+    }
+
+    func test_deleteAll_succeedsWhenAlreadyEmpty() {
+        let (handler, tracker) = makeHandler()
+        let req = APITestSupport.makeRequest(method: .DELETE, uri: "/api/v1/installs")
+        let response = handler.deleteAll(req)
+        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(tracker.deleteAllInstallsCallCount, 1)
+    }
 }
