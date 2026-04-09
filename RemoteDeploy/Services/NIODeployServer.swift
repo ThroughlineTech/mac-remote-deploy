@@ -149,15 +149,30 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
     /// sets up the HTTP/1.1 pipeline, and installs the `HTTPHandler` to route requests.
     /// The server listens on all interfaces (0.0.0.0) so it is reachable from the tailnet.
     ///
-    /// - Parameter port: The TCP port to listen on (e.g. 8443).
+    /// Protocol conformance: delegates to the full `start(port:httpPort:certPath:keyPath:)`
+    /// with `httpPort: 8080`. TKT-028 added the httpPort parameter but keeping the
+    /// protocol shape unchanged means existing conformers (MockDeployServer,
+    /// production call sites that go through the protocol) don't need updates.
+    func start(port: Int, certPath: String, keyPath: String) async throws {
+        try await start(port: port, httpPort: 8080, certPath: certPath, keyPath: keyPath)
+    }
+
+    /// - Parameter port: The TCP port for the HTTPS listener (e.g. 8443).
+    /// - Parameter httpPort: The TCP port for the secondary plain-HTTP listener
+    ///   used for local WiFi API access. Production uses 8080; integration tests
+    ///   pass a random ephemeral port to avoid collisions with any running
+    ///   RemoteDeploy host. TKT-028.
     /// - Parameter certPath: Absolute path to the PEM-encoded TLS certificate file.
     /// - Parameter keyPath: Absolute path to the PEM-encoded TLS private key file.
-    /// - Throws: If the port is already in use, the cert/key files are invalid or unreadable,
-    ///   or the server otherwise fails to bind.
-    func start(port: Int, certPath: String, keyPath: String) async throws {
+    /// - Throws: If the HTTPS port is already in use, the cert/key files are
+    ///   invalid or unreadable, or the HTTPS listener otherwise fails to bind.
+    ///   HTTP listener failures are logged but do not throw — the HTTP listener
+    ///   is best-effort (companions can still reach us via HTTPS over Tailscale).
+    func start(port: Int, httpPort: Int, certPath: String, keyPath: String) async throws {
         let alreadyRunning = lockedState.withLock { state -> Bool in
             if state.isRunning { return true }
             state.port = port
+            state.httpPort = httpPort
             return false
         }
         guard !alreadyRunning else { return }
@@ -266,7 +281,17 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
             .childChannelOption(.socketOption(.so_reuseaddr), value: 1)
             .childChannelOption(.maxMessagesPerRead, value: 1)
 
-        let httpChannel = try? await httpBootstrap.bind(host: "0.0.0.0", port: 8080).get()
+        // TKT-028: bind the HTTP listener on the configured port and log
+        // (rather than silently swallow) any bind failure. HTTP is
+        // best-effort — if the port is already in use, the HTTPS listener
+        // still runs and companions can reach the Mac over Tailscale.
+        let httpChannel: Channel?
+        do {
+            httpChannel = try await httpBootstrap.bind(host: "0.0.0.0", port: httpPort).get()
+        } catch {
+            Logger.server.error("HTTP listener failed to bind on port \(httpPort, privacy: .public): \(error.localizedDescription, privacy: .public). Local WiFi discovery will be unavailable; HTTPS still works.")
+            httpChannel = nil
+        }
 
         lockedState.withLock { state in
             state.serverChannel = channel

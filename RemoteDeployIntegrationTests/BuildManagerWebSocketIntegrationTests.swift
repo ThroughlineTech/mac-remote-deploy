@@ -20,6 +20,8 @@ final class BuildManagerWebSocketIntegrationTests: XCTestCase {
     private var certPath: String!
     private var keyPath: String!
     private var serverPort: Int!
+    /// TKT-028: random ephemeral port for the plain-HTTP listener.
+    private var httpPort: Int!
     private var session: URLSession!
     private var deviceStore: JSONPairedDeviceStore!
 
@@ -38,6 +40,9 @@ final class BuildManagerWebSocketIntegrationTests: XCTestCase {
         try generateSelfSignedCert(certPath: certPath, keyPath: keyPath)
 
         serverPort = Int.random(in: 49152...65000)
+        repeat {
+            httpPort = Int.random(in: 49152...65000)
+        } while httpPort == serverPort
 
         server = NIODeployServer(
             manifestGenerator: ManifestGenerator(),
@@ -82,7 +87,7 @@ final class BuildManagerWebSocketIntegrationTests: XCTestCase {
     /// and payloads. Proves the full BuildEventBroadcasting → WebSocket
     /// path is wired end-to-end.
     func testBuildLogAndStatusBroadcastsReachSubscribedClient() async throws {
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let token = try pairTestDevice()
 
