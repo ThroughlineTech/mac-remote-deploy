@@ -321,8 +321,19 @@ struct ProjectSetupStep: View {
                 let schemes = try await serviceContainer.buildEngine.detectSchemes(at: projectPath)
                 await MainActor.run {
                     detectedSchemes = schemes
-                    if let first = schemes.first, selectedScheme.isEmpty {
-                        selectedScheme = first
+                    // TKT-025: Validate selectedScheme against the new list
+                    // rather than only resetting when it's empty. The
+                    // previous code left a stale scheme name in place when
+                    // the user switched projects mid-setup, causing
+                    // SwiftUI to log "Picker: the selection '...' is
+                    // invalid and does not have an associated tag" because
+                    // the old name no longer matched any tag in the new
+                    // ForEach. Resetting to schemes.first ?? "" routes the
+                    // view to the "No schemes detected" branch when the
+                    // list is empty (picker doesn't render), and to the
+                    // first detected scheme otherwise.
+                    if !schemes.contains(selectedScheme) {
+                        selectedScheme = schemes.first ?? ""
                     }
                     isDetectingSchemes = false
                     // TKT-014: refresh schemeError once detection completes so
