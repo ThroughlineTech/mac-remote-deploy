@@ -39,11 +39,6 @@ struct SettingsView: View {
                     Label("Devices", systemImage: "iphone")
                 }
 
-            GeneralSettingsTab()
-                .tabItem {
-                    Label("General", systemImage: "gear")
-                }
-
             AboutSettingsTab()
                 .tabItem {
                     Label("About", systemImage: "info.circle")
@@ -65,6 +60,7 @@ struct ServerSettingsTab: View {
     @State private var certPath: String = ""
     @State private var keyPath: String = ""
     @State private var isDetectingHostname = false
+    @State private var launchAtLogin = false
 
     var body: some View {
         Form {
@@ -132,6 +128,13 @@ struct ServerSettingsTab: View {
                     }
                 }
             }
+
+            Divider()
+
+            Toggle("Launch at Login", isOn: $launchAtLogin)
+                .onChange(of: launchAtLogin) {
+                    setLaunchAtLogin(launchAtLogin)
+                }
         }
         .padding()
         .onAppear {
@@ -140,6 +143,7 @@ struct ServerSettingsTab: View {
             hostname = appState.hostname
             certPath = appState.certPath
             keyPath = appState.keyPath
+            launchAtLogin = isLaunchAtLoginEnabled()
         }
     }
 
@@ -181,6 +185,30 @@ struct ServerSettingsTab: View {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         return panel.runModal() == .OK ? panel.url : nil
+    }
+
+    /// Checks whether the app is currently registered as a login item.
+    private func isLaunchAtLoginEnabled() -> Bool {
+        if #available(macOS 13.0, *) {
+            return SMAppService.mainApp.status == .enabled
+        }
+        return false
+    }
+
+    /// Registers or unregisters the app as a login item using SMAppService.
+    /// - Parameter enabled: Whether to enable or disable launch at login.
+    private func setLaunchAtLogin(_ enabled: Bool) {
+        if #available(macOS 13.0, *) {
+            do {
+                if enabled {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+            } catch {
+                Logger.ui.error("Failed to \(enabled ? "enable" : "disable", privacy: .public) launch at login: \(error.localizedDescription, privacy: .public)")
+            }
+        }
     }
 }
 
@@ -460,50 +488,6 @@ private struct SecretField: View {
                     .foregroundColor(.secondary)
             }
             .buttonStyle(.borderless)
-        }
-    }
-}
-
-// MARK: - General Settings Tab
-
-/// General app preferences: launch-at-login toggle.
-struct GeneralSettingsTab: View {
-    @State private var launchAtLogin = false
-
-    var body: some View {
-        Form {
-            Toggle("Launch at Login", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) {
-                    setLaunchAtLogin(launchAtLogin)
-                }
-        }
-        .padding()
-        .onAppear {
-            launchAtLogin = isLaunchAtLoginEnabled()
-        }
-    }
-
-    /// Checks whether the app is currently registered as a login item.
-    private func isLaunchAtLoginEnabled() -> Bool {
-        if #available(macOS 13.0, *) {
-            return SMAppService.mainApp.status == .enabled
-        }
-        return false
-    }
-
-    /// Registers or unregisters the app as a login item using SMAppService.
-    /// - Parameter enabled: Whether to enable or disable launch at login.
-    private func setLaunchAtLogin(_ enabled: Bool) {
-        if #available(macOS 13.0, *) {
-            do {
-                if enabled {
-                    try SMAppService.mainApp.register()
-                } else {
-                    try SMAppService.mainApp.unregister()
-                }
-            } catch {
-                Logger.ui.error("Failed to \(enabled ? "enable" : "disable", privacy: .public) launch at login: \(error.localizedDescription, privacy: .public)")
-            }
         }
     }
 }
