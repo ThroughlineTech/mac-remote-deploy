@@ -31,7 +31,13 @@ struct MenuBarView: View {
         .padding(8)
         .frame(width: 300)
         .onReceive(NotificationCenter.default.publisher(for: .openSetupAssistant)) { _ in
+            // TKT-033: activate + order front so the setup assistant
+            // window appears above other apps at launch.
+            NSApp.activate()
             openWindow(id: "setup-assistant")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                NSApp.windows.first { $0.title == "Setup Assistant" }?.orderFrontRegardless()
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .apiBuildRequested)) { notification in
             handleAPIBuildRequest(notification)

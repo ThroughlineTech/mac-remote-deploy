@@ -1,5 +1,5 @@
 // Utility buttons at the bottom of the menu bar popover: Import IPA,
-// Setup Guide, Settings, Quit. Extracted from MenuBarView in TKT-012.
+// Setup Assistant, Settings, Quit. Extracted from MenuBarView in TKT-012.
 import SwiftUI
 import os
 
@@ -19,8 +19,8 @@ struct UtilitiesSection: View {
             }
             .buttonStyle(.plain)
 
-            Button(action: { NSApp.activate(); openWindow(id: "setup-assistant") }) {
-                Label("Setup Guide", systemImage: "questionmark.circle")
+            Button(action: openSetupAssistant) {
+                Label("Setup Assistant", systemImage: "questionmark.circle")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -34,7 +34,14 @@ struct UtilitiesSection: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .simultaneousGesture(TapGesture().onEnded { NSApp.activate() })
+            .simultaneousGesture(TapGesture().onEnded {
+                NSApp.activate()
+                // TKT-033: force the settings window to front after it opens.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NSApp.windows.first { $0.title == "Settings" || $0.identifier?.rawValue == "settings" }?
+                        .orderFrontRegardless()
+                }
+            })
 
             Divider().padding(.vertical, 2)
 
@@ -45,6 +52,17 @@ struct UtilitiesSection: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    /// Opens the Setup Assistant window and brings it to the front (TKT-033).
+    /// Activates the app first, then forces the window above all others on the
+    /// next runloop tick so it appears even when another app is in the foreground.
+    private func openSetupAssistant() {
+        NSApp.activate()
+        openWindow(id: "setup-assistant")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NSApp.windows.first { $0.title == "Setup Assistant" }?.orderFrontRegardless()
         }
     }
 
