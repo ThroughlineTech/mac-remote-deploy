@@ -15,7 +15,7 @@ struct BuildControlsSection: View {
             if appState.projects.count > 1 {
                 Picker("Project:", selection: $appState.selectedProjectID) {
                     ForEach(appState.projects) { project in
-                        Text(project.name).tag(Optional(project.id))
+                        Text(project.name).tag(project.id as UUID?)
                     }
                 }
                 .pickerStyle(.menu)
@@ -63,6 +63,22 @@ struct BuildControlsSection: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+        }
+        // TKT-025: Keep the project picker's selection in sync with the
+        // current projects list. If `selectedProjectID` holds a UUID that
+        // no longer matches any project (project deleted, state loaded
+        // out of sync, view re-rendered during a startup settle window),
+        // normalize it to the first available project. Without this,
+        // SwiftUI logs:
+        //   Picker: the selection "Optional(...)" is invalid and does
+        //   not have an associated tag, this will give undefined results.
+        .onChange(of: appState.projects) { _, newProjects in
+            if let id = appState.selectedProjectID,
+               !newProjects.contains(where: { $0.id == id }) {
+                appState.selectedProjectID = newProjects.first?.id
+            } else if appState.selectedProjectID == nil, let first = newProjects.first {
+                appState.selectedProjectID = first.id
+            }
         }
     }
 
