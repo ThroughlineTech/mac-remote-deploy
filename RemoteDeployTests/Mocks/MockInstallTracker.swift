@@ -39,4 +39,26 @@ final class MockInstallTracker: InstallTracking, @unchecked Sendable {
         lastRecentInstallsLimit = limit
         return Array(records.prefix(limit))
     }
+
+    // MARK: - deleteInstall(id:)
+
+    var deleteInstallCallCount = 0
+    var lastDeletedInstallID: UUID?
+
+    func deleteInstall(id: UUID) async -> Bool {
+        deleteInstallCallCount += 1
+        lastDeletedInstallID = id
+        let originalCount = records.count
+        records.removeAll { $0.id == id }
+        return records.count < originalCount
+    }
+
+    // MARK: - deleteAllInstalls()
+
+    var deleteAllInstallsCallCount = 0
+
+    func deleteAllInstalls() async {
+        deleteAllInstallsCallCount += 1
+        records.removeAll()
+    }
 }

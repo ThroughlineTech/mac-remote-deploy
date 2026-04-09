@@ -21,4 +21,14 @@ protocol InstallTracking: Sendable {
     ///   or a large number to get all records.
     /// - Returns: An array of `InstallRecord` values, with the most recent first.
     func recentInstalls(limit: Int) async -> [InstallRecord]
+
+    /// Deletes a single install record by its unique identifier.
+    ///
+    /// - Parameter id: The UUID of the record to delete.
+    /// - Returns: `true` if the record was found and deleted, `false` if no
+    ///   record with that ID exists.
+    func deleteInstall(id: UUID) async -> Bool
+
+    /// Deletes all install records.
+    func deleteAllInstalls() async
 }

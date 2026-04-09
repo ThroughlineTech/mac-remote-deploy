@@ -188,8 +188,18 @@ final class APIRouter: @unchecked Sendable {
         }
 
         // Installs
-        if path == "/api/v1/installs" && method == "GET" {
-            return installsHandler.list(authedRequest)
+        if path == "/api/v1/installs" {
+            if method == "GET" { return installsHandler.list(authedRequest) }
+            if method == "DELETE" { return installsHandler.deleteAll(authedRequest) }
+            return .error(status: .methodNotAllowed, message: "Method not allowed")
+        }
+
+        if path.hasPrefix("/api/v1/installs/") && method == "DELETE" {
+            let idString = String(path.dropFirst("/api/v1/installs/".count))
+            guard let installID = UUID(uuidString: idString) else {
+                return .error(status: .badRequest, message: "Invalid install ID")
+            }
+            return installsHandler.delete(authedRequest, installID: installID)
         }
 
         // Settings

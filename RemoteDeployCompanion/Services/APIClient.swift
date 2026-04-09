@@ -94,6 +94,16 @@ final class APIClient: @unchecked Sendable {
         try await get("/api/v1/installs?limit=\(limit)")
     }
 
+    /// Deletes a single install record by ID.
+    func deleteInstall(id: UUID) async throws {
+        let _: [String: Bool] = try await delete("/api/v1/installs/\(id.uuidString)")
+    }
+
+    /// Deletes all install records.
+    func deleteAllInstalls() async throws {
+        let _: [String: Bool] = try await delete("/api/v1/installs")
+    }
+
     // MARK: - Settings
 
     /// Gets the current server settings.

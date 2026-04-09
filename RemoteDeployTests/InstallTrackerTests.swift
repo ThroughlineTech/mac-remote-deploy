@@ -150,4 +150,76 @@ final class InstallTrackerTests: XCTestCase {
         XCTAssertEqual(records.count, 2)
         XCTAssertNotEqual(records[0].id, records[1].id, "Each record should have a unique ID")
     }
+
+    // MARK: - Delete Single
+
+    func testDeleteInstallRemovesCorrectRecord() async {
+        await sut.recordInstall(projectName: "Keep1", sourceIP: "1.1.1.1", userAgent: "UA")
+        await sut.recordInstall(projectName: "Remove", sourceIP: "2.2.2.2", userAgent: "UA")
+        await sut.recordInstall(projectName: "Keep2", sourceIP: "3.3.3.3", userAgent: "UA")
+
+        let allRecords = await sut.recentInstalls(limit: 10)
+        let targetID = allRecords.first { $0.projectName == "Remove" }!.id
+
+        let result = await sut.deleteInstall(id: targetID)
+
+        XCTAssertTrue(result, "Should return true when record exists")
+        let remaining = await sut.recentInstalls(limit: 10)
+        XCTAssertEqual(remaining.count, 2)
+        XCTAssertFalse(remaining.contains { $0.id == targetID }, "Deleted record should not be present")
+    }
+
+    func testDeleteInstallReturnsFalseForUnknownID() async {
+        await sut.recordInstall(projectName: "App", sourceIP: "1.1.1.1", userAgent: "UA")
+
+        let result = await sut.deleteInstall(id: UUID())
+
+        XCTAssertFalse(result, "Should return false when no record matches")
+        let records = await sut.recentInstalls(limit: 10)
+        XCTAssertEqual(records.count, 1, "No records should be removed")
+    }
+
+    func testDeleteInstallPersistsToDisk() async {
+        await sut.recordInstall(projectName: "App", sourceIP: "1.1.1.1", userAgent: "UA")
+        let records = await sut.recentInstalls(limit: 10)
+        let targetID = records[0].id
+
+        let deleted = await sut.deleteInstall(id: targetID)
+        XCTAssertTrue(deleted)
+
+        // Create a new tracker pointing to the same directory to verify persistence
+        let newTracker = ServerInstallTracker(directory: tempDirectory)
+        let remaining = await newTracker.recentInstalls(limit: 10)
+        XCTAssertTrue(remaining.isEmpty, "Deletion should persist across tracker instances")
+    }
+
+    // MARK: - Delete All
+
+    func testDeleteAllInstallsEmptiesTheStore() async {
+        await sut.recordInstall(projectName: "App1", sourceIP: "1.1.1.1", userAgent: "UA")
+        await sut.recordInstall(projectName: "App2", sourceIP: "2.2.2.2", userAgent: "UA")
+        await sut.recordInstall(projectName: "App3", sourceIP: "3.3.3.3", userAgent: "UA")
+
+        await sut.deleteAllInstalls()
+
+        let records = await sut.recentInstalls(limit: 10)
+        XCTAssertTrue(records.isEmpty, "All records should be deleted")
+    }
+
+    func testDeleteAllInstallsPersistsToDisk() async {
+        await sut.recordInstall(projectName: "App", sourceIP: "1.1.1.1", userAgent: "UA")
+
+        await sut.deleteAllInstalls()
+
+        let newTracker = ServerInstallTracker(directory: tempDirectory)
+        let records = await newTracker.recentInstalls(limit: 10)
+        XCTAssertTrue(records.isEmpty, "Delete-all should persist across tracker instances")
+    }
+
+    func testDeleteAllInstallsOnEmptyStoreSucceeds() async {
+        await sut.deleteAllInstalls()
+
+        let records = await sut.recentInstalls(limit: 10)
+        XCTAssertTrue(records.isEmpty, "Delete-all on empty store should not error")
+    }
 }

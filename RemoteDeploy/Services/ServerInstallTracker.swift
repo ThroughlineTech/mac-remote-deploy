@@ -73,6 +73,25 @@ actor ServerInstallTracker: InstallTracking {
         return Array(sorted.prefix(limit))
     }
 
+    /// Deletes a single install record by its unique identifier.
+    /// Reads all records from disk, removes the matching entry, and writes back.
+    ///
+    /// - Parameter id: The UUID of the record to delete.
+    /// - Returns: `true` if the record was found and removed, `false` otherwise.
+    public func deleteInstall(id: UUID) async -> Bool {
+        var records = readRecordsFromDisk()
+        let originalCount = records.count
+        records.removeAll { $0.id == id }
+        guard records.count < originalCount else { return false }
+        writeRecordsToDisk(records)
+        return true
+    }
+
+    /// Deletes all install records by writing an empty array to disk.
+    public func deleteAllInstalls() async {
+        writeRecordsToDisk([])
+    }
+
     // MARK: - Private helpers
 
     /// Reads and decodes the installs JSON file from disk.
