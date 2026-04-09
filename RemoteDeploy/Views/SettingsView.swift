@@ -13,24 +13,27 @@ struct SettingsView: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
 
     var body: some View {
-        TabView {
+        TabView(selection: $appState.selectedSettingsTab) {
             ServerSettingsTab(appState: appState)
                 .environmentObject(serviceContainer)
                 .tabItem {
                     Label("Server", systemImage: "server.rack")
                 }
+                .tag("server")
 
             ProjectsSettingsTab(appState: appState)
                 .environmentObject(serviceContainer)
                 .tabItem {
                     Label("Projects", systemImage: "folder")
                 }
+                .tag("projects")
 
             PushSettingsTab(appState: appState)
                 .environmentObject(serviceContainer)
                 .tabItem {
                     Label("Notifications", systemImage: "bell")
                 }
+                .tag("notifications")
 
             PairedDevicesTab()
                 .environmentObject(serviceContainer)
@@ -38,11 +41,13 @@ struct SettingsView: View {
                 .tabItem {
                     Label("Devices", systemImage: "iphone")
                 }
+                .tag("devices")
 
             AboutSettingsTab()
                 .tabItem {
                     Label("About", systemImage: "info.circle")
                 }
+                .tag("about")
         }
         .frame(width: 560, height: 450)
     }
