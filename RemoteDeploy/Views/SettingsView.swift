@@ -443,9 +443,13 @@ struct PushSettingsTab: View {
 
                 // --- Event Toggles ---
                 GroupBox("Notify On") {
-                    Toggle("Build Started", isOn: $config.notifyOnBuildStarted)
-                    Toggle("Build Success", isOn: $config.notifyOnBuildSuccess)
-                    Toggle("Build Failure", isOn: $config.notifyOnBuildFailure)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Toggle("Build Started", isOn: $config.notifyOnBuildStarted)
+                        Toggle("Build Success", isOn: $config.notifyOnBuildSuccess)
+                        Toggle("Build Failure", isOn: $config.notifyOnBuildFailure)
+                    }
+                    .toggleStyle(.checkbox)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 // Display test error if any
@@ -556,7 +560,7 @@ struct PushProviderSection<Content: View>: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(enabled ? Color(.controlBackgroundColor) : Color.clear)
+                .fill(enabled ? Color.gray.opacity(0.1) : Color.clear)
         )
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .opacity(enabled ? 1.0 : 0.6)

@@ -30,17 +30,17 @@ struct ProjectsListSection: View {
                 }
             }
 
-            Button {
-                appState.selectedSettingsTab = "projects"
-                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-                NSApp.activate()
-            } label: {
+            SettingsLink {
                 Label("Add Project...", systemImage: "plus")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .simultaneousGesture(TapGesture().onEnded {
+                appState.selectedSettingsTab = "projects"
+                NSApp.activate()
+            })
             .padding(.top, 2)
         }
     }

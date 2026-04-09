@@ -63,6 +63,9 @@ struct SetupAssistantView: View {
                 .padding(16)
         }
         .frame(width: 700, height: 700)
+        .onAppear {
+            currentStep = .tailscale
+        }
     }
 
     // MARK: - Step Indicator
