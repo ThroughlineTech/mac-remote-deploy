@@ -66,30 +66,34 @@ struct MainTabView: View {
     @EnvironmentObject var connectionManager: ConnectionManager
 
     var body: some View {
-        TabView {
+        TabView(selection: $connectionManager.selectedTab) {
             ProjectListView()
                 .environmentObject(connectionManager)
                 .tabItem {
                     Label("Projects", systemImage: "folder")
                 }
+                .tag(0)
 
             BuildControlView()
                 .environmentObject(connectionManager)
                 .tabItem {
                     Label("Build", systemImage: "hammer")
                 }
+                .tag(1)
 
             InstallHistoryView()
                 .environmentObject(connectionManager)
                 .tabItem {
                     Label("Installs", systemImage: "arrow.down.circle")
                 }
+                .tag(2)
 
             RemoteSettingsView()
                 .environmentObject(connectionManager)
                 .tabItem {
                     Label("Settings", systemImage: "gear")
                 }
+                .tag(3)
         }
     }
 }

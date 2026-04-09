@@ -1,6 +1,7 @@
 // Shared build state manager used by both the Build tab and ProjectDetailView.
 // Ensures only one build runs at a time and both views show consistent status.
 import Foundation
+import Combine
 import RemoteDeployShared
 
 /// Manages build state across the companion app. Both the Build tab and
@@ -22,6 +23,7 @@ final class BuildManager: ObservableObject {
 
     private var pollTask: Task<Void, Never>?
     private weak var apiClient: APIClient?
+    private var webSocketCancellable: AnyCancellable?
 
     /// Sets the API client. Called when the connection is established.
     func setClient(_ client: APIClient?) {
@@ -102,5 +104,32 @@ final class BuildManager: ObservableObject {
 
     func stopPolling() {
         pollTask?.cancel()
+    }
+
+    /// Observes WebSocket build status for real-time updates, complementing
+    /// the REST polling fallback. Gives instant status transitions instead
+    /// of waiting for the 2-second poll interval (TKT-040).
+    func observeWebSocketStatus(_ webSocketClient: WebSocketClient) {
+        webSocketCancellable?.cancel()
+        webSocketCancellable = webSocketClient.$latestStatus
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] status in
+                guard let self else { return }
+                self.buildStatus = status
+
+                // If the WebSocket reports a build started that we didn't
+                // trigger locally, sync up our state.
+                if status.state == "building" && !self.isBuilding {
+                    self.isBuilding = true
+                    self.buildingProjectID = status.projectID
+                }
+
+                // Terminal states stop the build.
+                if status.state == "success" || status.state == "failure" {
+                    self.isBuilding = false
+                    self.pollTask?.cancel()
+                }
+            }
     }
 }

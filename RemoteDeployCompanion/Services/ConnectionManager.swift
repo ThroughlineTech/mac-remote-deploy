@@ -21,6 +21,10 @@ final class ConnectionManager: ObservableObject {
     /// The current server status.
     @Published var serverStatus: ServerStatus?
 
+    /// The currently selected tab index — settable from any view to
+    /// programmatically switch tabs (e.g. "View Build Log" button).
+    @Published var selectedTab: Int = 0
+
     /// Error message for display.
     @Published var error: String?
 
@@ -96,6 +100,11 @@ final class ConnectionManager: ObservableObject {
         serverName = saved.serverName
         isConnected = true
 
+        // Connect WebSocket so live build log and status updates work
+        // from app launch, not just after fresh pairing (TKT-040).
+        webSocketClient.connect(baseURL: url, token: saved.token)
+        buildManager.observeWebSocketStatus(webSocketClient)
+
         // Verify the connection works
         await refreshStatus()
     }
@@ -139,6 +148,7 @@ final class ConnectionManager: ObservableObject {
 
         // Connect WebSocket (best-effort, don't block pairing if it fails)
         webSocketClient.connect(baseURL: baseURL, token: token)
+        buildManager.observeWebSocketStatus(webSocketClient)
 
         // Verify the connection works by fetching status
         await refreshStatus()
@@ -163,6 +173,7 @@ final class ConnectionManager: ObservableObject {
         self.isConnected = true
 
         webSocketClient.connect(baseURL: baseURL, token: token)
+        buildManager.observeWebSocketStatus(webSocketClient)
     }
 
     /// Disconnects and clears saved credentials.
