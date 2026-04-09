@@ -113,19 +113,31 @@ struct ProjectListView: View {
     }
 }
 
-/// Detail view for a single project with build trigger.
+/// Detail view for a single project with build trigger and live progress.
 /// Uses the shared BuildManager so build state is consistent with the Build tab.
 struct ProjectDetailView: View {
     @EnvironmentObject var connectionManager: ConnectionManager
     let project: ProjectConfig
 
-    /// Observe the shared build manager
-    @ObservedObject private var buildManager: BuildManager
+    /// Timestamp captured when the build starts, drives the elapsed timer.
+    @State private var buildStartedAt: Date?
 
-    init(project: ProjectConfig) {
-        self.project = project
-        // This will be set properly via environmentObject, placeholder for init
-        self._buildManager = ObservedObject(wrappedValue: BuildManager())
+    /// Whether this project is the one currently building.
+    private var isThisProjectBuilding: Bool {
+        connectionManager.buildManager.isBuilding
+            && connectionManager.buildManager.buildingProjectID == project.id
+    }
+
+    /// The build status for this project (only when it's the active build).
+    private var projectStatus: BuildStatusInfo? {
+        guard connectionManager.buildManager.buildingProjectID == project.id else { return nil }
+        return connectionManager.buildManager.buildStatus
+    }
+
+    /// Constructs the OTA install page URL from the server base URL and project slug.
+    private var installURL: URL? {
+        guard let base = connectionManager.apiClient?.baseURL else { return nil }
+        return base.appendingPathComponent(project.urlSlug)
     }
 
     var body: some View {
@@ -138,7 +150,6 @@ struct ProjectDetailView: View {
                 LabeledContent("Configuration", value: project.buildConfiguration)
                 LabeledContent("Export Method", value: project.exportMethod)
                 LabeledContent("Platform", value: project.platform)
-                LabeledContent("URL Slug", value: project.urlSlug)
             }
 
             Section("Path") {
@@ -146,12 +157,13 @@ struct ProjectDetailView: View {
                     .font(.system(.caption, design: .monospaced))
             }
 
+            // MARK: - Build Action
             Section {
                 Button {
                     connectionManager.buildManager.triggerBuild(projectID: project.id)
                 } label: {
                     HStack {
-                        if connectionManager.buildManager.isBuilding && connectionManager.buildManager.buildingProjectID == project.id {
+                        if isThisProjectBuilding {
                             ProgressView()
                                 .controlSize(.small)
                         }
@@ -159,37 +171,115 @@ struct ProjectDetailView: View {
                     }
                     .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
                 .disabled(connectionManager.buildManager.isBuilding)
 
-                if let status = connectionManager.buildManager.buildStatus,
-                   connectionManager.buildManager.buildingProjectID == project.id {
-                    HStack(spacing: 8) {
-                        if status.state == "building" {
+                if isThisProjectBuilding {
+                    Button(role: .destructive) {
+                        connectionManager.buildManager.cancelBuild()
+                    } label: {
+                        Label("Cancel Build", systemImage: "xmark.circle")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+            }
+
+            // MARK: - Build Progress
+            if let status = projectStatus {
+                Section("Build Status") {
+                    switch status.state {
+                    case "building":
+                        // Prominent progress with elapsed timer
+                        HStack(spacing: 12) {
                             ProgressView()
-                                .controlSize(.small)
-                        } else {
-                            Circle()
-                                .fill(statusColor(status.state))
-                                .frame(width: 10, height: 10)
+                            if let startedAt = buildStartedAt {
+                                TimelineView(.periodic(from: startedAt, by: 1.0)) { context in
+                                    let elapsed = Int(context.date.timeIntervalSince(startedAt))
+                                    Text("Building... \(elapsed)s")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                }
+                            } else {
+                                Text("Building...")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                            }
                         }
-                        Text(statusLabel(status.state))
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        if let message = status.message, status.state == "failure" {
+
+                        if let message = status.message {
                             Text(message)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                                .lineLimit(2)
+                        }
+
+                    case "success":
+                        // Green success banner with install link
+                        Label("Build Succeeded", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.headline)
+
+                        if let url = installURL {
+                            Link(destination: url) {
+                                Label("Open Install Page", systemImage: "arrow.down.circle.fill")
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.green)
+                        }
+
+                    case "failure":
+                        // Red error banner with details
+                        Label("Build Failed", systemImage: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.headline)
+
+                        if let message = status.message {
+                            Text(message)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+
+                    default:
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(statusColor(status.state))
+                                .frame(width: 10, height: 10)
+                            Text(status.state.capitalized)
+                                .font(.subheadline)
                         }
                     }
+
+                    // "View Build Log" navigates to the Build tab
+                    Button {
+                        connectionManager.selectedTab = 1
+                    } label: {
+                        Label("View Build Log", systemImage: "text.alignleft")
+                    }
+                }
+            }
+
+            if let error = connectionManager.buildManager.error {
+                Section {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
                 }
             }
         }
         .navigationTitle(project.name)
+        .onChange(of: connectionManager.buildManager.isBuilding) { _, newValue in
+            // Capture/clear the build start time for the elapsed timer.
+            if newValue && connectionManager.buildManager.buildingProjectID == project.id {
+                buildStartedAt = Date()
+            } else if !newValue {
+                // Keep buildStartedAt around after build finishes so success/failure
+                // UI stays visible; only clear when a new build starts.
+            }
+        }
     }
 
     private var buildButtonLabel: String {
-        if connectionManager.buildManager.isBuilding && connectionManager.buildManager.buildingProjectID == project.id {
+        if isThisProjectBuilding {
             return "Building..."
         }
         if connectionManager.buildManager.isBuilding {
@@ -204,16 +294,6 @@ struct ProjectDetailView: View {
         case "success": .green
         case "failure": .red
         default: .gray
-        }
-    }
-
-    private func statusLabel(_ state: String) -> String {
-        switch state {
-        case "building": "Building..."
-        case "success": "Build Succeeded"
-        case "failure": "Build Failed"
-        case "idle": "Idle"
-        default: state.capitalized
         }
     }
 }
