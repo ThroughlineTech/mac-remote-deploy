@@ -19,6 +19,7 @@ final class AppState: ObservableObject {
     @Published var showSetupAssistant = false
     @Published var showSettings = false
     @Published var showBuildLog = false
+    @Published var selectedSettingsTab: String = "server"
     @Published var buildConfiguration: String = "Release"
 
     /// Current boundary-level error, if any. Set by RemoteDeployApp when a boundary
