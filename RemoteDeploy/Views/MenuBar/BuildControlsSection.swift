@@ -56,7 +56,15 @@ struct BuildControlsSection: View {
                 lastInstallInfoView(install)
             }
 
-            Button(action: { openWindow(id: "build-log") }) {
+            Button(action: {
+                // TKT-033: activate + order front so the build log
+                // window appears above other apps in LSUIElement mode.
+                NSApp.activate()
+                openWindow(id: "build-log")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NSApp.windows.first { $0.title == "Build Log" }?.orderFrontRegardless()
+                }
+            }) {
                 Label("View Build Log", systemImage: "doc.text")
                     .font(.subheadline)
                     .frame(maxWidth: .infinity, alignment: .leading)
