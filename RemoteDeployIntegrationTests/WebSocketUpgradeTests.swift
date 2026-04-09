@@ -23,6 +23,8 @@ final class WebSocketUpgradeTests: XCTestCase {
     private var keyPath: String!
     private var serveRoot: String!
     private var serverPort: Int!
+    /// TKT-028: random ephemeral port for the plain-HTTP listener.
+    private var httpPort: Int!
     private var session: URLSession!
     private var deviceStore: JSONPairedDeviceStore!
 
@@ -43,6 +45,9 @@ final class WebSocketUpgradeTests: XCTestCase {
         try generateSelfSignedCert(certPath: certPath, keyPath: keyPath)
 
         serverPort = Int.random(in: 49152...65000)
+        repeat {
+            httpPort = Int.random(in: 49152...65000)
+        } while httpPort == serverPort
 
         server = NIODeployServer(
             manifestGenerator: ManifestGenerator(),
@@ -93,7 +98,7 @@ final class WebSocketUpgradeTests: XCTestCase {
     /// HTTPHandler which returns 401 for `/api/v1/ws`, and URLSession
     /// surfaces that as a handshake failure.
     func testUnauthenticatedUpgradeIsRejected() async throws {
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let wsURL = URL(string: "wss://localhost:\(serverPort!)/api/v1/ws")!
         let task = session.webSocketTask(with: wsURL)
@@ -120,7 +125,7 @@ final class WebSocketUpgradeTests: XCTestCase {
     /// interrupt a hung handshake — the test would hang indefinitely if
     /// the upgrade path broke. XCTestExpectation can time out cleanly.
     func testAuthenticatedUpgradeAcceptsAndBroadcastsFlow() async throws {
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         // Pair a device to obtain a real bearer token.
         let token = try pairTestDevice()

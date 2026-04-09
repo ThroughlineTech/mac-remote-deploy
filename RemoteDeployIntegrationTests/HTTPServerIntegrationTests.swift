@@ -60,6 +60,10 @@ final class HTTPServerIntegrationTests: XCTestCase {
     private var keyPath: String!
     private var serveRoot: String!
     private var serverPort: Int!
+    /// TKT-028: random ephemeral port for the plain-HTTP listener so the
+    /// integration test doesn't collide with a running RemoteDeploy host
+    /// holding :8080 (the production default).
+    private var httpPort: Int!
 
     /// URLSession configured to trust any certificate (needed for self-signed).
     private var session: URLSession!
@@ -82,8 +86,12 @@ final class HTTPServerIntegrationTests: XCTestCase {
         // Generate self-signed certificate using openssl
         try generateSelfSignedCert(certPath: certPath, keyPath: keyPath)
 
-        // Pick a random high port to avoid conflicts
+        // Pick random high ports to avoid conflicts. TKT-028: httpPort too,
+        // to avoid colliding with a production RemoteDeploy host on :8080.
         serverPort = Int.random(in: 49152...65000)
+        repeat {
+            httpPort = Int.random(in: 49152...65000)
+        } while httpPort == serverPort
 
         // Create the server with real generators
         server = NIODeployServer(
@@ -125,7 +133,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
     func testServerStartStop() async throws {
         XCTAssertFalse(server.isRunning, "Server should not be running before start")
 
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
         XCTAssertTrue(server.isRunning, "Server should be running after start")
         XCTAssertEqual(server.port, serverPort)
 
@@ -134,7 +142,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
     }
 
     func testRootReturnsIndexPage() async throws {
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let url = URL(string: "https://localhost:\(serverPort!)/")!
         let (data, response) = try await session.data(from: url)
@@ -161,7 +169,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
         let slugDir = "\(serveRoot!)/testapp"
         try FileManager.default.createDirectory(atPath: slugDir, withIntermediateDirectories: true)
 
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let url = URL(string: "https://localhost:\(serverPort!)/testapp/")!
         let (data, response) = try await session.data(from: url)
@@ -184,7 +192,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
         project.urlSlug = "testapp"
         server.registerProject(project)
 
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let url = URL(string: "https://localhost:\(serverPort!)/testapp/manifest.plist")!
         let (data, response) = try await session.data(from: url)
@@ -227,7 +235,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
             downloadExpectation.fulfill()
         }
 
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let url = URL(string: "https://localhost:\(serverPort!)/testapp/app.ipa")!
         let (data, response) = try await session.data(from: url)
@@ -255,7 +263,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
     }
 
     func testNotFoundReturns404() async throws {
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let url = URL(string: "https://localhost:\(serverPort!)/nonexistent")!
         let (data, response) = try await session.data(from: url)
@@ -269,7 +277,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
 
     func testUnregisteredSlugReturns404() async throws {
         // Do NOT register any project -- all slug-based routes should 404
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let installURL = URL(string: "https://localhost:\(serverPort!)/nope/")!
         let (_, installResponse) = try await session.data(from: installURL)
@@ -294,7 +302,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
         project.urlSlug = "noipa"
         server.registerProject(project)
 
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let url = URL(string: "https://localhost:\(serverPort!)/noipa/app.ipa")!
         let (_, response) = try await session.data(from: url)
@@ -312,7 +320,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
         let pairingHandler = output.pairingHandler
         server.apiRouter = output.router
 
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         // The HTTP listener starts on port 8080 alongside HTTPS.
         // For this test, we'll use the HTTPS listener with the API router since
@@ -358,7 +366,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
         let output = await Self.makeTestRouter(deviceStore: deviceStore, tempDir: tempDir)
         server.apiRouter = output.router
 
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         // Do NOT register a pending token — pairing should fail
         let pairURL = URL(string: "https://localhost:\(serverPort!)/api/v1/pair")!
@@ -380,7 +388,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
         let output = await Self.makeTestRouter(deviceStore: deviceStore, tempDir: tempDir)
         server.apiRouter = output.router
 
-        try await server.start(port: serverPort, certPath: certPath, keyPath: keyPath)
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         // Request without Authorization header
         let url = URL(string: "https://localhost:\(serverPort!)/api/v1/status")!
