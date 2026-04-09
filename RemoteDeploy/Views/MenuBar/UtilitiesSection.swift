@@ -49,25 +49,29 @@ struct UtilitiesSection: View {
     }
 
     /// Opens a file picker to import a pre-built .ipa file.
+    /// Deferred to the next runloop turn so the MenuBarExtra popover can
+    /// dismiss cleanly before the modal file picker appears (TKT-031).
     private func importIPA() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.init(filenameExtension: "ipa")!]
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.message = "Select an .ipa file to serve"
+        DispatchQueue.main.async { [self] in
+            let panel = NSOpenPanel()
+            panel.allowedContentTypes = [.init(filenameExtension: "ipa")!]
+            panel.canChooseFiles = true
+            panel.canChooseDirectories = false
+            panel.message = "Select an .ipa file to serve"
 
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+            guard panel.runModal() == .OK, let url = panel.url else { return }
 
-        let slug = appState.selectedProject?.urlSlug ?? "imported"
-        let serveDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("RemoteDeploy/serve").path
+            let slug = appState.selectedProject?.urlSlug ?? "imported"
+            let serveDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+                .appendingPathComponent("RemoteDeploy/serve").path
 
-        do {
-            let info = try serviceContainer.ipaImporter.importIPA(from: url, to: slug, serveDirectory: serveDir)
-            buildManager.markImportSucceeded(ipaPath: "\(serveDir)/\(slug)/app.ipa")
-            Logger.build.info("Imported IPA: \(info.bundleID, privacy: .public) v\(info.version, privacy: .public)")
-        } catch {
-            buildManager.markImportFailed(reason: error.localizedDescription)
+            do {
+                let info = try serviceContainer.ipaImporter.importIPA(from: url, to: slug, serveDirectory: serveDir)
+                buildManager.markImportSucceeded(ipaPath: "\(serveDir)/\(slug)/app.ipa")
+                Logger.build.info("Imported IPA: \(info.bundleID, privacy: .public) v\(info.version, privacy: .public)")
+            } catch {
+                buildManager.markImportFailed(reason: error.localizedDescription)
+            }
         }
     }
 }
