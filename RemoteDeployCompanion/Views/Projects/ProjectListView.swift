@@ -64,7 +64,7 @@ struct ProjectListView: View {
                         }
                     }
                     .navigationDestination(for: ProjectConfig.self) { project in
-                        ProjectDetailView(project: project)
+                        ProjectDetailView(buildManager: connectionManager.buildManager, project: project)
                             .environmentObject(connectionManager)
                     }
                 }
@@ -117,6 +117,7 @@ struct ProjectListView: View {
 /// Uses the shared BuildManager so build state is consistent with the Build tab.
 struct ProjectDetailView: View {
     @EnvironmentObject var connectionManager: ConnectionManager
+    @ObservedObject var buildManager: BuildManager
     let project: ProjectConfig
 
     /// Timestamp captured when the build starts, drives the elapsed timer.
@@ -124,14 +125,14 @@ struct ProjectDetailView: View {
 
     /// Whether this project is the one currently building.
     private var isThisProjectBuilding: Bool {
-        connectionManager.buildManager.isBuilding
-            && connectionManager.buildManager.buildingProjectID == project.id
+        buildManager.isBuilding
+            && buildManager.buildingProjectID == project.id
     }
 
     /// The build status for this project (only when it's the active build).
     private var projectStatus: BuildStatusInfo? {
-        guard connectionManager.buildManager.buildingProjectID == project.id else { return nil }
-        return connectionManager.buildManager.buildStatus
+        guard buildManager.buildingProjectID == project.id else { return nil }
+        return buildManager.buildStatus
     }
 
     /// Constructs the OTA install page URL from the server base URL and project slug.
@@ -160,7 +161,7 @@ struct ProjectDetailView: View {
             // MARK: - Build Action
             Section {
                 Button {
-                    connectionManager.buildManager.triggerBuild(projectID: project.id)
+                    buildManager.triggerBuild(projectID: project.id)
                 } label: {
                     HStack {
                         if isThisProjectBuilding {
@@ -172,11 +173,11 @@ struct ProjectDetailView: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(connectionManager.buildManager.isBuilding)
+                .disabled(buildManager.isBuilding)
 
                 if isThisProjectBuilding {
                     Button(role: .destructive) {
-                        connectionManager.buildManager.cancelBuild()
+                        buildManager.cancelBuild()
                     } label: {
                         Label("Cancel Build", systemImage: "xmark.circle")
                             .frame(maxWidth: .infinity)
@@ -258,7 +259,7 @@ struct ProjectDetailView: View {
                 }
             }
 
-            if let error = connectionManager.buildManager.error {
+            if let error = buildManager.error {
                 Section {
                     Text(error)
                         .font(.caption)
@@ -267,9 +268,9 @@ struct ProjectDetailView: View {
             }
         }
         .navigationTitle(project.name)
-        .onChange(of: connectionManager.buildManager.isBuilding) { _, newValue in
+        .onChange(of: buildManager.isBuilding) { _, newValue in
             // Capture/clear the build start time for the elapsed timer.
-            if newValue && connectionManager.buildManager.buildingProjectID == project.id {
+            if newValue && buildManager.buildingProjectID == project.id {
                 buildStartedAt = Date()
             } else if !newValue {
                 // Keep buildStartedAt around after build finishes so success/failure
@@ -282,7 +283,7 @@ struct ProjectDetailView: View {
         if isThisProjectBuilding {
             return "Building..."
         }
-        if connectionManager.buildManager.isBuilding {
+        if buildManager.isBuilding {
             return "Build in Progress"
         }
         return "Build & Deploy"
