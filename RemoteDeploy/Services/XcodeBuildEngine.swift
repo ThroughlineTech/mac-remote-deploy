@@ -23,6 +23,17 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// status with a success or unrelated failure. See TKT-016.
     private let lockedIsCancelling = OSAllocatedUnfairLock<Bool>(initialState: false)
 
+    /// Ring buffer of the most recent stderr lines from xcodebuild. Capped at
+    /// `stderrRingCapacity` entries and reset at the start of each `runXcodebuild`
+    /// call. The tail of this buffer is included in `BuildError.xcodebuildFailed`'s
+    /// message on a non-zero exit so the companion (and Prowl notification) can
+    /// surface the actual xcodebuild error to the user instead of just an exit
+    /// code. See TKT-045.
+    private let lockedRecentStderrLines = OSAllocatedUnfairLock<[String]>(initialState: [])
+
+    /// Maximum number of recent stderr lines retained for the failure message tail.
+    private static let stderrRingCapacity = 8
+
     // MARK: - Protocol Properties
 
     /// The current build status (idle, building, success, or failure).
@@ -271,6 +282,10 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// - Throws: `BuildError.xcodebuildFailed` if the exit code is non-zero,
     ///   or `BuildError.cancelled` if the process was terminated.
     private func runXcodebuild(arguments: [String]) async throws {
+        // TKT-045: reset the stderr ring buffer at the start of every invocation
+        // so the failure message only reflects the current xcodebuild run.
+        lockedRecentStderrLines.withLock { $0.removeAll(keepingCapacity: true) }
+
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = ["xcodebuild"] + arguments
@@ -291,17 +306,39 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             }
         }
 
-        // Stream stderr lines
+        // Stream stderr lines and capture each into the ring buffer so the
+        // termination handler can include the tail in the thrown error
+        // message on a non-zero exit. TKT-045.
         stderrPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty, let text = String(data: data, encoding: .utf8) else { return }
             for line in text.components(separatedBy: .newlines) where !line.isEmpty {
+                self?.appendStderrLine(line)
                 self?.emitLog("[stderr] \(line)")
             }
         }
 
         return try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { [weak self] proc in
+                // Drain any final bytes still buffered on the pipes before we
+                // detach the readability handlers, so the last stderr line
+                // (which on a preflight failure is usually the informative
+                // error) is captured into the ring buffer rather than racing
+                // the handler teardown. TKT-045.
+                let stdoutTail = stdoutPipe.fileHandleForReading.availableData
+                if !stdoutTail.isEmpty, let text = String(data: stdoutTail, encoding: .utf8) {
+                    for line in text.components(separatedBy: .newlines) where !line.isEmpty {
+                        self?.emitLog(line)
+                    }
+                }
+                let stderrTail = stderrPipe.fileHandleForReading.availableData
+                if !stderrTail.isEmpty, let text = String(data: stderrTail, encoding: .utf8) {
+                    for line in text.components(separatedBy: .newlines) where !line.isEmpty {
+                        self?.appendStderrLine(line)
+                        self?.emitLog("[stderr] \(line)")
+                    }
+                }
+
                 // Clean up readability handlers
                 stdoutPipe.fileHandleForReading.readabilityHandler = nil
                 stderrPipe.fileHandleForReading.readabilityHandler = nil
@@ -314,17 +351,35 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
                 // .cancelled and let the build pipeline propagate it up.
                 let isCancelling = self?.lockedIsCancelling.withLock { $0 } ?? false
                 if isCancelling {
+                    // TKT-045: deterministically finish the log stream so any
+                    // in-flight `for await` consumer in BuildManager exits on
+                    // its next iteration rather than racing logTask.cancel().
+                    self?.finishLogContinuation()
                     continuation.resume(throwing: BuildError.cancelled)
                     return
                 }
 
                 if proc.terminationReason == .uncaughtSignal {
+                    // TKT-045: drain log stream symmetrically on the
+                    // signal-cancellation branch.
+                    self?.finishLogContinuation()
                     continuation.resume(throwing: BuildError.cancelled)
                 } else if proc.terminationStatus != 0 {
-                    let msg = "xcodebuild exited with code \(proc.terminationStatus)"
+                    // TKT-045: surface the last stderr line(s) in the failure
+                    // message so the companion's status frame and the Prowl
+                    // notification show the actual xcodebuild error rather
+                    // than just "exit code N".
+                    let msg = self?.failureMessage(forExitCode: proc.terminationStatus)
+                        ?? "xcodebuild failed (exit \(proc.terminationStatus))"
                     self?.setStatus(.failure(error: msg))
+                    self?.finishLogContinuation()
                     continuation.resume(throwing: BuildError.xcodebuildFailed(proc.terminationStatus, msg))
                 } else {
+                    // Note: do NOT finish the log continuation on the
+                    // success branch — `build(project:)` calls
+                    // `runXcodebuild` twice (archive + export), and the
+                    // continuation must stay alive across both phases so
+                    // the export step's log lines still reach the consumer.
                     continuation.resume()
                 }
             }
@@ -335,6 +390,41 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
                 lockedRunningProcess.withLock { $0 = nil }
                 continuation.resume(throwing: error)
             }
+        }
+    }
+
+    /// Appends a stderr line to the ring buffer, trimming to the most recent
+    /// `stderrRingCapacity` entries. Thread-safe.
+    private func appendStderrLine(_ line: String) {
+        lockedRecentStderrLines.withLock { lines in
+            lines.append(line)
+            if lines.count > Self.stderrRingCapacity {
+                lines.removeFirst(lines.count - Self.stderrRingCapacity)
+            }
+        }
+    }
+
+    /// Builds the failure message for a non-zero xcodebuild exit, appending the
+    /// last meaningful stderr line from the ring buffer when one is available.
+    /// Falls back to the bare exit-code message if no stderr lines were captured.
+    private func failureMessage(forExitCode code: Int32) -> String {
+        let recent = lockedRecentStderrLines.withLock { $0 }
+        // Prefer the last non-empty, non-whitespace line so we don't surface
+        // stray blank trailers from xcodebuild.
+        let meaningful = recent.last { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        if let tail = meaningful {
+            return "xcodebuild failed (exit \(code)): \(tail)"
+        }
+        return "xcodebuild failed (exit \(code))"
+    }
+
+    /// Finishes the engine's current log-stream continuation (if any) so that
+    /// `for await` consumers exit deterministically. Called from every exit
+    /// branch of `runXcodebuild`'s termination handler.
+    private func finishLogContinuation() {
+        lockedLogContinuation.withLock { cont in
+            cont?.finish()
+            cont = nil
         }
     }
 

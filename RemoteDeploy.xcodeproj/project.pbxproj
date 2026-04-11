@@ -91,6 +91,7 @@
 		792434EFEF1642985DE64E0B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 489A6CB77F32B387688FC39D /* Assets.xcassets */; };
 		7B6870F10E1F0CD20FEF88F3 /* ProjectsRouteHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496B150612C0F0E52A65D199 /* ProjectsRouteHandlerTests.swift */; };
 		7D66396D819A965E6D6711CB /* BuildManagerBroadcastTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C261765B23D562C44FC9351 /* BuildManagerBroadcastTests.swift */; };
+		7F9E3B7969B0ACB56181995E /* XcodeBuildEngineFailureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2BF1ACA1CB561C7EB44AF02 /* XcodeBuildEngineFailureTests.swift */; };
 		823E3790257BCF616C9910DD /* JSONPairedDeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FF6629262E737F32BF1B707 /* JSONPairedDeviceStore.swift */; };
 		82F95CC166C89D53E30B9498 /* APIRouterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E01ABCFB258D8316A6F3B04 /* APIRouterTests.swift */; };
 		84E44B81ED14A9840DB75345 /* NIOResponseGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0464D1E9EB161D57ECF00BBB /* NIOResponseGenerator.swift */; };
@@ -115,6 +116,7 @@
 		A90A784C2B7AF77FCAF4EBB3 /* APIRouterFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C83442A51AD2C39C5D7FC5 /* APIRouterFactory.swift */; };
 		AA65810FF506F20B0442FD42 /* InstallPageGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */; };
 		AC62408866EA8A4BB8662703 /* SettingsProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 255ECD576F080DF6FF651C2F /* SettingsProviding.swift */; };
+		AF62A2AFCF2073844CD084E0 /* ProjectDetailReactiveStatusUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD614EE8A5C37D91624CC813 /* ProjectDetailReactiveStatusUITests.swift */; };
 		B2E1DC71DEFF4511AFF4D184 /* BuildRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17D9C8B43457CD5A3A816A5B /* BuildRouteHandler.swift */; };
 		B3240FF5DD2384BA8F8B07B3 /* WebSocketUpgradeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13C04B540D1201D07398DD7C /* WebSocketUpgradeTests.swift */; };
 		B450F190AE379CE7A3EB49C9 /* WebSocketManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CB0319FCD8EFF8C73C54A4C /* WebSocketManagerTests.swift */; };
@@ -326,7 +328,9 @@
 		B672B2B791A8157F8C29D9C9 /* NIODeployServerBuildEventBroadcastingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NIODeployServerBuildEventBroadcastingTests.swift; sourceTree = "<group>"; };
 		B80F03E0294CBF8288882CAC /* ProjectSetupValidators.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectSetupValidators.swift; sourceTree = "<group>"; };
 		B976E30E8F5281A40D7E129F /* StatusProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusProviding.swift; sourceTree = "<group>"; };
+		BD614EE8A5C37D91624CC813 /* ProjectDetailReactiveStatusUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectDetailReactiveStatusUITests.swift; sourceTree = "<group>"; };
 		C2B144D783065CC4AC0F575C /* DevicesRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesRouteHandlerTests.swift; sourceTree = "<group>"; };
+		C2BF1ACA1CB561C7EB44AF02 /* XcodeBuildEngineFailureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildEngineFailureTests.swift; sourceTree = "<group>"; };
 		C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildEngineCancelTests.swift; sourceTree = "<group>"; };
 		C88E4899A75F7D4BB021E602 /* BuildHistoryProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildHistoryProviding.swift; sourceTree = "<group>"; };
 		C9003DF3FC9CE4215B3B4F10 /* FilesystemRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesystemRouteHandlerTests.swift; sourceTree = "<group>"; };
@@ -425,13 +429,6 @@
 			path = Routes;
 			sourceTree = "<group>";
 		};
-		13570E3579B261E6010B5C21 /* ViewModels */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = ViewModels;
-			sourceTree = "<group>";
-		};
 		1DF9A0CCF37C239D55432C36 /* API */ = {
 			isa = PBXGroup;
 			children = (
@@ -458,6 +455,7 @@
 		24F7BC0E98188981E69CAFD3 /* RemoteDeployCompanionUITests */ = {
 			isa = PBXGroup;
 			children = (
+				BD614EE8A5C37D91624CC813 /* ProjectDetailReactiveStatusUITests.swift */,
 				99A149FBB61626663F091536 /* ScreenshotTests.swift */,
 			);
 			path = RemoteDeployCompanionUITests;
@@ -640,6 +638,7 @@
 				994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */,
 				4CB0319FCD8EFF8C73C54A4C /* WebSocketManagerTests.swift */,
 				C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */,
+				C2BF1ACA1CB561C7EB44AF02 /* XcodeBuildEngineFailureTests.swift */,
 				5CCDEDFEDA2820CD165CA1DD /* API */,
 				D1B31D03DE6F82D06FB3BB47 /* Mocks */,
 				B9D763DC9E6CC3D9291D0423 /* Support */,
@@ -791,7 +790,6 @@
 				DEBB5893B7D475E4702B2405 /* Logging.swift */,
 				47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */,
 				F270FF736141F30ED08002AC /* Services */,
-				13570E3579B261E6010B5C21 /* ViewModels */,
 				5B1B521AC7C9082F206D6434 /* Views */,
 			);
 			path = RemoteDeployCompanion;
@@ -1158,6 +1156,7 @@
 				6ABB387F26712A7861105E4E /* StatusRouteHandlerTests.swift in Sources */,
 				B450F190AE379CE7A3EB49C9 /* WebSocketManagerTests.swift in Sources */,
 				FC2F6D861481C7A500A68888 /* XcodeBuildEngineCancelTests.swift in Sources */,
+				7F9E3B7969B0ACB56181995E /* XcodeBuildEngineFailureTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1165,6 +1164,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AF62A2AFCF2073844CD084E0 /* ProjectDetailReactiveStatusUITests.swift in Sources */,
 				75A8AAF87DE244D0649B1C07 /* ScreenshotTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
