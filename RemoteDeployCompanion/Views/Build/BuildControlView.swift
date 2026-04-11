@@ -6,6 +6,8 @@ import RemoteDeployShared
 /// Main build control interface with project picker and live status.
 struct BuildControlView: View {
     @EnvironmentObject var connectionManager: ConnectionManager
+    @EnvironmentObject var buildManager: BuildManager
+    @EnvironmentObject var webSocketClient: WebSocketClient
 
     @State private var projects: [ProjectConfig] = []
     @State private var selectedProjectID: UUID?
@@ -56,18 +58,18 @@ struct BuildControlView: View {
                     HStack {
                         Button {
                             guard let id = selectedProjectID else { return }
-                            connectionManager.buildManager.triggerBuild(projectID: id)
+                            buildManager.triggerBuild(projectID: id)
                         } label: {
                             Label("Build & Deploy", systemImage: "hammer.fill")
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 8)
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(selectedProjectID == nil || connectionManager.buildManager.isBuilding)
+                        .disabled(selectedProjectID == nil || buildManager.isBuilding)
 
-                        if connectionManager.buildManager.isBuilding {
+                        if buildManager.isBuilding {
                             Button {
-                                connectionManager.buildManager.cancelBuild()
+                                buildManager.cancelBuild()
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.red)
@@ -77,7 +79,7 @@ struct BuildControlView: View {
                     }
 
                     // Build status display
-                    if let status = connectionManager.buildManager.buildStatus {
+                    if let status = buildManager.buildStatus {
                         HStack(spacing: 8) {
                             if status.state == "building" {
                                 ProgressView()
@@ -111,7 +113,7 @@ struct BuildControlView: View {
                         .padding(.vertical, 4)
                     }
 
-                    if let error = connectionManager.buildManager.error {
+                    if let error = buildManager.error {
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.red)
@@ -123,13 +125,12 @@ struct BuildControlView: View {
 
                 // Build log area
                 BuildLogStreamView()
-                    .environmentObject(connectionManager)
             }
             .navigationTitle("Build")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        connectionManager.webSocketClient.clearLog()
+                        webSocketClient.clearLog()
                     } label: {
                         Image(systemName: "trash")
                     }
@@ -139,7 +140,7 @@ struct BuildControlView: View {
         .task {
             await loadProjects()
         }
-        .onChange(of: connectionManager.buildManager.isBuilding) { _, newValue in
+        .onChange(of: buildManager.isBuilding) { _, newValue in
             // Capture/clear the build start time so the elapsed timer is accurate
             // from the moment the build kicks off.
             buildStartedAt = newValue ? Date() : nil
@@ -186,13 +187,13 @@ struct BuildControlView: View {
 
 /// Displays the live build log from WebSocket.
 struct BuildLogStreamView: View {
-    @EnvironmentObject var connectionManager: ConnectionManager
+    @EnvironmentObject var webSocketClient: WebSocketClient
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 1) {
-                    ForEach(Array(connectionManager.webSocketClient.buildLogLines.enumerated()), id: \.offset) { index, line in
+                    ForEach(Array(webSocketClient.buildLogLines.enumerated()), id: \.offset) { index, line in
                         Text(line)
                             .font(.system(.caption2, design: .monospaced))
                             .foregroundColor(logLineColor(line))
@@ -203,8 +204,8 @@ struct BuildLogStreamView: View {
                 .padding(.vertical, 4)
             }
             .background(Color(.systemGroupedBackground))
-            .onChange(of: connectionManager.webSocketClient.buildLogLines.count) {
-                if let last = connectionManager.webSocketClient.buildLogLines.indices.last {
+            .onChange(of: webSocketClient.buildLogLines.count) {
+                if let last = webSocketClient.buildLogLines.indices.last {
                     withAnimation {
                         proxy.scrollTo(last, anchor: .bottom)
                     }
