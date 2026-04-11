@@ -18,6 +18,10 @@ struct BuildControlView: View {
     /// Used to drive the elapsed-seconds display via TimelineView (TKT-017).
     @State private var buildStartedAt: Date?
 
+    /// Whether the build log disclosure is expanded. Collapsed by default and
+    /// re-collapsed when a new build starts (TKT-046).
+    @State private var isLogExpanded = false
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -123,8 +127,34 @@ struct BuildControlView: View {
 
                 Divider()
 
-                // Build log area
-                BuildLogStreamView()
+                // Build log area — collapsed by default (TKT-046).
+                DisclosureGroup(isExpanded: $isLogExpanded) {
+                    BuildLogStreamView()
+                        .frame(maxHeight: .infinity)
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                        Text("Build Log")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                        if !webSocketClient.buildLogLines.isEmpty {
+                            Text("(\(webSocketClient.buildLogLines.count) lines)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+
+                // Push everything to the top when the log disclosure is
+                // collapsed (TKT-046). When the disclosure is expanded, its
+                // content uses .frame(maxHeight: .infinity) and takes
+                // priority, so this Spacer collapses to nothing.
+                if !isLogExpanded {
+                    Spacer()
+                }
             }
             .navigationTitle("Build")
             .toolbar {
@@ -144,6 +174,11 @@ struct BuildControlView: View {
             // Capture/clear the build start time so the elapsed timer is accurate
             // from the moment the build kicks off.
             buildStartedAt = newValue ? Date() : nil
+            // TKT-046: collapse the log at the start of each new build so the
+            // primary action stays dominant. User can re-expand with one tap.
+            if newValue {
+                isLogExpanded = false
+            }
         }
     }
 
@@ -188,6 +223,7 @@ struct BuildControlView: View {
 /// Displays the live build log from WebSocket.
 struct BuildLogStreamView: View {
     @EnvironmentObject var webSocketClient: WebSocketClient
+    @EnvironmentObject var buildManager: BuildManager
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -205,10 +241,26 @@ struct BuildLogStreamView: View {
             }
             .background(Color(.systemGroupedBackground))
             .onChange(of: webSocketClient.buildLogLines.count) {
+                // TKT-046: only auto-scroll while the build is active. Once
+                // BuildManager flips isBuilding to false (via WebSocket
+                // terminal frame or REST poll fallback), trailing log lines
+                // no longer yank the viewport, so the user can review in
+                // peace.
+                guard buildManager.isBuilding else { return }
                 if let last = webSocketClient.buildLogLines.indices.last {
                     withAnimation {
                         proxy.scrollTo(last, anchor: .bottom)
                     }
+                }
+            }
+            .onChange(of: buildManager.isBuilding) { _, newValue in
+                // TKT-046: when a new build starts, snap to the tail of the
+                // log so the first streaming line is visible. Satisfies
+                // "Starting a new build re-enables auto-scroll for that
+                // build".
+                guard newValue, let last = webSocketClient.buildLogLines.indices.last else { return }
+                withAnimation {
+                    proxy.scrollTo(last, anchor: .bottom)
                 }
             }
         }
