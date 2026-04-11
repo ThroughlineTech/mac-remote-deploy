@@ -76,6 +76,8 @@ struct MainTabView: View {
 
             BuildControlView()
                 .environmentObject(connectionManager)
+                .environmentObject(connectionManager.buildManager)
+                .environmentObject(connectionManager.webSocketClient)
                 .tabItem {
                     Label("Build", systemImage: "hammer")
                 }

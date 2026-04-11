@@ -162,6 +162,64 @@ final class BuildManagerWebSocketIntegrationTests: XCTestCase {
         task.cancel(with: .normalClosure, reason: nil)
     }
 
+    /// Verifies the terminal failure status is delivered on the buildstatus
+    /// channel and decodes to `state == "failure"` with the expected message.
+    func testFailureBuildStatusBroadcastReachesSubscribedClient() async throws {
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
+
+        let token = try pairTestDevice()
+
+        let wsURL = URL(string: "wss://localhost:\(serverPort!)/api/v1/ws")!
+        var request = URLRequest(url: wsURL)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let task = session.webSocketTask(with: request)
+
+        let buildstatusExpectation = expectation(description: "received buildstatus frame")
+        var buildstatusText: String?
+
+        func receiveNext() {
+            task.receive { result in
+                guard case .success(let msg) = result else { return }
+                if case .string(let text) = msg,
+                   text.contains("\"type\":\"buildstatus\""),
+                   buildstatusText == nil {
+                    buildstatusText = text
+                    buildstatusExpectation.fulfill()
+                    return
+                }
+                receiveNext()
+            }
+        }
+        receiveNext()
+
+        task.resume()
+
+        let subscribeSent = expectation(description: "subscribe buildstatus sent")
+        let subscribeMsg = WSMessage(type: "subscribe", payload: "buildstatus")
+        let subscribeJSON = String(data: try JSONEncoder().encode(subscribeMsg), encoding: .utf8)!
+        task.send(.string(subscribeJSON)) { error in
+            XCTAssertNil(error, "subscribe buildstatus should not error: \(String(describing: error))")
+            subscribeSent.fulfill()
+        }
+        await fulfillment(of: [subscribeSent], timeout: 5.0)
+
+        // Allow the server event loop to process the subscribe frame.
+        try await Task.sleep(nanoseconds: 500_000_000)
+
+        server.broadcastBuildStatus(.failure(error: "code sign error"))
+
+        await fulfillment(of: [buildstatusExpectation], timeout: 5.0)
+
+        let statusEnvelope = try JSONDecoder().decode(WSMessage.self, from: Data((buildstatusText ?? "").utf8))
+        XCTAssertEqual(statusEnvelope.type, "buildstatus")
+        let info = try JSONDecoder().decode(BuildStatusInfo.self, from: Data(statusEnvelope.payload.utf8))
+        XCTAssertEqual(info.state, "failure")
+        XCTAssertEqual(info.message, "code sign error")
+
+        task.cancel(with: .normalClosure, reason: nil)
+    }
+
     // MARK: - Helpers
 
     /// Writes a paired device directly into the shared store and returns
