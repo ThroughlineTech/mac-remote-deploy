@@ -127,12 +127,20 @@ struct BuildControlView: View {
 
                 Divider()
 
-                // Build log area — collapsed by default (TKT-046).
-                DisclosureGroup(isExpanded: $isLogExpanded) {
-                    BuildLogStreamView()
-                        .frame(maxHeight: .infinity)
+                // Build log header — always rendered, acts as the toggle for
+                // the log body below. TKT-047 replaced the previous
+                // DisclosureGroup because its collapsed content still
+                // participated in layout and hit-testing on iOS, which caused
+                // an invisible ScrollView to swallow taps over the tab bar.
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isLogExpanded.toggle()
+                    }
                 } label: {
                     HStack(spacing: 6) {
+                        Image(systemName: isLogExpanded ? "chevron.down" : "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                         Image(systemName: "doc.text.magnifyingglass")
                         Text("Build Log")
                             .font(.subheadline)
@@ -144,16 +152,23 @@ struct BuildControlView: View {
                         }
                         Spacer()
                     }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
                 .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding(.vertical, 10)
+                .accessibilityIdentifier("BuildLogToggle")
 
-                // Push everything to the top when the log disclosure is
-                // collapsed (TKT-046). When the disclosure is expanded, its
-                // content uses .frame(maxHeight: .infinity) and takes
-                // priority, so this Spacer collapses to nothing.
-                if !isLogExpanded {
-                    Spacer()
+                // TKT-047: explicit conditional render. When collapsed, the
+                // log view is NOT in the view tree at all (not just hidden),
+                // so it cannot claim vertical space nor hit-test over the
+                // tab bar. When expanded, the log is the only greedy child
+                // and legitimately fills the remaining space.
+                if isLogExpanded {
+                    BuildLogStreamView()
+                        .frame(maxHeight: .infinity)
+                } else {
+                    Spacer(minLength: 0)
                 }
             }
             .navigationTitle("Build")
