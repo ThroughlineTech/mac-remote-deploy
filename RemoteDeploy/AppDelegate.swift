@@ -138,6 +138,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Termination
+
+    /// Synchronously stop the NIO server and Bonjour advertiser to release
+    /// ports before exit. This lets graceful-relaunch.sh confirm port release
+    /// instead of relying on the OS to reclaim them. TKT-050.
+    func applicationWillTerminate(_ notification: Notification) {
+        guard let serviceContainer else { return }
+
+        serviceContainer.bonjourAdvertiser.stop()
+
+        let semaphore = DispatchSemaphore(value: 0)
+        Task.detached {
+            await serviceContainer.deployServer.stop()
+            semaphore.signal()
+        }
+        semaphore.wait(timeout: .now() + 3)
+    }
+
     // MARK: - Startup
 
     /// Runs once at launch: loads settings, checks Tailscale, loads projects,
