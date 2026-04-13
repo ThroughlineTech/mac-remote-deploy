@@ -51,6 +51,14 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
     /// monorepo (e.g. `"app"`). Nil for single-app repos or Xcode projects.
     public var expoAppDirectory: String?
 
+    /// When true, macOS builds are automatically deployed to the local machine
+    /// after a successful archive. Only meaningful when `platform` is "macOS".
+    public var localDeploy: Bool
+
+    /// Target directory for local deploy (e.g. "/Applications"). Nil means
+    /// use the default "/Applications/" path.
+    public var localDeployPath: String?
+
     /// Creates a new project config with sensible defaults.
     public init(name: String, projectPath: String) {
         self.id = UUID()
@@ -72,6 +80,8 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
         self.platform = "iOS"
         self.projectType = .xcode
         self.expoAppDirectory = nil
+        self.localDeploy = false
+        self.localDeployPath = nil
     }
 
     /// Decodes with backward compatibility — older saved configs without a platform field default to "iOS".
@@ -92,5 +102,7 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
         platform = try container.decodeIfPresent(String.self, forKey: .platform) ?? "iOS"
         projectType = try container.decodeIfPresent(ProjectType.self, forKey: .projectType) ?? .xcode
         expoAppDirectory = try container.decodeIfPresent(String.self, forKey: .expoAppDirectory)
+        localDeploy = try container.decodeIfPresent(Bool.self, forKey: .localDeploy) ?? false
+        localDeployPath = try container.decodeIfPresent(String.self, forKey: .localDeployPath)
     }
 }

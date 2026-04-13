@@ -105,6 +105,21 @@ struct ProjectFormView: View {
                     Text("iOS").tag("iOS")
                     Text("macOS").tag("macOS")
                 }
+
+                // TKT-053: local auto-deploy toggle for macOS projects.
+                if project.platform == "macOS" {
+                    Toggle("Auto-deploy locally after build", isOn: $project.localDeploy)
+                        .help("Automatically quit, replace, and relaunch the app on this Mac after a successful build")
+
+                    if project.localDeploy {
+                        TextField("Deploy path (default: /Applications)", text: Binding(
+                            get: { project.localDeployPath ?? "" },
+                            set: { project.localDeployPath = $0.isEmpty ? nil : $0 }
+                        ))
+                        .textFieldStyle(.roundedBorder)
+                        .help("Directory to deploy the .app to. Leave empty for /Applications/")
+                    }
+                }
             }
 
             // MARK: - Server Settings

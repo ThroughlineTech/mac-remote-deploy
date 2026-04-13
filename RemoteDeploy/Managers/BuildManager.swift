@@ -61,6 +61,9 @@ final class BuildManager: ObservableObject {
     /// TKT-027.
     private var buildEventBroadcaster: (any BuildEventBroadcasting)?
 
+    /// Local deploy manager for macOS post-build deployment. TKT-053.
+    private var localDeployManager: (any LocalDeployManagerProtocol)?
+
     // MARK: - Setup
 
     /// Wires in the dependencies this manager needs. Called once at app launch.
@@ -70,7 +73,8 @@ final class BuildManager: ObservableObject {
         notificationManager: NotificationManager,
         ipaImporter: IPAImporter,
         buildHistoryStore: any BuildHistoryStoring,
-        buildEventBroadcaster: (any BuildEventBroadcasting)? = nil
+        buildEventBroadcaster: (any BuildEventBroadcasting)? = nil,
+        localDeployManager: (any LocalDeployManagerProtocol)? = nil
     ) {
         self.buildEngine = buildEngine
         self.deployServer = deployServer
@@ -78,6 +82,7 @@ final class BuildManager: ObservableObject {
         self.ipaImporter = ipaImporter
         self.buildHistoryStore = buildHistoryStore
         self.buildEventBroadcaster = buildEventBroadcaster
+        self.localDeployManager = localDeployManager
     }
 
     // MARK: - Status helper
@@ -186,19 +191,61 @@ final class BuildManager: ObservableObject {
                     }
                 }
 
+                // TKT-053: local deploy for macOS projects. Runs after a
+                // successful build and before notifications so the
+                // notification text can reflect the deploy outcome.
+                var didLocalDeploy = false
+                let deployTargetDir = project.localDeployPath ?? "/Applications"
+
+                if project.platform.lowercased() == "macos",
+                   project.localDeploy,
+                   let localDeployManager {
+                    let archiveName = project.name.replacingOccurrences(of: " ", with: "_")
+                    let archivePath = "/tmp/RemoteDeploy/\(archiveName).xcarchive"
+                    do {
+                        try await localDeployManager.deploy(
+                            appName: project.scheme,
+                            fromArchive: archivePath,
+                            toDirectory: deployTargetDir,
+                            port: nil
+                        )
+                        didLocalDeploy = true
+                        Logger.build.info("Local deploy succeeded for \(project.name, privacy: .public)")
+                    } catch {
+                        Logger.build.error("Local deploy failed for \(project.name, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                        buildLog += "[LocalDeploy] \(error.localizedDescription)\n"
+                    }
+                }
+
                 // Post success notification (local).
-                notificationManager.notifyBuildSuccess(
-                    projectName: project.name,
-                    installURL: installURL
-                )
+                if didLocalDeploy {
+                    notificationManager.notifyBuildSuccess(
+                        projectName: project.name,
+                        installURL: "deployed to \(deployTargetDir)"
+                    )
+                } else {
+                    notificationManager.notifyBuildSuccess(
+                        projectName: project.name,
+                        installURL: installURL
+                    )
+                }
 
                 // Push notifications via the injected callback.
-                await sendPushNotification?(
-                    "Build Succeeded",
-                    "\(project.name) is ready to install",
-                    .normal,
-                    installURL
-                )
+                if didLocalDeploy {
+                    await sendPushNotification?(
+                        "Build Deployed",
+                        "\(project.name) deployed to \(deployTargetDir)",
+                        .normal,
+                        installURL
+                    )
+                } else {
+                    await sendPushNotification?(
+                        "Build Succeeded",
+                        "\(project.name) is ready to install",
+                        .normal,
+                        installURL
+                    )
+                }
             } catch {
                 let endTime = Date()
                 logTask.cancel()
