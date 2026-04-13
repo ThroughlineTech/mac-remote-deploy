@@ -173,7 +173,22 @@ final class ExpoBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             )
         }
 
-        return try await xcodeEngine.detectSchemes(at: iosDir)
+        let allSchemes = try await xcodeEngine.detectSchemes(at: iosDir)
+
+        // Filter to schemes matching a non-Pods .xcodeproj in ios/.
+        // Expo prebuild generates ios/<AppName>.xcodeproj where <AppName>
+        // matches the scheme name. CocoaPods adds Pods.xcodeproj which we
+        // exclude so the user only sees the real app scheme(s). TKT-049.
+        let iosContents = (try? FileManager.default.contentsOfDirectory(atPath: iosDir)) ?? []
+        let appProjectNames = iosContents
+            .filter { $0.hasSuffix(".xcodeproj") && $0 != "Pods.xcodeproj" }
+            .map { ($0 as NSString).deletingPathExtension }
+
+        // Fall back to the full list if the heuristic finds no project names.
+        guard !appProjectNames.isEmpty else { return allSchemes }
+
+        let filtered = allSchemes.filter { appProjectNames.contains($0) }
+        return filtered.isEmpty ? allSchemes : filtered
     }
 
     // MARK: - Private Helpers

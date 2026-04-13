@@ -197,10 +197,15 @@ struct ProjectSetupStep: View {
                     }
                     .onChange(of: selectedScheme) {
                         // Re-detect build settings when scheme changes.
-                        bundleID = ""
-                        teamID = ""
+                        // Expo projects get bundle ID from app.json, not
+                        // xcodebuild -showBuildSettings — skip the reset
+                        // so auto-detected values are preserved. TKT-049.
                         schemeError = ProjectSetupValidators.validateScheme(selectedScheme)
-                        detectBuildSettings()
+                        if projectType != .expo {
+                            bundleID = ""
+                            teamID = ""
+                            detectBuildSettings()
+                        }
                     }
                 }
             }
