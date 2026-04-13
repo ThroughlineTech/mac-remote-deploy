@@ -103,7 +103,7 @@ function renderProjects() {
       <div class="card-header">
         <div>
           <div class="card-title">${esc(p.name)}</div>
-          <div class="card-subtitle">${esc(p.bundleID)}</div>
+          <div class="card-subtitle">${esc(p.bundleID)}${p.platform && p.platform.toLowerCase() === 'macos' ? ' <span style="font-size:11px;border:1px solid #c7c7cc;border-radius:4px;padding:1px 5px;margin-left:4px;color:#8e8e93">macOS</span>' : ''}</div>
         </div>
         <div style="font-size:13px;color:var(--text2)">${esc(p.buildConfiguration)}</div>
       </div>
@@ -112,17 +112,20 @@ function renderProjects() {
 
 function renderBuild() {
   const proj = state.projects.find(p => p.id === state.selectedProjectId);
+  const isMacOS = proj && proj.platform && proj.platform.toLowerCase() === 'macos';
   const statusHtml = state.buildStatus
     ? `<div style="margin:8px 0"><span class="status-dot ${statusColor(state.buildStatus.state)}"></span>${state.buildStatus.state}${state.buildStatus.message ? ': ' + esc(state.buildStatus.message) : ''}</div>`
     : '';
+  const buildBtnLabel = isMacOS ? 'Build & Package' : 'Build & Deploy';
   return `
     <h1>Build</h1>
-    <select onchange="state.selectedProjectId=this.value">
+    <select onchange="state.selectedProjectId=this.value;render()">
       <option value="">Select project...</option>
-      ${state.projects.map(p => `<option value="${esc(p.id)}" ${p.id === state.selectedProjectId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
+      ${state.projects.map(p => `<option value="${esc(p.id)}" ${p.id === state.selectedProjectId ? 'selected' : ''}>${esc(p.name)}${p.platform && p.platform.toLowerCase() === 'macos' ? ' (macOS)' : ''}</option>`).join('')}
     </select>
     ${statusHtml}
-    <button class="btn btn-primary" onclick="triggerBuild()" ${state.selectedProjectId ? '' : 'disabled'}>Build & Deploy</button>
+    <button class="btn btn-primary" onclick="triggerBuild()" ${state.selectedProjectId ? '' : 'disabled'}>${buildBtnLabel}</button>
+    ${isMacOS && state.buildStatus && state.buildStatus.state === 'success' ? `<a class="btn btn-primary" href="/${esc(proj.urlSlug)}/app.zip" style="display:inline-block;margin-left:8px;text-decoration:none">Download .zip</a>` : ''}
     <div style="margin-top:4px">
       <button class="btn btn-secondary" onclick="state.buildLog=[];renderBuildLog()" style="font-size:13px;padding:8px">Clear Log</button>
     </div>

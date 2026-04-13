@@ -163,46 +163,58 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             throw BuildError.archiveFailed(msg)
         }
 
-        // -- Step 2: Generate ExportOptions.plist --
-        setStatus(.building(progress: "Exporting IPA…"))
+        // Branch by platform: macOS skips exportArchive and zips the .app bundle
+        // directly from the archive; iOS continues through the IPA export pipeline.
+        if project.platform.lowercased() == "macos" {
+            setStatus(.building(progress: "Packaging macOS app…"))
 
-        let exportPlist = generateExportOptionsPlist(
-            method: project.exportMethod,
-            teamID: project.teamID
-        )
-        try exportPlist.write(toFile: exportPlistPath, atomically: true, encoding: .utf8)
+            let zipPath = try zipAppBundle(archivePath: archivePath, serveDir: serveDir)
 
-        // -- Step 3: Export Archive → IPA --
-        let exportArgs: [String] = [
-            "-exportArchive",
-            "-archivePath", archivePath,
-            "-exportOptionsPlist", exportPlistPath,
-            "-exportPath", exportDir
-        ]
+            setStatus(.success(ipaPath: zipPath))
+            emitLog("Build complete: \(zipPath)")
+            return zipPath
+        } else {
+            // -- Step 2: Generate ExportOptions.plist --
+            setStatus(.building(progress: "Exporting IPA…"))
 
-        try await runXcodebuild(arguments: exportArgs)
+            let exportPlist = generateExportOptionsPlist(
+                method: project.exportMethod,
+                teamID: project.teamID
+            )
+            try exportPlist.write(toFile: exportPlistPath, atomically: true, encoding: .utf8)
 
-        // Find the IPA in the export directory
-        guard let ipaFile = try fm.contentsOfDirectory(atPath: exportDir).first(where: { $0.hasSuffix(".ipa") }) else {
-            let msg = "No .ipa file found in export directory \(exportDir)."
-            setStatus(.failure(error: msg))
-            throw BuildError.exportFailed(msg)
+            // -- Step 3: Export Archive → IPA --
+            let exportArgs: [String] = [
+                "-exportArchive",
+                "-archivePath", archivePath,
+                "-exportOptionsPlist", exportPlistPath,
+                "-exportPath", exportDir
+            ]
+
+            try await runXcodebuild(arguments: exportArgs)
+
+            // Find the IPA in the export directory
+            guard let ipaFile = try fm.contentsOfDirectory(atPath: exportDir).first(where: { $0.hasSuffix(".ipa") }) else {
+                let msg = "No .ipa file found in export directory \(exportDir)."
+                setStatus(.failure(error: msg))
+                throw BuildError.exportFailed(msg)
+            }
+
+            let exportedIPAPath = "\(exportDir)/\(ipaFile)"
+
+            // -- Step 4: Copy IPA to serve directory --
+            setStatus(.building(progress: "Copying IPA to serve directory…"))
+
+            if fm.fileExists(atPath: finalIPAPath) {
+                try fm.removeItem(atPath: finalIPAPath)
+            }
+            try fm.copyItem(atPath: exportedIPAPath, toPath: finalIPAPath)
+
+            setStatus(.success(ipaPath: finalIPAPath))
+            emitLog("Build complete: \(finalIPAPath)")
+
+            return finalIPAPath
         }
-
-        let exportedIPAPath = "\(exportDir)/\(ipaFile)"
-
-        // -- Step 4: Copy IPA to serve directory --
-        setStatus(.building(progress: "Copying IPA to serve directory…"))
-
-        if fm.fileExists(atPath: finalIPAPath) {
-            try fm.removeItem(atPath: finalIPAPath)
-        }
-        try fm.copyItem(atPath: exportedIPAPath, toPath: finalIPAPath)
-
-        setStatus(.success(ipaPath: finalIPAPath))
-        emitLog("Build complete: \(finalIPAPath)")
-
-        return finalIPAPath
     }
 
     /// Cancels any in-progress build by terminating the underlying xcodebuild process.
@@ -549,6 +561,51 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             .replacingOccurrences(of: ">", with: "&gt;")
             .replacingOccurrences(of: "\"", with: "&quot;")
             .replacingOccurrences(of: "'", with: "&apos;")
+    }
+
+    /// Locates the `.app` bundle inside the archive's Products/Applications directory,
+    /// zips it with `ditto`, and writes the result to `<serveDir>/app.zip`.
+    ///
+    /// - Parameter archivePath: Absolute path to the `.xcarchive` bundle.
+    /// - Parameter serveDir: Absolute path to the project's serve directory.
+    /// - Returns: The absolute path to the generated `app.zip`.
+    /// - Throws: If the `.app` bundle is not found or `ditto` fails.
+    private func zipAppBundle(archivePath: String, serveDir: String) throws -> String {
+        let fm = FileManager.default
+        let appsDir = "\(archivePath)/Products/Applications"
+
+        guard let appBundle = (try? fm.contentsOfDirectory(atPath: appsDir))?
+            .first(where: { $0.hasSuffix(".app") }) else {
+            let msg = "No .app bundle found in \(appsDir)."
+            setStatus(.failure(error: msg))
+            throw BuildError.exportFailed(msg)
+        }
+
+        let appPath = "\(appsDir)/\(appBundle)"
+        let zipPath = "\(serveDir)/app.zip"
+
+        // Remove previous zip if present
+        if fm.fileExists(atPath: zipPath) {
+            try fm.removeItem(atPath: zipPath)
+        }
+
+        // Use ditto to create a zip preserving resource forks and metadata
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        process.arguments = ["-ck", "--keepParent", appPath, zipPath]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+
+        guard process.terminationStatus == 0 else {
+            let msg = "ditto failed to zip \(appBundle) (exit \(process.terminationStatus))."
+            setStatus(.failure(error: msg))
+            throw BuildError.exportFailed(msg)
+        }
+
+        emitLog("Zipped \(appBundle) → app.zip")
+        return zipPath
     }
 
     /// Returns the serve directory path for a given project slug.

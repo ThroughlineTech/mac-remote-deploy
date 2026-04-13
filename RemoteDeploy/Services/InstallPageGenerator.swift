@@ -26,6 +26,18 @@ final class InstallPageGenerator: InstallPageGenerating {
             .replacingOccurrences(of: "{{MANIFEST_URL}}", with: htmlEscape(manifestURL))
     }
 
+    /// Generates a self-contained HTML page for macOS app download.
+    /// Shows a "Download" button that links directly to the zip file URL
+    /// instead of using `itms-services://`.
+    func generateDownloadPage(appName: String, version: String, build: String, buildTime: String, downloadURL: String) -> String {
+        return Self.downloadTemplate
+            .replacingOccurrences(of: "{{APP_NAME}}", with: htmlEscape(appName))
+            .replacingOccurrences(of: "{{VERSION}}", with: htmlEscape(version))
+            .replacingOccurrences(of: "{{BUILD}}", with: htmlEscape(build))
+            .replacingOccurrences(of: "{{BUILD_TIME}}", with: htmlEscape(buildTime))
+            .replacingOccurrences(of: "{{DOWNLOAD_URL}}", with: htmlEscape(downloadURL))
+    }
+
     /// Generates an HTML index page that lists all available projects with install links.
     ///
     /// Each project is rendered as a card showing its name and version, linking to
@@ -125,6 +137,82 @@ final class InstallPageGenerator: InstallPageGenerating {
             <p class="meta">Version {{VERSION}} ({{BUILD}})</p>
             <p class="meta">Built {{BUILD_TIME}}</p>
             <a class="install-btn" href="itms-services://?action=download-manifest&url={{MANIFEST_URL}}">Install</a>
+        </div>
+    </body>
+    </html>
+    """
+
+    private static let downloadTemplate = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+        <title>Download {{APP_NAME}}</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                background: #f2f2f7;
+                color: #1c1c1e;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                padding: 20px;
+            }
+            .card {
+                background: #fff;
+                border-radius: 16px;
+                padding: 40px 32px;
+                max-width: 380px;
+                width: 100%;
+                text-align: center;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            }
+            h1 {
+                font-size: 24px;
+                font-weight: 700;
+                margin-bottom: 8px;
+            }
+            .meta {
+                font-size: 14px;
+                color: #8e8e93;
+                margin-bottom: 4px;
+            }
+            .platform-badge {
+                display: inline-block;
+                font-size: 12px;
+                color: #8e8e93;
+                border: 1px solid #c7c7cc;
+                border-radius: 6px;
+                padding: 2px 8px;
+                margin-bottom: 12px;
+            }
+            .download-btn {
+                display: inline-block;
+                margin-top: 28px;
+                padding: 14px 48px;
+                background: #007aff;
+                color: #fff;
+                font-size: 17px;
+                font-weight: 600;
+                border-radius: 12px;
+                text-decoration: none;
+                transition: background 0.2s;
+            }
+            .download-btn:active {
+                background: #0056b3;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="card">
+            <h1>{{APP_NAME}}</h1>
+            <span class="platform-badge">macOS</span>
+            <p class="meta">Version {{VERSION}} ({{BUILD}})</p>
+            <p class="meta">Built {{BUILD_TIME}}</p>
+            <a class="download-btn" href="{{DOWNLOAD_URL}}">Download</a>
         </div>
     </body>
     </html>
