@@ -182,6 +182,9 @@ final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler, @unchec
         case "app.ipa":
             serveIPA(context: context, project: project, slug: slug, head: head)
 
+        case "app.zip":
+            serveAppZip(context: context, project: project, slug: slug, head: head)
+
         default:
             sendNotFound(context: context)
         }
@@ -257,14 +260,21 @@ final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler, @unchec
         context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
     }
 
-    /// Sends a binary file as an HTTP response with `application/octet-stream` content type.
+    /// Sends a binary file as an HTTP response.
     ///
     /// Reads the entire file into memory and writes it as a single response. For typical
-    /// IPA files (10-100 MB), this is acceptable for a local-network deployment tool.
+    /// IPA/zip files (10-100 MB), this is acceptable for a local-network deployment tool.
     ///
     /// - Parameter context: The channel handler context to write the response to.
     /// - Parameter filePath: Absolute path to the file to serve.
-    func sendFileResponse(context: ChannelHandlerContext, filePath: String) {
+    /// - Parameter contentType: The Content-Type header value. Defaults to `application/octet-stream`.
+    /// - Parameter filename: The filename used in the Content-Disposition header. Defaults to `app.ipa`.
+    func sendFileResponse(
+        context: ChannelHandlerContext,
+        filePath: String,
+        contentType: String = "application/octet-stream",
+        filename: String = "app.ipa"
+    ) {
         guard let fileData = FileManager.default.contents(atPath: filePath) else {
             sendNotFound(context: context)
             return
@@ -275,9 +285,9 @@ final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler, @unchec
         buffer.writeBytes(fileData)
 
         var headers = HTTPHeaders()
-        headers.add(name: "Content-Type", value: "application/octet-stream")
+        headers.add(name: "Content-Type", value: contentType)
         headers.add(name: "Content-Length", value: "\(fileData.count)")
-        headers.add(name: "Content-Disposition", value: "attachment; filename=\"app.ipa\"")
+        headers.add(name: "Content-Disposition", value: "attachment; filename=\"\(filename)\"")
         headers.add(name: "Connection", value: "close")
         headers.add(name: "X-Content-Type-Options", value: "nosniff")
         headers.add(name: "X-Frame-Options", value: "DENY")

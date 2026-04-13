@@ -55,37 +55,59 @@ extension HTTPHandler {
     }
 
     /// Serves the HTML install page for a project at GET /<slug>/.
-    /// Reads the IPA's modification date from disk to use as the build timestamp.
+    /// For iOS projects, shows an itms-services install page.
+    /// For macOS projects, shows a direct download page linking to app.zip.
     func serveInstallPage(context: ChannelHandlerContext, project: ProjectConfig, slug: String) {
         let baseURL = server.currentBaseURL()
-        let manifestURL = "\(baseURL)/\(slug)/manifest.plist"
-        let ipaPath = "\(server.serveRoot)/\(slug)/app.ipa"
 
-        // Read version/build from the IPA's Info.plist if available, otherwise use defaults
+        // Determine artifact path for build-time metadata
+        let isMacOS = project.platform.lowercased() == "macos"
+        let artifactPath = isMacOS
+            ? "\(server.serveRoot)/\(slug)/app.zip"
+            : "\(server.serveRoot)/\(slug)/app.ipa"
+
         let version = "1.0.0"
         let build = "1"
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm z"
         let buildTime: String
-        if let attrs = try? FileManager.default.attributesOfItem(atPath: ipaPath),
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: artifactPath),
            let modDate = attrs[.modificationDate] as? Date {
             buildTime = formatter.string(from: modDate)
         } else {
             buildTime = formatter.string(from: Date())
         }
 
-        let html = server.installPageGenerator.generatePage(
-            appName: project.name,
-            version: version,
-            build: build,
-            buildTime: buildTime,
-            manifestURL: manifestURL
-        )
+        let html: String
+        if isMacOS {
+            let downloadURL = "\(baseURL)/\(slug)/app.zip"
+            html = server.installPageGenerator.generateDownloadPage(
+                appName: project.name,
+                version: version,
+                build: build,
+                buildTime: buildTime,
+                downloadURL: downloadURL
+            )
+        } else {
+            let manifestURL = "\(baseURL)/\(slug)/manifest.plist"
+            html = server.installPageGenerator.generatePage(
+                appName: project.name,
+                version: version,
+                build: build,
+                buildTime: buildTime,
+                manifestURL: manifestURL
+            )
+        }
         sendResponse(context: context, status: .ok, contentType: "text/html", body: html)
     }
 
     /// Serves the OTA manifest.plist XML for a project at GET /<slug>/manifest.plist.
+    /// Returns 404 for macOS projects since OTA manifests are iOS-only.
     func serveManifest(context: ChannelHandlerContext, project: ProjectConfig, slug: String) {
+        if project.platform.lowercased() == "macos" {
+            sendNotFound(context: context)
+            return
+        }
         let baseURL = server.currentBaseURL()
         let ipaURL = "\(baseURL)/\(slug)/app.ipa"
         let xml = server.manifestGenerator.generateManifest(
@@ -95,6 +117,42 @@ extension HTTPHandler {
             ipaURL: ipaURL
         )
         sendResponse(context: context, status: .ok, contentType: "application/xml", body: xml)
+    }
+
+    /// Serves the macOS app zip download at GET /<slug>/app.zip.
+    /// Records the download via both the onIPADownload callback and the delegate.
+    func serveAppZip(context: ChannelHandlerContext, project: ProjectConfig, slug: String, head: HTTPRequestHead) {
+        let zipPath = "\(server.serveRoot)/\(slug)/app.zip"
+        guard FileManager.default.fileExists(atPath: zipPath) else {
+            sendNotFound(context: context)
+            return
+        }
+
+        // Notify delegate/callback about the download (reusing IPA tracking)
+        let sourceIP = head.headers["X-Forwarded-For"].first
+            ?? context.remoteAddress?.description
+            ?? "unknown"
+        let userAgent = head.headers["User-Agent"].first ?? "unknown"
+
+        server.onIPADownload?(slug, sourceIP, userAgent)
+
+        if let delegate = server.delegate {
+            let projectName = project.name
+            Task {
+                await delegate.serverDidServeIPA(
+                    projectName: projectName,
+                    sourceIP: sourceIP,
+                    userAgent: userAgent
+                )
+            }
+        }
+
+        sendFileResponse(
+            context: context,
+            filePath: zipPath,
+            contentType: "application/zip",
+            filename: "\(project.name).zip"
+        )
     }
 
     /// Serves the IPA file download at GET /<slug>/app.ipa.

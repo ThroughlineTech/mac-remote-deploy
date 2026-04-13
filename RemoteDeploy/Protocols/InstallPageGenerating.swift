@@ -20,4 +20,18 @@ protocol InstallPageGenerating: Sendable {
     ///   (e.g. "https://macbook.tail1234.ts.net:8443/manifest.plist").
     /// - Returns: A complete HTML string ready to be served with content type `text/html`.
     func generatePage(appName: String, version: String, build: String, buildTime: String, manifestURL: String) -> String
+
+    /// Generates a self-contained HTML page for macOS app download.
+    ///
+    /// The page shows the app name, version, build number, and build time, along with
+    /// a prominent "Download" button that links directly to the zip file URL.
+    /// Unlike the iOS install page, this does not use `itms-services://`.
+    ///
+    /// - Parameter appName: The display name of the app (shown as the page heading).
+    /// - Parameter version: The short version string, e.g. "1.2.0".
+    /// - Parameter build: The build number, e.g. "42".
+    /// - Parameter buildTime: A human-readable timestamp of when the app was built.
+    /// - Parameter downloadURL: The full URL to the downloadable zip file.
+    /// - Returns: A complete HTML string ready to be served with content type `text/html`.
+    func generateDownloadPage(appName: String, version: String, build: String, buildTime: String, downloadURL: String) -> String
 }

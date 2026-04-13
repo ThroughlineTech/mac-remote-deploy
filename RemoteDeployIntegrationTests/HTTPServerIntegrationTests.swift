@@ -262,6 +262,113 @@ final class HTTPServerIntegrationTests: XCTestCase {
         XCTAssertEqual(downloadedSlug, "testapp", "Download callback should report the correct slug")
     }
 
+    // MARK: - macOS Project Tests (TKT-051)
+
+    func testMacOSProjectInstallPageShowsDownloadButton() async throws {
+        var project = ProjectConfig(name: "MacApp", projectPath: "/tmp/fake")
+        project.bundleID = "com.test.macapp"
+        project.urlSlug = "macapp"
+        project.platform = "macOS"
+        server.registerProject(project)
+
+        let slugDir = "\(serveRoot!)/macapp"
+        try FileManager.default.createDirectory(atPath: slugDir, withIntermediateDirectories: true)
+
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
+
+        let url = URL(string: "https://localhost:\(serverPort!)/macapp/")!
+        let (data, response) = try await session.data(from: url)
+
+        let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
+        XCTAssertEqual(httpResponse.statusCode, 200)
+
+        let body = String(data: data, encoding: .utf8) ?? ""
+        XCTAssertTrue(body.contains("MacApp"), "macOS install page should contain the app name")
+        XCTAssertTrue(body.contains("Download</a>"), "macOS install page should have a Download button")
+        XCTAssertTrue(body.contains("app.zip"), "macOS install page should link to app.zip")
+        XCTAssertFalse(body.contains("itms-services://"), "macOS install page should NOT contain itms-services link")
+    }
+
+    func testMacOSManifestReturns404() async throws {
+        var project = ProjectConfig(name: "MacApp", projectPath: "/tmp/fake")
+        project.bundleID = "com.test.macapp"
+        project.urlSlug = "macapp"
+        project.platform = "macOS"
+        server.registerProject(project)
+
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
+
+        let url = URL(string: "https://localhost:\(serverPort!)/macapp/manifest.plist")!
+        let (_, response) = try await session.data(from: url)
+
+        let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
+        XCTAssertEqual(httpResponse.statusCode, 404, "manifest.plist should return 404 for macOS projects")
+    }
+
+    func testMacOSAppZipDownload() async throws {
+        var project = ProjectConfig(name: "MacApp", projectPath: "/tmp/fake")
+        project.bundleID = "com.test.macapp"
+        project.urlSlug = "macapp"
+        project.platform = "macOS"
+        server.registerProject(project)
+
+        // Place a fake zip in the serve directory
+        let slugDir = "\(serveRoot!)/macapp"
+        try FileManager.default.createDirectory(atPath: slugDir, withIntermediateDirectories: true)
+        let fakeZipContent = Data("PK\u{03}\u{04}fake-zip-content-for-testing".utf8)
+        let zipPath = "\(slugDir)/app.zip"
+        try fakeZipContent.write(to: URL(fileURLWithPath: zipPath))
+
+        // Track download callback
+        let downloadExpectation = expectation(description: "Zip download callback fired")
+        var downloadedSlug: String?
+        server.onIPADownload = { slug, _, _ in
+            downloadedSlug = slug
+            downloadExpectation.fulfill()
+        }
+
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
+
+        let url = URL(string: "https://localhost:\(serverPort!)/macapp/app.zip")!
+        let (data, response) = try await session.data(from: url)
+
+        let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
+        XCTAssertEqual(httpResponse.statusCode, 200)
+
+        let contentType = try XCTUnwrap(httpResponse.value(forHTTPHeaderField: "Content-Type"))
+        XCTAssertTrue(
+            contentType.contains("application/zip"),
+            "app.zip should be served as application/zip, got: \(contentType)"
+        )
+
+        let disposition = httpResponse.value(forHTTPHeaderField: "Content-Disposition")
+        XCTAssertNotNil(disposition, "Should have Content-Disposition header")
+        XCTAssertTrue(disposition?.contains("MacApp.zip") ?? false, "Content-Disposition should reference MacApp.zip")
+
+        XCTAssertEqual(data, fakeZipContent, "Downloaded data should match the fake zip file")
+
+        await fulfillment(of: [downloadExpectation], timeout: 5.0)
+        XCTAssertEqual(downloadedSlug, "macapp", "Download callback should report the correct slug")
+    }
+
+    func testMacOSAppZipNotFoundWhenFileIsMissing() async throws {
+        var project = ProjectConfig(name: "MacApp", projectPath: "/tmp/fake")
+        project.bundleID = "com.test.macapp"
+        project.urlSlug = "macapp"
+        project.platform = "macOS"
+        server.registerProject(project)
+
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
+
+        let url = URL(string: "https://localhost:\(serverPort!)/macapp/app.zip")!
+        let (_, response) = try await session.data(from: url)
+
+        let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
+        XCTAssertEqual(httpResponse.statusCode, 404, "Missing app.zip file should return 404")
+    }
+
+    // MARK: - Existing Tests
+
     func testNotFoundReturns404() async throws {
         try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
