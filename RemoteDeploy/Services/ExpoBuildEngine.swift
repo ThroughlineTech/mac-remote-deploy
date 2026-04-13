@@ -13,10 +13,10 @@ final class ExpoBuildEngine: BuildEngineProtocol, @unchecked Sendable {
 
     /// Shared runner used across all phases of a single build.
     /// Cancel propagates to whichever phase is active.
-    private let processRunner = ProcessRunner()
+    private let processRunner: any ProcessRunning
 
     /// Delegates the xcodebuild archive + export phase to the native engine.
-    private let xcodeEngine = XcodeBuildEngine()
+    private let xcodeEngine: any BuildEngineProtocol
 
     // MARK: - Protocol Properties
 
@@ -35,7 +35,15 @@ final class ExpoBuildEngine: BuildEngineProtocol, @unchecked Sendable {
 
     // MARK: - Init
 
-    init() {}
+    /// Creates an Expo build engine.
+    /// - Parameters:
+    ///   - processRunner: The runner for shell commands. Defaults to a real `ProcessRunner`.
+    ///   - xcodeEngine: The engine for the xcodebuild phase. Defaults to a real `XcodeBuildEngine`.
+    init(processRunner: any ProcessRunning = ProcessRunner(),
+         xcodeEngine: any BuildEngineProtocol = XcodeBuildEngine()) {
+        self.processRunner = processRunner
+        self.xcodeEngine = xcodeEngine
+    }
 
     // MARK: - Build Pipeline
 

@@ -24,11 +24,42 @@ enum ProcessRunnerError: LocalizedError {
     }
 }
 
+/// Protocol for running shell processes with streaming output. Enables mocking
+/// in unit tests so `ExpoBuildEngine` can be tested without spawning real processes.
+protocol ProcessRunning: AnyObject, Sendable {
+    /// Whether this runner has been cancelled.
+    var isCancelled: Bool { get }
+    /// Marks this runner as cancelled and terminates any running process.
+    func cancel()
+    /// Resets the cancellation flag so the runner can be reused for a new build.
+    func reset()
+    /// Runs a command via `/usr/bin/env` and streams output.
+    func run(
+        command: String,
+        arguments: [String],
+        workingDirectory: String?,
+        environment: [String: String]?,
+        onOutput: @escaping @Sendable (String) -> Void
+    ) async throws
+}
+
+extension ProcessRunning {
+    /// Convenience: runs a command with default nil environment.
+    func run(
+        command: String,
+        arguments: [String] = [],
+        workingDirectory: String? = nil,
+        onOutput: @escaping @Sendable (String) -> Void
+    ) async throws {
+        try await run(command: command, arguments: arguments, workingDirectory: workingDirectory, environment: nil, onOutput: onOutput)
+    }
+}
+
 /// Runs shell processes with real-time log streaming. Thread-safe.
 ///
 /// Each instance tracks a single running process so callers can cancel it.
 /// Create one per build phase or reuse across sequential phases.
-final class ProcessRunner: @unchecked Sendable {
+final class ProcessRunner: ProcessRunning, @unchecked Sendable {
 
     /// The currently running process, protected by lock.
     private let lockedProcess = OSAllocatedUnfairLock<Process?>(initialState: nil)

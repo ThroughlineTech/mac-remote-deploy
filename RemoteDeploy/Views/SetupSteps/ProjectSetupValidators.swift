@@ -49,4 +49,38 @@ enum ProjectSetupValidators {
         }
         return nil
     }
+
+    // MARK: - Expo Validation (TKT-048)
+
+    /// Validates that an Expo project's root directory contains `package.json`.
+    /// Returns nil if the path is empty (not yet selected) or valid.
+    static func validateExpoProjectPath(_ projectPath: String) -> String? {
+        guard !projectPath.isEmpty else { return nil }
+        let packageJsonPath = (projectPath as NSString).appendingPathComponent("package.json")
+        if !FileManager.default.fileExists(atPath: packageJsonPath) {
+            return "Expo projects must contain a package.json at the project root"
+        }
+        return nil
+    }
+
+    /// Validates that an Expo app directory (if set) contains `app.json` or `app.config.js`.
+    /// - Parameters:
+    ///   - projectPath: The project root directory.
+    ///   - expoAppDirectory: Relative path to the Expo app directory (e.g. "app"). Empty or nil means root.
+    /// - Returns: An error string, or nil if valid.
+    static func validateExpoAppDirectory(_ projectPath: String, expoAppDirectory: String?) -> String? {
+        guard !projectPath.isEmpty else { return nil }
+        guard let appDir = expoAppDirectory, !appDir.isEmpty else { return nil }
+
+        let fullPath = (projectPath as NSString).appendingPathComponent(appDir)
+        let fm = FileManager.default
+
+        let appJson = (fullPath as NSString).appendingPathComponent("app.json")
+        let appConfigJs = (fullPath as NSString).appendingPathComponent("app.config.js")
+
+        if !fm.fileExists(atPath: appJson) && !fm.fileExists(atPath: appConfigJs) {
+            return "App directory must contain app.json or app.config.js"
+        }
+        return nil
+    }
 }

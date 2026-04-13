@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "CFBTest",
+    "slug": "cfbtest",
+    "version": "1.0.0",
+    "ios": {
+      "bundleIdentifier": "com.test.cfbtest",
+      "supportsTablet": false
+    }
+  }
+}

@@ -74,4 +74,69 @@ final class ProjectSetupValidatorsTests: XCTestCase {
     func test_validateScheme_nonEmptyReturnsNil() {
         XCTAssertNil(ProjectSetupValidators.validateScheme("MyApp"))
     }
+
+    // MARK: - validateExpoProjectPath (TKT-048)
+
+    func test_validateExpoProjectPath_emptyReturnsNil() {
+        XCTAssertNil(ProjectSetupValidators.validateExpoProjectPath(""))
+    }
+
+    func test_validateExpoProjectPath_acceptsDirectoryWithPackageJson() {
+        let dir = NSTemporaryDirectory() + "ExpoValTest-\(UUID().uuidString)"
+        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+
+        let pkgJson = (dir as NSString).appendingPathComponent("package.json")
+        try? "{}".data(using: .utf8)?.write(to: URL(fileURLWithPath: pkgJson))
+
+        XCTAssertNil(ProjectSetupValidators.validateExpoProjectPath(dir))
+    }
+
+    func test_validateExpoProjectPath_rejectsDirectoryWithoutPackageJson() {
+        let dir = NSTemporaryDirectory() + "ExpoValTest-\(UUID().uuidString)"
+        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+
+        XCTAssertNotNil(ProjectSetupValidators.validateExpoProjectPath(dir))
+    }
+
+    // MARK: - validateExpoAppDirectory (TKT-048)
+
+    func test_validateExpoAppDirectory_emptyAppDirReturnsNil() {
+        XCTAssertNil(ProjectSetupValidators.validateExpoAppDirectory("/tmp", expoAppDirectory: nil))
+        XCTAssertNil(ProjectSetupValidators.validateExpoAppDirectory("/tmp", expoAppDirectory: ""))
+    }
+
+    func test_validateExpoAppDirectory_acceptsDirectoryWithAppJson() {
+        let root = NSTemporaryDirectory() + "ExpoAppDirTest-\(UUID().uuidString)"
+        let appDir = (root as NSString).appendingPathComponent("app")
+        try? FileManager.default.createDirectory(atPath: appDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: root) }
+
+        let appJson = (appDir as NSString).appendingPathComponent("app.json")
+        try? "{}".data(using: .utf8)?.write(to: URL(fileURLWithPath: appJson))
+
+        XCTAssertNil(ProjectSetupValidators.validateExpoAppDirectory(root, expoAppDirectory: "app"))
+    }
+
+    func test_validateExpoAppDirectory_acceptsDirectoryWithAppConfigJs() {
+        let root = NSTemporaryDirectory() + "ExpoAppDirTest-\(UUID().uuidString)"
+        let appDir = (root as NSString).appendingPathComponent("app")
+        try? FileManager.default.createDirectory(atPath: appDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: root) }
+
+        let appConfigJs = (appDir as NSString).appendingPathComponent("app.config.js")
+        try? "module.exports = {}".data(using: .utf8)?.write(to: URL(fileURLWithPath: appConfigJs))
+
+        XCTAssertNil(ProjectSetupValidators.validateExpoAppDirectory(root, expoAppDirectory: "app"))
+    }
+
+    func test_validateExpoAppDirectory_rejectsDirectoryWithoutExpoConfig() {
+        let root = NSTemporaryDirectory() + "ExpoAppDirTest-\(UUID().uuidString)"
+        let appDir = (root as NSString).appendingPathComponent("app")
+        try? FileManager.default.createDirectory(atPath: appDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: root) }
+
+        XCTAssertNotNil(ProjectSetupValidators.validateExpoAppDirectory(root, expoAppDirectory: "app"))
+    }
 }
