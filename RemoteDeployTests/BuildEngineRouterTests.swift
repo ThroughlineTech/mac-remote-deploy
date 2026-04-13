@@ -1,6 +1,7 @@
 // Tests for BuildEngineRouter dispatch logic. Verifies that .xcode and .expo
 // projects are routed to the correct engine. TKT-048.
 import XCTest
+import os
 @testable import RemoteDeploy
 
 final class BuildEngineRouterTests: XCTestCase {
