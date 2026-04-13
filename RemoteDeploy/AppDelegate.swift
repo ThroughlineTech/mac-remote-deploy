@@ -189,7 +189,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             notificationManager: serviceContainer.notificationManager,
             ipaImporter: serviceContainer.ipaImporter,
             buildHistoryStore: serviceContainer.buildHistoryStore,
-            buildEventBroadcaster: serviceContainer.deployServer as? BuildEventBroadcasting
+            buildEventBroadcaster: serviceContainer.deployServer as? BuildEventBroadcasting,
+            localDeployManager: LocalDeployManager()
         )
         buildManager.sendPushNotification = { [serviceContainer] title, message, priority, url in
             await serviceContainer.sendPushNotification(title: title, message: message, priority: priority, url: url)

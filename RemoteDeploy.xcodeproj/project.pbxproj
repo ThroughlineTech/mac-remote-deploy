@@ -17,6 +17,7 @@
 		0831A0EE47AAEC483A360657 /* BuildControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6536341DB69DEC4E0783F486 /* BuildControlView.swift */; };
 		08475A8BFC1FD94414F4CEC0 /* Logging.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEBB5893B7D475E4702B2405 /* Logging.swift */; };
 		09D31BA35FDDB486A6C5EE90 /* DeployServerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F88DC1A592D457DDBA4360A /* DeployServerProtocol.swift */; };
+		0D23105D799A7A2F98584626 /* LocalDeployManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A34663823BF090B54233658 /* LocalDeployManager.swift */; };
 		0D42060EA0BB42473044DA32 /* ManifestGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BCC1DD0A91B6D40F002CFF9 /* ManifestGenerator.swift */; };
 		0DDC9A9AB7E22338D004E220 /* InstallsRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3092237771744E80C980CCA7 /* InstallsRouteHandler.swift */; };
 		10287D53E80C0F63863F44C8 /* InstallPageGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 232FBCD51AAB989747FBCD32 /* InstallPageGenerator.swift */; };
@@ -36,6 +37,7 @@
 		2420D38AAC6EC270E7675108 /* XcodebuildSchemeDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFDE9C59AB9FE5A6C7748558 /* XcodebuildSchemeDetector.swift */; };
 		249E98F1EF39325A33D7582D /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D12338C042E71B355CC5F515 /* MenuBarView.swift */; };
 		253A7DB9B384563DE59ABC69 /* MockSettingsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 240066D56FA517529905F621 /* MockSettingsProvider.swift */; };
+		26400D60066F8C5459DDC1D8 /* LocalDeployManagerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94148DCBBDE069C08A6FDD42 /* LocalDeployManagerProtocol.swift */; };
 		2740844711D86B9F73A070F5 /* QRCodeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C82B7886011CA021EFA3B01 /* QRCodeGenerator.swift */; };
 		286BC2DE7C33DA2E2A90470A /* CertificateProviding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92BCC65C66A3D556B6D32ADF /* CertificateProviding.swift */; };
 		287EB0837CADBA2532157311 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385627CB8E51DED915370DA0 /* AppDelegate.swift */; };
@@ -62,6 +64,7 @@
 		456AB631D8EFB95038C042B7 /* ProjectStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36D84387F8D2D0955DF6B041 /* ProjectStoreTests.swift */; };
 		496C185E676B7FC55E272054 /* MockStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6452F6CEAC02A3CE3AA6EEAF /* MockStatusProvider.swift */; };
 		4B08C1304B06942B13A779A3 /* PairedDevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FC68632F6EFE61DC35CF3A9 /* PairedDevicesView.swift */; };
+		51CD2B019CD3E856441294C1 /* LocalDeployManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82895AA4B37116B713C066EB /* LocalDeployManagerTests.swift */; };
 		531CCB51E106CEA864BF3768 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D91B9C5E6B3976E7E1C65FBC /* APIClient.swift */; };
 		53C037A8761540A069FF09B6 /* ProjectSetupStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA5A883F3DF84EB00EE19999 /* ProjectSetupStep.swift */; };
 		540B519C7BAA9046D04E29A1 /* MockProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B223A9835076867EE2BCA306 /* MockProjectStore.swift */; };
@@ -292,6 +295,7 @@
 		572E5F9154208A2238B04929 /* ExpoProjectFixtureTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpoProjectFixtureTests.swift; sourceTree = "<group>"; };
 		5864C52F2776A20414E93C79 /* BuildManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildManager.swift; sourceTree = "<group>"; };
 		59964712D89DB2DA34241AD5 /* NIODeployServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NIODeployServer.swift; sourceTree = "<group>"; };
+		5A34663823BF090B54233658 /* LocalDeployManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDeployManager.swift; sourceTree = "<group>"; };
 		5A7BB07446157CBE3644142C /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		5B66C9243801D8E8F27DB0DA /* MockBuildHistoryProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockBuildHistoryProvider.swift; sourceTree = "<group>"; };
 		5BD31BDE1302B6ADC68DBE70 /* BuildTabTabBarReachabilityUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildTabTabBarReachabilityUITests.swift; sourceTree = "<group>"; };
@@ -315,6 +319,7 @@
 		7C44F3AF5ED2CE52038FCB87 /* BonjourAdvertiser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourAdvertiser.swift; sourceTree = "<group>"; };
 		7C4CDBCB8C51A6A9D6474C9E /* AuthMiddlewareTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthMiddlewareTests.swift; sourceTree = "<group>"; };
 		80A2461C0A040726D284136C /* ServerInstallTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerInstallTracker.swift; sourceTree = "<group>"; };
+		82895AA4B37116B713C066EB /* LocalDeployManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDeployManagerTests.swift; sourceTree = "<group>"; };
 		85A299F63D82BB4D6CC669C1 /* ManifestGenerating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestGenerating.swift; sourceTree = "<group>"; };
 		870CF4245A54F95A64644B20 /* NoopBuildCanceler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoopBuildCanceler.swift; sourceTree = "<group>"; };
 		8737FC28ABF98E52B42BC686 /* NIODeployServer+BuildEventBroadcasting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NIODeployServer+BuildEventBroadcasting.swift"; sourceTree = "<group>"; };
@@ -327,6 +332,7 @@
 		9220015D340C1A6FA471E1A9 /* APIRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIRouter.swift; sourceTree = "<group>"; };
 		92BCC65C66A3D556B6D32ADF /* CertificateProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertificateProviding.swift; sourceTree = "<group>"; };
 		93DCCDD9D80164AC05FA0680 /* ProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessRunner.swift; sourceTree = "<group>"; };
+		94148DCBBDE069C08A6FDD42 /* LocalDeployManagerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDeployManagerProtocol.swift; sourceTree = "<group>"; };
 		959903149F2BC83CAA1CC690 /* BuildEngineRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildEngineRouter.swift; sourceTree = "<group>"; };
 		9646E680B180ADA2F5925EE7 /* ProjectConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectConfig.swift; sourceTree = "<group>"; };
 		9796786DAAB99C929734C0A8 /* ConnectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionManager.swift; sourceTree = "<group>"; };
@@ -660,6 +666,7 @@
 				401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */,
 				F3BAFD6343E5678C93000CE0 /* InstallTrackerTests.swift */,
 				4AAE0C1992386E96FB314963 /* JSONBuildHistoryStoreTests.swift */,
+				82895AA4B37116B713C066EB /* LocalDeployManagerTests.swift */,
 				DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */,
 				B672B2B791A8157F8C29D9C9 /* NIODeployServerBuildEventBroadcastingTests.swift */,
 				B8421F920BA67CC3DE6420EE /* ProjectConfigCodingTests.swift */,
@@ -692,6 +699,7 @@
 				90AA426A4B6723150D61BF97 /* IPAImporter.swift */,
 				4202CB6C40000D21D6D29C23 /* JSONBuildHistoryStore.swift */,
 				9FF6629262E737F32BF1B707 /* JSONPairedDeviceStore.swift */,
+				5A34663823BF090B54233658 /* LocalDeployManager.swift */,
 				7BCC1DD0A91B6D40F002CFF9 /* ManifestGenerator.swift */,
 				59964712D89DB2DA34241AD5 /* NIODeployServer.swift */,
 				8737FC28ABF98E52B42BC686 /* NIODeployServer+BuildEventBroadcasting.swift */,
@@ -729,6 +737,7 @@
 				3F88DC1A592D457DDBA4360A /* DeployServerProtocol.swift */,
 				71692AD69CDCB450DA1618BE /* InstallPageGenerating.swift */,
 				A7E9A949DBC530810FF7E1CC /* InstallTracking.swift */,
+				94148DCBBDE069C08A6FDD42 /* LocalDeployManagerProtocol.swift */,
 				85A299F63D82BB4D6CC669C1 /* ManifestGenerating.swift */,
 				4339E627499951F26144AC1B /* PairedDeviceStoring.swift */,
 				DEA47DFCA9B5079A893AEE6A /* ProjectStoring.swift */,
@@ -1095,6 +1104,8 @@
 				0DDC9A9AB7E22338D004E220 /* InstallsRouteHandler.swift in Sources */,
 				EA38A66DA644542DF8504687 /* JSONBuildHistoryStore.swift in Sources */,
 				823E3790257BCF616C9910DD /* JSONPairedDeviceStore.swift in Sources */,
+				0D23105D799A7A2F98584626 /* LocalDeployManager.swift in Sources */,
+				26400D60066F8C5459DDC1D8 /* LocalDeployManagerProtocol.swift in Sources */,
 				C9701C3F02B92BF7669E2CC0 /* Logging.swift in Sources */,
 				5906E3FE183F04C9A4C4C7C5 /* ManifestGenerating.swift in Sources */,
 				0D42060EA0BB42473044DA32 /* ManifestGenerator.swift in Sources */,
@@ -1174,6 +1185,7 @@
 				6A5A61018B20ADA6DD71491D /* InstallTrackerTests.swift in Sources */,
 				A49E3C3BBB1F4F3DCF642969 /* InstallsRouteHandlerTests.swift in Sources */,
 				E9B6ADCDA4F6A3D768B03F49 /* JSONBuildHistoryStoreTests.swift in Sources */,
+				51CD2B019CD3E856441294C1 /* LocalDeployManagerTests.swift in Sources */,
 				F33309DA202DB2E0982030E1 /* ManifestGeneratorTests.swift in Sources */,
 				010B6B29BA8403CB27BD347E /* MockBuildCanceler.swift in Sources */,
 				8AC9C0EDD8A39057243D0059 /* MockBuildEngine.swift in Sources */,
