@@ -101,7 +101,9 @@ targets:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - RemoteDeployTests
+      - path: RemoteDeployTests
+        excludes:
+          - "Fixtures/**"
     dependencies:
       - target: RemoteDeploy
     settings:

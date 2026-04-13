@@ -1,16 +1,20 @@
 import SwiftUI
 import Foundation
 import os
+import RemoteDeployShared
 
 // MARK: - Project Setup Step
 
 /// Step 3 of the setup wizard: allows the user to select an Xcode project via
 /// file picker or drag-and-drop, auto-detects available schemes, and collects
-/// bundle ID and team ID.
+/// bundle ID and team ID. Supports both native Xcode and Expo (React Native)
+/// projects via a project type picker. TKT-048.
 struct ProjectSetupStep: View {
     @ObservedObject var appState: AppState
     @EnvironmentObject var serviceContainer: ServiceContainer
 
+    /// The selected project type — Xcode or Expo. TKT-048.
+    @State private var projectType: ProjectType = .xcode
     /// The project path selected by the user.
     @State private var projectPath: String = ""
     /// Human-readable project name.
@@ -27,6 +31,11 @@ struct ProjectSetupStep: View {
     @State private var isDetectingSchemes = false
     /// Whether a file is being dragged over the drop zone.
     @State private var isDragTargeted = false
+
+    /// Expo app directory within a monorepo (e.g. "app"). TKT-048.
+    @State private var expoAppDirectory: String = ""
+    /// Environment warnings for Expo builds. TKT-048.
+    @State private var environmentWarnings: [String] = []
 
     /// Validation errors per field; nil = valid. Computed inline as the user types.
     /// Validators live in `ProjectSetupValidators` so tests can cover them directly.
@@ -47,8 +56,46 @@ struct ProjectSetupStep: View {
 
             Divider()
 
+            // --- Project type picker (Xcode / Expo) --- TKT-048
+            Picker("Project Type:", selection: $projectType) {
+                Text("Xcode Project").tag(ProjectType.xcode)
+                Text("Expo (React Native)").tag(ProjectType.expo)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: projectType) {
+                // Reset state when switching types
+                detectedSchemes = []
+                selectedScheme = ""
+                if projectType == .expo {
+                    environmentWarnings = EnvironmentChecker.expoEnvironmentWarnings()
+                } else {
+                    environmentWarnings = []
+                }
+            }
+
+            // --- Environment warnings for Expo --- TKT-048
+            if projectType == .expo {
+                ForEach(environmentWarnings, id: \.self) { warning in
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                            .font(.caption)
+                        Text(warning)
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+            }
+
             // --- Drag-and-drop zone / file picker ---
             dropZone
+
+            // --- Expo app directory (for monorepos) --- TKT-048
+            if projectType == .expo && !projectPath.isEmpty {
+                TextField("App Directory (for monorepos, e.g. \"app\"):", text: $expoAppDirectory)
+                    .textFieldStyle(.roundedBorder)
+                    .help("Relative path from the project root to the Expo app directory. Leave empty if app.json is at the project root.")
+            }
 
             // --- Project details form (shown after a path is selected) ---
             if !projectPath.isEmpty {
@@ -85,7 +132,9 @@ struct ProjectSetupStep: View {
                     Image(systemName: "folder.badge.plus")
                         .font(.title2)
                         .foregroundColor(.secondary)
-                    Text("Drag Xcode project here or click to browse")
+                    Text(projectType == .expo
+                         ? "Drag project root directory here or click to browse"
+                         : "Drag Xcode project here or click to browse")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -196,11 +245,15 @@ struct ProjectSetupStep: View {
 
     // MARK: - Actions
 
-    /// Opens an NSOpenPanel to select an .xcodeproj or .xcworkspace.
+    /// Opens an NSOpenPanel to select a project path.
+    /// For Xcode projects, selects .xcodeproj/.xcworkspace or directory.
+    /// For Expo projects, selects the root directory. TKT-048.
     private func browseForProject() {
         let panel = NSOpenPanel()
-        panel.title = "Select Xcode Project or Workspace"
-        panel.canChooseFiles = true
+        panel.title = projectType == .expo
+            ? "Select Expo Project Root Directory"
+            : "Select Xcode Project or Workspace"
+        panel.canChooseFiles = projectType != .expo
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
 
@@ -231,7 +284,48 @@ struct ProjectSetupStep: View {
         if projectName.isEmpty {
             projectName = name
         }
+
+        // TKT-048: auto-detect Expo app directory and bundle ID from app.json
+        if projectType == .expo {
+            autoDetectExpoApp()
+        }
+
         detectSchemes()
+    }
+
+    /// Scans the selected directory for app.json to auto-populate Expo fields. TKT-048.
+    private func autoDetectExpoApp() {
+        let fm = FileManager.default
+        let rootAppJson = (projectPath as NSString).appendingPathComponent("app.json")
+
+        var appJsonPath: String?
+
+        if fm.fileExists(atPath: rootAppJson) {
+            appJsonPath = rootAppJson
+            expoAppDirectory = ""
+        } else {
+            // Check immediate subdirectories
+            let subdirs = (try? fm.contentsOfDirectory(atPath: projectPath)) ?? []
+            for sub in subdirs {
+                let candidate = (projectPath as NSString).appendingPathComponent(sub)
+                let candidateAppJson = (candidate as NSString).appendingPathComponent("app.json")
+                if fm.fileExists(atPath: candidateAppJson) {
+                    appJsonPath = candidateAppJson
+                    expoAppDirectory = sub
+                    break
+                }
+            }
+        }
+
+        // Parse bundle ID from app.json
+        if let path = appJsonPath,
+           let data = fm.contents(atPath: path),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let expo = json["expo"] as? [String: Any],
+           let ios = expo["ios"] as? [String: Any],
+           let detectedBundleID = ios["bundleIdentifier"] as? String {
+            bundleID = detectedBundleID
+        }
     }
 
     /// Auto-detects Bundle ID and Team ID from the Xcode project's build settings.
@@ -362,6 +456,8 @@ struct ProjectSetupStep: View {
         guard schemeError == nil else { return }
 
         var project = ProjectConfig(name: projectName, projectPath: projectPath)
+        project.projectType = projectType
+        project.expoAppDirectory = projectType == .expo && !expoAppDirectory.isEmpty ? expoAppDirectory : nil
         project.scheme = selectedScheme
         project.bundleID = bundleID
         project.teamID = teamID

@@ -43,6 +43,14 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
     /// Target platform: "iOS", "macOS", "tvOS", "watchOS". Defaults to "iOS".
     public var platform: String
 
+    /// The type of project: `.xcode` (native) or `.expo` (React Native).
+    /// Determines which build engine is used. Defaults to `.xcode`.
+    public var projectType: ProjectType
+
+    /// Relative path from `projectPath` to the Expo app directory within a
+    /// monorepo (e.g. `"app"`). Nil for single-app repos or Xcode projects.
+    public var expoAppDirectory: String?
+
     /// Creates a new project config with sensible defaults.
     public init(name: String, projectPath: String) {
         self.id = UUID()
@@ -62,6 +70,8 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
             .map { String($0) }.joined()
         self.exportMethod = "development"
         self.platform = "iOS"
+        self.projectType = .xcode
+        self.expoAppDirectory = nil
     }
 
     /// Decodes with backward compatibility — older saved configs without a platform field default to "iOS".
@@ -80,5 +90,7 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
         urlSlug = try container.decode(String.self, forKey: .urlSlug)
         exportMethod = try container.decode(String.self, forKey: .exportMethod)
         platform = try container.decodeIfPresent(String.self, forKey: .platform) ?? "iOS"
+        projectType = try container.decodeIfPresent(ProjectType.self, forKey: .projectType) ?? .xcode
+        expoAppDirectory = try container.decodeIfPresent(String.self, forKey: .expoAppDirectory)
     }
 }

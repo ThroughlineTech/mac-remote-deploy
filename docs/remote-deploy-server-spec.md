@@ -50,6 +50,9 @@ Required protocols and their concrete implementations:
 | Protocol | Implementation | Purpose |
 |----------|---------------|---------|
 | `BuildEngineProtocol` | `XcodeBuildEngine` | Wraps xcodebuild archive + export |
+| `BuildEngineProtocol` | `ExpoBuildEngine` | Expo/RN: npm install + prebuild + pod install + xcodebuild (TKT-048) |
+| `BuildEngineProtocol` | `BuildEngineRouter` | Dispatches builds to the correct engine based on project type (TKT-048) |
+| `ProcessRunning` | `ProcessRunner` | Reusable process execution with streaming stdout/stderr (TKT-048) |
 | `DeployServerProtocol` | `NIODeployServer` | HTTPS server via SwiftNIO |
 | `TailscaleProviderProtocol` | `CLITailscaleProvider` | Hostname detection, cert management |
 | `ManifestGenerating` | `ManifestGenerator` | Generates OTA manifest.plist |
@@ -58,6 +61,28 @@ Required protocols and their concrete implementations:
 | `CertificateProviding` | `TailscaleCertificateProvider` | Loads and refreshes TLS certs |
 | `InstallTracking` | `ServerInstallTracker` | Logs IPA downloads with timestamp + source IP |
 | `PushNotifying` | `ProwlNotifier`, `PushoverNotifier`, `NtfyNotifier` | Push notifications to iOS device on build events |
+
+### Expo (React Native) Project Support (TKT-048)
+
+RemoteDeploy supports building Expo/React Native projects in addition to native Xcode projects. The build pipeline for Expo projects is a multi-phase process:
+
+1. **npm install** — installs JavaScript dependencies at the monorepo root.
+2. **expo prebuild --clean --no-install** — generates the native `ios/` directory from `app.json` and native module configuration.
+3. **pod install** — resolves CocoaPods dependencies in the generated `ios/` directory.
+4. **xcodebuild archive + export** — standard Xcode build on the generated `.xcworkspace`, identical to native projects.
+
+**Key design decisions:**
+- **Separate engine:** `ExpoBuildEngine` implements `BuildEngineProtocol` and handles the pre-xcodebuild phases. It delegates the xcodebuild phase to `XcodeBuildEngine` internally.
+- **Router pattern:** `BuildEngineRouter` dispatches builds based on `ProjectConfig.projectType` (`.xcode` or `.expo`). `BuildManager` only sees a single `BuildEngineProtocol`.
+- **OTA deploy unchanged:** Once the IPA is produced, the entire OTA pipeline (serve directory, manifest.plist, install page) works identically for both project types.
+- **Injectable process runner:** `ProcessRunning` protocol allows mocking process execution for unit tests.
+
+**ProjectConfig additions:**
+- `projectType: ProjectType` — `.xcode` (default) or `.expo`. Backward-compatible with existing configs.
+- `expoAppDirectory: String?` — relative path from project root to the Expo app directory (e.g., `"app"` for monorepos). Nil for single-app repos.
+
+**Host environment requirements for Expo builds:**
+- Node.js (v18+), npm, CocoaPods, Xcode + command line tools. Detected at project setup time with warnings for missing tools.
 
 ### Testing Strategy
 - **Unit tests:** Mock all protocols. Test build pipeline logic, manifest generation, HTML templating, project config serialization. No Xcode or Tailscale needed.

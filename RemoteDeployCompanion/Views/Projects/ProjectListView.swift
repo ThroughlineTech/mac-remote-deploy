@@ -43,8 +43,19 @@ struct ProjectListView: View {
                     List(projects) { project in
                         NavigationLink(value: project) {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(project.name)
-                                    .font(.headline)
+                                HStack(spacing: 6) {
+                                    Text(project.name)
+                                        .font(.headline)
+                                    if project.projectType == .expo {
+                                        Text("Expo")
+                                            .font(.caption2.bold())
+                                            .padding(.horizontal, 5)
+                                            .padding(.vertical, 1)
+                                            .background(Color.purple.opacity(0.15))
+                                            .foregroundColor(.purple)
+                                            .clipShape(Capsule())
+                                    }
+                                }
                                 Text(project.bundleID)
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -145,6 +156,7 @@ struct ProjectDetailView: View {
         List {
             Section("Project Info") {
                 LabeledContent("Name", value: project.name)
+                LabeledContent("Type", value: project.projectType == .expo ? "Expo (React Native)" : "Xcode")
                 LabeledContent("Bundle ID", value: project.bundleID)
                 LabeledContent("Team ID", value: project.teamID)
                 LabeledContent("Scheme", value: project.scheme)
