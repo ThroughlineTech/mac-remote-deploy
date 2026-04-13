@@ -220,4 +220,62 @@ final class ExpoBuildEngineTests: XCTestCase {
             XCTFail("Expected .success status, got \(engine.status)")
         }
     }
+
+    // MARK: - Scheme Filtering (TKT-049)
+
+    /// Verifies that detectSchemes filters out CocoaPods dependency schemes,
+    /// keeping only the scheme matching the app .xcodeproj name.
+    func testDetectSchemesFiltersCocoaPodsSchemes() async throws {
+        // Set up: ios/ already has TestApp.xcworkspace from setUp().
+        // Add TestApp.xcodeproj and Pods.xcodeproj to simulate Expo layout.
+        let iosDir = (tmpDir as NSString)
+            .appendingPathComponent("app")
+            .appending("/ios")
+        let appProj = (iosDir as NSString).appendingPathComponent("TestApp.xcodeproj")
+        let podsProj = (iosDir as NSString).appendingPathComponent("Pods.xcodeproj")
+        try FileManager.default.createDirectory(atPath: appProj, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(atPath: podsProj, withIntermediateDirectories: true)
+
+        // Stub the xcode engine to return a mix of app + pod schemes.
+        mockXcodeEngine.detectSchemesResult = [
+            "TestApp", "boost", "DoubleConversion", "EXConstants", "Expo",
+            "ExpoModulesCore", "FBLazyVector", "React-Core", "RCT-Folly",
+            "hermes-engine", "Pods-TestApp"
+        ]
+
+        let schemes = try await engine.detectSchemes(at: tmpDir)
+
+        XCTAssertEqual(schemes, ["TestApp"],
+                       "Only the app scheme matching the .xcodeproj name should be returned")
+    }
+
+    /// Verifies that detectSchemes falls back to the full list when no
+    /// .xcodeproj files exist (e.g., if the directory layout is unexpected).
+    func testDetectSchemesFallsBackWhenNoXcodeproj() async throws {
+        // setUp() creates ios/ with only a .xcworkspace — no .xcodeproj files.
+        mockXcodeEngine.detectSchemesResult = ["SchemeA", "SchemeB"]
+
+        let schemes = try await engine.detectSchemes(at: tmpDir)
+
+        XCTAssertEqual(schemes, ["SchemeA", "SchemeB"],
+                       "Should return the full list when no .xcodeproj is found for filtering")
+    }
+
+    /// Verifies that if the filter would produce an empty result (no scheme
+    /// name matches a .xcodeproj), the full list is returned as a fallback.
+    func testDetectSchemesFallsBackWhenFilterEmpty() async throws {
+        let iosDir = (tmpDir as NSString)
+            .appendingPathComponent("app")
+            .appending("/ios")
+        let appProj = (iosDir as NSString).appendingPathComponent("MyApp.xcodeproj")
+        try FileManager.default.createDirectory(atPath: appProj, withIntermediateDirectories: true)
+
+        // No scheme matches "MyApp"
+        mockXcodeEngine.detectSchemesResult = ["OtherScheme", "AnotherScheme"]
+
+        let schemes = try await engine.detectSchemes(at: tmpDir)
+
+        XCTAssertEqual(schemes, ["OtherScheme", "AnotherScheme"],
+                       "Should return the full list when filter produces no matches")
+    }
 }
