@@ -37,7 +37,7 @@ For testing the decision without actually building:
 ## Preview profiles
 
 ### macos  (atomic, default)
-- Command: pkill -x RemoteDeploy 2>/dev/null; sleep 1; xcodegen generate && xcodebuild build -project RemoteDeploy.xcodeproj -scheme RemoteDeploy -destination 'platform=macOS' -configuration Debug -derivedDataPath /tmp/RemoteDeployPreview && open /tmp/RemoteDeployPreview/Build/Products/Debug/RemoteDeploy.app
+- Command: scripts/graceful-relaunch.sh RemoteDeploy --port 8443 --no-relaunch; xcodegen generate && xcodebuild build -project RemoteDeploy.xcodeproj -scheme RemoteDeploy -destination 'platform=macOS' -configuration Debug -derivedDataPath /tmp/RemoteDeployPreview && open /tmp/RemoteDeployPreview/Build/Products/Debug/RemoteDeploy.app
 - Port offset: 0
 - Ready when: command-exit
 - Sequential: true
