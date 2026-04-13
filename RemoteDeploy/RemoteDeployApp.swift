@@ -93,7 +93,8 @@ struct RemoteDeployApp: App {
 /// Protocols are used everywhere so implementations can be swapped (e.g., for testing).
 @MainActor
 final class ServiceContainer: ObservableObject {
-    /// Build engine for archiving and exporting IPAs via xcodebuild.
+    /// Build engine router that dispatches to the appropriate engine
+    /// (Xcode or Expo) based on project type. TKT-048.
     let buildEngine: any BuildEngineProtocol
 
     /// HTTPS server that serves install pages, manifests, and IPA files.
@@ -146,7 +147,7 @@ final class ServiceContainer: ObservableObject {
         let manifestGen = ManifestGenerator()
         let installPageGen = InstallPageGenerator()
 
-        self.buildEngine = XcodeBuildEngine()
+        self.buildEngine = BuildEngineRouter()
         self.deployServer = NIODeployServer(
             manifestGenerator: manifestGen,
             installPageGenerator: installPageGen

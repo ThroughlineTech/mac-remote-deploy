@@ -122,6 +122,12 @@ final class BuildManager: ObservableObject {
             setBuildStatus(.building(progress: "Starting build..."))
             buildLog = ""
 
+            // TKT-048: pre-select the engine so the log stream comes from
+            // the right engine (Expo vs Xcode) before the build starts.
+            if let router = buildEngine as? BuildEngineRouter {
+                router.prepareForBuild(project)
+            }
+
             // Get the log stream BEFORE starting the build so the continuation is ready.
             let logStream = buildEngine.buildLogStream
 
