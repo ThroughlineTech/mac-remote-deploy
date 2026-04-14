@@ -41,6 +41,8 @@ The Mac also exposes a REST API and WebSocket endpoint so you can trigger builds
 - **Live build log streaming** -- WebSocket-powered real-time xcodebuild output on phone or browser
 - **Multiple project support** -- configure as many iOS projects as you want, each with its own install URL
 - **Push notifications** -- get notified via Prowl, Pushover, or ntfy when builds finish
+- **macOS app builds** -- build, serve, and auto-deploy macOS apps (not just iOS). Download `.app.zip` from the install page or auto-deploy to the local machine
+- **Local auto-deploy** -- macOS builds can automatically quit the running app, replace it, and relaunch. RemoteDeploy can even deploy itself.
 - **REST API** -- 20 endpoints for full programmatic control (`/api/v1/`)
 - **IPA import** -- skip the build step entirely by importing a pre-built IPA
 - **Setup wizard** -- a 5-step guided assistant handles Tailscale, certificates, and project configuration
@@ -261,6 +263,7 @@ RemoteDeploy uses a protocol-oriented architecture. Every major component is def
 | `CertificateProviding` | `TailscaleCertificateProvider` | Loads and refreshes TLS certs |
 | `InstallTracking` | `ServerInstallTracker` | Logs IPA downloads |
 | `PushNotifying` | `ProwlNotifier`, `PushoverNotifier`, `NtfyNotifier` | Push notifications on build events |
+| `LocalDeployManagerProtocol` | `LocalDeployManager` | Post-build local deploy (quit, copy, relaunch) |
 
 ### Project structure
 
@@ -289,7 +292,7 @@ mac-remote-deploy/
 
 The `RemoteDeployShared` SPM package contains all model types and API DTOs. Both the Mac app and iOS companion depend on it, so data serializes identically on both sides. The package targets macOS 14+ and iOS 17+.
 
-See [docs/remote-deploy-server-spec.md](docs/remote-deploy-server-spec.md) for the full technical spec and [docs/v2-changes.md](docs/v2-changes.md) for detailed v2 change notes.
+See [docs/remote-deploy-server-spec.md](docs/remote-deploy-server-spec.md) for the full technical spec, [docs/v2-changes.md](docs/v2-changes.md) for detailed v2 change notes, and [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 ---
 
