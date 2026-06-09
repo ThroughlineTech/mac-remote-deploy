@@ -111,6 +111,53 @@ The setup wizard has 5 steps:
 
 ---
 
+## Install on This Mac (Self-Hosting)
+
+RemoteDeploy is meant to run continuously on your build machine. To install it
+into `/Applications` and have it start automatically at login -- with **no
+runtime dependency on Xcode, DerivedData, or this source tree** -- use the
+one-command installer:
+
+```bash
+./deploy.sh
+```
+
+> First time only: `chmod +x deploy.sh` if git didn't preserve the executable bit.
+
+This will:
+
+1. Build a Release `.app` (in `/tmp` -- it never touches a relocated DerivedData volume)
+2. Stop the LaunchAgent so it can't relaunch the old binary mid-swap
+3. Gracefully quit the running RemoteDeploy and wait for port 8443 to free
+4. Install the fresh `.app` into `/Applications`
+5. Install a **LaunchAgent** (`~/Library/LaunchAgents/com.remotedeploy.app.plist`)
+   that auto-starts the app at login and restarts it after a crash
+6. Remove the legacy Login Item (so it can't double-launch alongside the agent)
+7. Start the new version via `launchd`
+
+The installed app in `/Applications` is fully self-contained: it does not read
+from this repo or any `~/Library/Developer/Xcode` folder at runtime, so moving or
+deleting your DerivedData/dev directories will not affect it.
+
+| Command | What it does |
+|---------|--------------|
+| `./deploy.sh` | Fast install: signed (`build-release.sh --skip-notarize`), no Apple round-trip |
+| `./deploy.sh --release` | Full signed **+ notarized** build (distributable to other Macs) |
+| `./deploy.sh --no-build` | Skip the build; just (re)install the last `/tmp` output |
+
+The `--release` path requires notarization credentials configured for
+`build-release.sh` (see that script's header). LaunchAgent stdout/stderr is
+written to `/tmp/remotedeploy.launchagent.log`.
+
+To uninstall the autostart behavior:
+
+```bash
+launchctl bootout gui/$(id -u)/com.remotedeploy.app
+rm ~/Library/LaunchAgents/com.remotedeploy.app.plist
+```
+
+---
+
 ## Using the iOS Companion App
 
 The companion app lets you trigger builds, watch live build logs, and manage your Mac from your phone.

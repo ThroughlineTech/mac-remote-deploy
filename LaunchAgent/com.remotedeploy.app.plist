@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.remotedeploy.app.plist — LaunchAgent that keeps RemoteDeploy running.
+
+  Installed to ~/Library/LaunchAgents/ by ./deploy.sh. Do not edit the copy in
+  the repo expecting it to take effect; re-run ./deploy.sh to reinstall.
+
+  Behavior:
+    - RunAtLoad: starts RemoteDeploy at login / when the agent is bootstrapped.
+    - KeepAlive (SuccessfulExit=false): restarts ONLY after a crash. A clean
+      quit (Cmd-Q, or the in-app self-deploy quitting itself) is respected, so
+      this does not fight RemoteDeploy's own self-deploy relaunch.
+
+  Points at the installed bundle in /Applications, so it has no dependency on
+  the source repo or any Xcode/DerivedData folder.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.remotedeploy.app</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/RemoteDeploy.app/Contents/MacOS/RemoteDeploy</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Interactive</string>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/remotedeploy.launchagent.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/remotedeploy.launchagent.log</string>
+</dict>
+</plist>
