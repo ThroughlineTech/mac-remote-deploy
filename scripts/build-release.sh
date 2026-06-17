@@ -54,6 +54,13 @@ cd "$PROJECT_DIR"
 xcodegen generate
 
 # Step 2: Build Release
+# SYMROOT/OBJROOT are set explicitly so the build products land in $BUILD_DIR
+# regardless of any "Custom" build location configured in Xcode's preferences
+# (IDECustomBuildProductsPath). Without this, a relocated build folder -- e.g.
+# DerivedData/products moved to an external volume -- overrides -derivedDataPath
+# and the .app ends up somewhere this script doesn't look for it. Command-line
+# build settings take precedence over the IDE preference, so this keeps the
+# build self-contained under /tmp as intended.
 echo "--- Building Release configuration ---"
 xcodebuild build \
     -project RemoteDeploy.xcodeproj \
@@ -61,6 +68,8 @@ xcodebuild build \
     -configuration Release \
     -destination 'platform=macOS' \
     -derivedDataPath "$BUILD_DIR" \
+    SYMROOT="$BUILD_DIR/Build/Products" \
+    OBJROOT="$BUILD_DIR/Build/Intermediates.noindex" \
     CODE_SIGN_IDENTITY="-" \
     2>&1 | tail -5
 

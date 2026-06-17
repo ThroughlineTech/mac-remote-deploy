@@ -124,3 +124,44 @@ targets:
         SWIFT_VERSION: "5.10"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         GENERATE_INFOPLIST_FILE: "YES"
+
+# Explicit shared schemes. Without these, the .xcodeproj has no shared schemes
+# and relies on Xcode's per-user scheme autocreation (xcuserdata), which is
+# non-deterministic across `xcodegen generate` runs -- the RemoteDeploy scheme
+# can silently go missing after a regenerate, breaking `xcodebuild -scheme
+# RemoteDeploy` in build-release.sh. Defining them here guarantees they exist.
+schemes:
+  RemoteDeploy:
+    build:
+      targets:
+        RemoteDeploy: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - RemoteDeployTests
+        - RemoteDeployIntegrationTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
+  RemoteDeployCompanion:
+    build:
+      targets:
+        RemoteDeployCompanion: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - RemoteDeployCompanionUITests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

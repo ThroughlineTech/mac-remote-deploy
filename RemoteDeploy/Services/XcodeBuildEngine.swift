@@ -34,6 +34,12 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// Maximum number of recent stderr lines retained for the failure message tail.
     private static let stderrRingCapacity = 8
 
+    /// Memoized active Xcode developer directory used to run xcodebuild via
+    /// `DEVELOPER_DIR`. Computed lazily on first build/detect. The double
+    /// optional distinguishes "not yet computed" (outer `nil`) from "computed,
+    /// but no full Xcode found" (inner `nil`). See `developerDirectory()`.
+    private let lockedDeveloperDir = OSAllocatedUnfairLock<String??>(initialState: nil)
+
     // MARK: - Protocol Properties
 
     /// The current build status (idle, building, success, or failure).
@@ -81,6 +87,11 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         // cancellation doesn't carry over and immediately fail this build.
         lockedIsCancelling.withLock { $0 = false }
         setStatus(.building(progress: "Preparing build…"))
+
+        // Regenerate the .xcodeproj from project.yml first so XcodeGen-managed
+        // projects build from their current spec rather than a stale or missing
+        // generated project. No-op for projects without a project.yml spec.
+        try regenerateXcodeGenProjectIfNeeded(at: project.projectPath)
 
         let fm = FileManager.default
 
@@ -252,6 +263,10 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// - Returns: An array of scheme name strings found in the project.
     /// - Throws: If xcodebuild fails to parse the project or the path is invalid.
     func detectSchemes(at projectPath: String) async throws -> [String] {
+        // Regenerate the .xcodeproj from project.yml first so XcodeGen-managed
+        // projects (whose generated .xcodeproj is kept out of source control)
+        // are present and current before xcodebuild reads them.
+        try regenerateXcodeGenProjectIfNeeded(at: projectPath)
         let resolved = try resolveXcodeProject(at: projectPath)
         let flag = resolved.hasSuffix(".xcworkspace") ? "-workspace" : "-project"
         let args = [flag, resolved, "-list"]
@@ -301,6 +316,7 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = ["xcodebuild"] + arguments
+        applyXcodebuildEnvironment(to: process)
 
         let stdoutPipe = Pipe()
         let stderrPipe = Pipe()
@@ -452,6 +468,7 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = ["xcodebuild"] + arguments
+        applyXcodebuildEnvironment(to: process)
 
         let stdoutPipe = Pipe()
         process.standardOutput = stdoutPipe
@@ -463,9 +480,11 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
                 let output = String(data: data, encoding: .utf8) ?? ""
 
                 if proc.terminationStatus != 0 {
+                    let msg = Self.xcodebuildFailureHint(forExitCode: proc.terminationStatus)
+                        ?? "xcodebuild -list failed with code \(proc.terminationStatus)"
                     continuation.resume(throwing: BuildError.xcodebuildFailed(
                         proc.terminationStatus,
-                        "xcodebuild -list failed with code \(proc.terminationStatus)"
+                        msg
                     ))
                 } else {
                     continuation.resume(returning: output)
@@ -637,6 +656,198 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         let cont = lockedLogContinuation.withLock { $0 }
         cont?.yield(line)
     }
+
+    // MARK: - XcodeGen Integration
+
+    /// Returns the directory that may hold an XcodeGen `project.yml` spec for the
+    /// given path. If the path is a `.xcodeproj`/`.xcworkspace` bundle, the spec
+    /// lives in the bundle's parent directory; otherwise the path is itself the
+    /// project directory.
+    private func specDirectory(for path: String) -> String {
+        if path.hasSuffix(".xcodeproj") || path.hasSuffix(".xcworkspace") {
+            return (path as NSString).deletingLastPathComponent
+        }
+        return path
+    }
+
+    /// Runs `xcodegen generate` when the project directory contains an XcodeGen
+    /// spec (`project.yml` or `project.yaml`), so the `.xcodeproj` is always
+    /// regenerated from its source of truth before xcodebuild reads it.
+    ///
+    /// XcodeGen-managed projects keep the generated `.xcodeproj` out of source
+    /// control, so without this a fresh checkout would be missing the project
+    /// entirely and an edited spec would leave a stale one. Projects with no
+    /// spec are left untouched (this is a no-op for hand-maintained projects).
+    ///
+    /// - Parameter projectPath: The project directory or a path to a bundle
+    ///   inside it.
+    /// - Throws: `BuildError.xcodegenFailed` if a spec is present but XcodeGen
+    ///   is not installed, or if `xcodegen generate` exits non-zero.
+    private func regenerateXcodeGenProjectIfNeeded(at projectPath: String) throws {
+        let dir = specDirectory(for: projectPath)
+        let fm = FileManager.default
+        guard let specName = ["project.yml", "project.yaml"].first(where: {
+            fm.fileExists(atPath: (dir as NSString).appendingPathComponent($0))
+        }) else {
+            return  // Not an XcodeGen project; nothing to regenerate.
+        }
+
+        guard let xcodegen = Self.resolveXcodeGenBinary() else {
+            throw BuildError.xcodegenFailed(
+                "found \(specName) but XcodeGen is not installed. "
+                + "Install it with: brew install xcodegen"
+            )
+        }
+
+        emitLog("Generating Xcode project from \(specName) (xcodegen)…")
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: xcodegen)
+        process.arguments = ["generate", "--spec", specName, "--quiet"]
+        process.currentDirectoryURL = URL(fileURLWithPath: dir)
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        do {
+            try process.run()
+        } catch {
+            throw BuildError.xcodegenFailed(
+                "could not launch xcodegen at \(xcodegen): \(error.localizedDescription)"
+            )
+        }
+        process.waitUntilExit()
+
+        let output = String(
+            data: pipe.fileHandleForReading.readDataToEndOfFile(),
+            encoding: .utf8
+        ) ?? ""
+        let lines = output.components(separatedBy: .newlines)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        for line in lines {
+            emitLog(line)
+        }
+
+        guard process.terminationStatus == 0 else {
+            let tail = lines.last ?? ""
+            throw BuildError.xcodegenFailed(
+                "xcodegen generate failed (exit \(process.terminationStatus)): \(tail)"
+            )
+        }
+    }
+
+    /// Resolves the `xcodegen` executable, preferring the standard Homebrew
+    /// install locations (the app runs under launchd with a minimal PATH that
+    /// usually omits `/opt/homebrew/bin`) and falling back to a PATH lookup.
+    private static func resolveXcodeGenBinary() -> String? {
+        let fm = FileManager.default
+        let candidates = ["/opt/homebrew/bin/xcodegen", "/usr/local/bin/xcodegen"]
+        if let hit = candidates.first(where: { fm.isExecutableFile(atPath: $0) }) {
+            return hit
+        }
+        return runCapturingTrimmed("/usr/bin/which", ["xcodegen"])
+    }
+
+    // MARK: - Toolchain Resolution
+
+    /// Sets `DEVELOPER_DIR` on the process when a usable full Xcode is found,
+    /// so xcodebuild works regardless of what `xcode-select` points at. When no
+    /// full Xcode can be located the environment is left untouched and the
+    /// caller surfaces the resulting xcrun error (see `xcodebuildFailureHint`).
+    private func applyXcodebuildEnvironment(to process: Process) {
+        guard let devDir = developerDirectory() else { return }
+        var env = ProcessInfo.processInfo.environment
+        env["DEVELOPER_DIR"] = devDir
+        process.environment = env
+    }
+
+    /// Returns a developer directory that contains a runnable `xcodebuild`,
+    /// memoizing the result for the lifetime of the engine.
+    private func developerDirectory() -> String? {
+        lockedDeveloperDir.withLock { cache in
+            if let computed = cache { return computed }
+            let resolved = Self.resolveDeveloperDir()
+            cache = .some(resolved)
+            return resolved
+        }
+    }
+
+    /// Locates a developer directory that ships `xcodebuild`.
+    ///
+    /// Order: the active `xcode-select` directory (if it can actually build),
+    /// then the well-known full-Xcode install paths, then a Spotlight query for
+    /// any Xcode bundle. Returns `nil` if only the Command Line Tools (which
+    /// have no `xcodebuild`) are available, which is exactly the state that
+    /// makes `xcrun xcodebuild` fail with exit 72.
+    private static func resolveDeveloperDir() -> String? {
+        let fm = FileManager.default
+        func canBuild(_ dir: String) -> Bool {
+            fm.isExecutableFile(atPath: (dir as NSString).appendingPathComponent("usr/bin/xcodebuild"))
+        }
+
+        if let active = runCapturingTrimmed("/usr/bin/xcode-select", ["-p"]), canBuild(active) {
+            return active
+        }
+
+        let known = [
+            "/Applications/Xcode.app/Contents/Developer",
+            "/Applications/Xcode-beta.app/Contents/Developer",
+        ]
+        if let hit = known.first(where: canBuild) {
+            return hit
+        }
+
+        if let spotlighted = spotlightXcodeDeveloperDir(), canBuild(spotlighted) {
+            return spotlighted
+        }
+        return nil
+    }
+
+    /// Uses Spotlight to find any installed Xcode bundle and returns its
+    /// `Contents/Developer` directory, or `nil` if none is indexed.
+    private static func spotlightXcodeDeveloperDir() -> String? {
+        guard let app = runCapturingTrimmed(
+            "/usr/bin/mdfind",
+            ["kMDItemCFBundleIdentifier == 'com.apple.dt.Xcode'"]
+        )?.components(separatedBy: .newlines).first(where: { $0.hasSuffix(".app") }) else {
+            return nil
+        }
+        return (app as NSString).appendingPathComponent("Contents/Developer")
+    }
+
+    /// Maps a well-known non-zero xcodebuild/xcrun exit code to an actionable
+    /// hint. Exit 72 (`EX_OSFILE`) is what xcrun returns when no full Xcode is
+    /// selected as the active developer directory -- e.g. only the Command Line
+    /// Tools are installed -- which is otherwise an opaque failure.
+    private static func xcodebuildFailureHint(forExitCode code: Int32) -> String? {
+        guard code == 72 else { return nil }
+        return "no usable Xcode found (only the Command Line Tools are selected). "
+            + "Install Xcode, then run: "
+            + "sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+    }
+
+    /// Runs a process and returns its trimmed stdout, or `nil` if it fails to
+    /// launch, exits non-zero, or produces no output. Used for short toolchain
+    /// probes (`xcode-select -p`, `mdfind`, `which`).
+    private static func runCapturingTrimmed(_ launchPath: String, _ arguments: [String]) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: launchPath)
+        process.arguments = arguments
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let trimmed = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (trimmed?.isEmpty == false) ? trimmed : nil
+    }
 }
 
 // MARK: - Build Errors
@@ -651,6 +862,9 @@ enum BuildError: LocalizedError {
     case exportFailed(String)
     /// xcodebuild exited with a non-zero status code.
     case xcodebuildFailed(Int32, String)
+    /// `xcodegen generate` failed, or a project.yml spec was present but
+    /// XcodeGen was not installed.
+    case xcodegenFailed(String)
     /// The build was cancelled (process was terminated by signal).
     case cancelled
 
@@ -664,6 +878,8 @@ enum BuildError: LocalizedError {
             return "Export failed: \(msg)"
         case .xcodebuildFailed(let code, let msg):
             return "xcodebuild failed (exit \(code)): \(msg)"
+        case .xcodegenFailed(let msg):
+            return "XcodeGen failed: \(msg)"
         case .cancelled:
             return "Build was cancelled."
         }
