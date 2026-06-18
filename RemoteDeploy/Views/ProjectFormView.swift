@@ -4,7 +4,9 @@ import os
 /// Form view for adding or editing a project configuration.
 /// Used both in the settings window and the setup assistant.
 struct ProjectFormView: View {
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    // TKT-060 (Phase 6): scheme detection goes through the server's
+    // /filesystem/schemes endpoint instead of the in-process build engine.
+    @EnvironmentObject var menuBarClient: MenuBarClient
     @Binding var project: ProjectConfig
     var onSave: (ProjectConfig) -> Void
     var onCancel: () -> Void
@@ -182,31 +184,41 @@ struct ProjectFormView: View {
         }
     }
 
-    /// Runs xcodebuild -list to detect available schemes in the project.
+    /// Detects available schemes via the server's /filesystem/schemes endpoint
+    /// (which runs `xcodebuild -list -project <path>`). The endpoint expects the
+    /// `.xcodeproj` path, so resolve it from the chosen directory first. TKT-060.
     private func detectSchemes() {
         guard !project.projectPath.isEmpty else { return }
         isDetectingSchemes = true
         detectionError = nil
+        let xcodeprojPath = Self.resolveXcodeprojPath(project.projectPath)
 
         Task {
-            do {
-                let schemes = try await serviceContainer.buildEngine.detectSchemes(at: project.projectPath)
-                await MainActor.run {
-                    detectedSchemes = schemes
-                    if let first = schemes.first, project.scheme.isEmpty {
-                        project.scheme = first
-                    }
-                    isDetectingSchemes = false
-                    // Auto-detect bundle ID and team ID
-                    detectBuildSettings()
-                }
-            } catch {
-                await MainActor.run {
-                    detectionError = "Failed to detect schemes: \(error.localizedDescription)"
-                    isDetectingSchemes = false
-                }
+            guard let schemes = await menuBarClient.detectSchemes(projectPath: xcodeprojPath) else {
+                detectionError = "Failed to detect schemes: \(menuBarClient.lastError ?? "unknown error")"
+                isDetectingSchemes = false
+                return
             }
+            detectedSchemes = schemes
+            if let first = schemes.first, project.scheme.isEmpty {
+                project.scheme = first
+            }
+            isDetectingSchemes = false
+            // Auto-detect bundle ID and team ID
+            detectBuildSettings()
         }
+    }
+
+    /// Resolves a directory project path to the `.xcodeproj` it contains so the
+    /// scheme-detection endpoint gets the path it expects. Returns the input
+    /// unchanged if it is already a `.xcodeproj` or no project is found.
+    static func resolveXcodeprojPath(_ path: String) -> String {
+        if path.hasSuffix(".xcodeproj") { return path }
+        let contents = (try? FileManager.default.contentsOfDirectory(atPath: path)) ?? []
+        if let proj = contents.first(where: { $0.hasSuffix(".xcodeproj") }) {
+            return "\(path)/\(proj)"
+        }
+        return path
     }
 
     /// Auto-detects Bundle ID, Team ID, and platform by running xcodebuild -showBuildSettings.

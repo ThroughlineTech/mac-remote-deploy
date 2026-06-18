@@ -11,7 +11,9 @@ import RemoteDeployShared
 /// projects via a project type picker. TKT-048.
 struct ProjectSetupStep: View {
     @ObservedObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    // TKT-060 (Phase 6): scheme detection + project save go through the server
+    // over the API instead of the in-process build engine / project store.
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     /// The selected project type — Xcode or Expo. TKT-048.
     @State private var projectType: ProjectType = .xcode
@@ -409,50 +411,41 @@ struct ProjectSetupStep: View {
         return nil
     }
 
-    /// Runs scheme detection via BuildEngineProtocol.detectSchemes.
-    /// Uses the injected build engine from serviceContainer.
+    /// Detects schemes via the server's /filesystem/schemes endpoint (which runs
+    /// `xcodebuild -list -project <path>`). The endpoint expects the `.xcodeproj`
+    /// path, so resolve it from the chosen directory first. TKT-060 (Phase 6).
     private func detectSchemes() {
         isDetectingSchemes = true
         detectedSchemes = []
+        let xcodeprojPath = ProjectFormView.resolveXcodeprojPath(projectPath)
 
         Task {
-            do {
-                let schemes = try await serviceContainer.buildEngine.detectSchemes(at: projectPath)
-                await MainActor.run {
-                    detectedSchemes = schemes
-                    // TKT-025: Validate selectedScheme against the new list
-                    // rather than only resetting when it's empty. The
-                    // previous code left a stale scheme name in place when
-                    // the user switched projects mid-setup, causing
-                    // SwiftUI to log "Picker: the selection '...' is
-                    // invalid and does not have an associated tag" because
-                    // the old name no longer matched any tag in the new
-                    // ForEach. Resetting to schemes.first ?? "" routes the
-                    // view to the "No schemes detected" branch when the
-                    // list is empty (picker doesn't render), and to the
-                    // first detected scheme otherwise.
-                    if !schemes.contains(selectedScheme) {
-                        selectedScheme = schemes.first ?? ""
-                    }
-                    isDetectingSchemes = false
-                    // TKT-014: refresh schemeError once detection completes so
-                    // the inline error appears if no schemes were found.
-                    schemeError = ProjectSetupValidators.validateScheme(selectedScheme)
-                    // Auto-detect bundle ID and team ID now that we have a scheme
-                    detectBuildSettings()
-                }
-            } catch {
-                await MainActor.run {
-                    isDetectingSchemes = false
-                    schemeError = ProjectSetupValidators.validateScheme(selectedScheme)
-                }
-                Logger.build.error("Scheme detection failed: \(error.localizedDescription, privacy: .public)")
+            guard let schemes = await menuBarClient.detectSchemes(projectPath: xcodeprojPath) else {
+                isDetectingSchemes = false
+                schemeError = ProjectSetupValidators.validateScheme(selectedScheme)
+                Logger.build.error("Scheme detection failed: \(menuBarClient.lastError ?? "unknown", privacy: .public)")
+                return
             }
+            detectedSchemes = schemes
+            // TKT-025: validate selectedScheme against the new list rather than
+            // only resetting when empty, so a stale name doesn't produce an
+            // invalid Picker selection when switching projects mid-setup.
+            if !schemes.contains(selectedScheme) {
+                selectedScheme = schemes.first ?? ""
+            }
+            isDetectingSchemes = false
+            // TKT-014: refresh schemeError once detection completes so the inline
+            // error appears if no schemes were found.
+            schemeError = ProjectSetupValidators.validateScheme(selectedScheme)
+            // Auto-detect bundle ID and team ID now that we have a scheme.
+            detectBuildSettings()
         }
     }
 
-    /// Saves the configured project to the project store and appState.
+    /// Saves the configured project to the server via the projects API.
     /// Called automatically when the user navigates forward from this step.
+    /// TKT-060 (Phase 6): the server's store write posts `.projectsDidChange`
+    /// and the menu bar's poll refreshes its project projection.
     func saveProject() {
         guard !projectName.isEmpty, !projectPath.isEmpty else { return }
         // TKT-014: block save when no scheme has been selected. Mirrors the
@@ -467,12 +460,8 @@ struct ProjectSetupStep: View {
         project.bundleID = bundleID
         project.teamID = teamID
 
-        do {
-            // TKT-055: write only the store. The .projectsDidChange observer
-            // refreshes appState.projects and defaults the selection.
-            try serviceContainer.projectStore.save(project: project)
-        } catch {
-            Logger.storage.error("Failed to save project: \(error.localizedDescription, privacy: .public)")
+        Task {
+            await menuBarClient.createProject(project)
         }
     }
 }

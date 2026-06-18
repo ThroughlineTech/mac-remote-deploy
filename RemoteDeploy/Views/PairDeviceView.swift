@@ -7,14 +7,19 @@ import SwiftUI
 /// Displays a QR code for pairing a new companion device.
 struct PairDeviceView: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    // TKT-060 (Phase 6): pairing is driven over the API -- the server mints the
+    // one-time token and the menu bar polls the devices list for completion.
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     /// The generated QR code image.
     @State private var qrImage: NSImage?
     /// The raw token for this pairing session (shown for manual entry fallback).
     @State private var rawToken: String = ""
-    /// The token hash to poll for.
-    @State private var tokenHash: String = ""
+    /// Paired-device count captured before minting, so a new pairing is detected
+    /// as an increase (avoids needing the server's token-hashing in the client).
+    @State private var baselineDeviceCount = 0
+    /// Error surfaced if minting the pairing token fails.
+    @State private var errorMessage: String?
     /// Whether pairing was completed.
     @State private var pairingComplete = false
     /// Timer task for polling.
@@ -61,6 +66,14 @@ struct PairDeviceView: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 300)
 
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 300)
+                }
+
                 if !rawToken.isEmpty {
                     GroupBox("Manual Entry") {
                         HStack {
@@ -90,31 +103,44 @@ struct PairDeviceView: View {
         .padding(30)
         .frame(minWidth: 380)
         .onAppear {
-            generateQRCode()
-            startPolling()
+            startPairing()
         }
         .onDisappear {
             pollTask?.cancel()
         }
     }
 
-    /// Generates a QR code containing the server URL and a fresh token.
-    private func generateQRCode() {
-        let token = JSONPairedDeviceStore.generateToken()
-        let hash = JSONPairedDeviceStore.hashToken(token)
-        rawToken = token
-        tokenHash = hash
+    /// Asks the server to mint a one-time pairing token, builds the QR, and
+    /// starts polling for completion. TKT-060 (Phase 6).
+    private func startPairing() {
+        Task {
+            // Baseline the device count so a new pairing shows up as an increase.
+            await menuBarClient.refreshDevices()
+            baselineDeviceCount = menuBarClient.devices.count
 
-        // Register the token as pending pairing
-        serviceContainer.pairingHandler?.registerPendingToken(hash)
+            guard let pending = await menuBarClient.mintPairingToken() else {
+                errorMessage = "Could not start pairing: \(menuBarClient.lastError ?? "server unreachable")"
+                return
+            }
+            rawToken = pending.token
+            qrImage = buildQRCode(token: pending.token)
+            startPolling()
+        }
+    }
 
-        // Build URLs — always include a local IP fallback
+    /// Builds the pairing QR code locally from the server-minted token. The QR
+    /// payload's URL points at the server's HTTPS endpoint so the companion can
+    /// claim the token over Tailscale.
+    private func buildQRCode(token: String) -> NSImage? {
         let localIP = QRCodeGenerator.localIPAddress()
         let localURL = localIP.map { "http://\($0):8080" }
 
-        // Primary URL: use serverURL if set, otherwise local
-        var primaryURL = appState.serverURL
-        if primaryURL.isEmpty, let local = localURL {
+        var primaryURL = ""
+        if let status = menuBarClient.status, !status.hostname.isEmpty {
+            primaryURL = "https://\(status.hostname):\(status.serverPort)"
+        } else if !appState.serverURL.isEmpty {
+            primaryURL = appState.serverURL
+        } else if let local = localURL {
             primaryURL = local
         }
 
@@ -124,19 +150,18 @@ struct PairDeviceView: View {
             serverName: Host.current().localizedName ?? "Mac",
             localURL: localURL
         )
-
-        qrImage = serviceContainer.qrCodeGenerator.generateQRCode(for: payload)
+        return QRCodeGenerator().generateQRCode(for: payload)
     }
 
-    /// Polls the device store every 2 seconds to detect when pairing completes.
+    /// Polls the devices list every 2 seconds; completes when a new device
+    /// (the one claiming this token) appears.
     private func startPolling() {
         pollTask = Task {
             while !Task.isCancelled && !pairingComplete {
                 try? await Task.sleep(for: .seconds(2))
                 if Task.isCancelled { break }
-
-                // Check if a device with this token hash has been registered
-                if serviceContainer.pairedDeviceStore.device(forTokenHash: tokenHash) != nil {
+                await menuBarClient.refreshDevices()
+                if menuBarClient.devices.count > baselineDeviceCount {
                     withAnimation {
                         pairingComplete = true
                     }

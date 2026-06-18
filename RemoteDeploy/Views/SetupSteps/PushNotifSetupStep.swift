@@ -9,7 +9,9 @@ import Foundation
 /// The "Skip" action is prominently available via the parent navigation.
 struct PushNotifSetupStep: View {
     @ObservedObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    // TKT-060 (Phase 6): no server object needed -- test notifications are sent
+    // by locally-constructed notifier clients, and the active push config is
+    // persisted to the server via the settings API when leaving this step.
 
     @State private var config = PushNotificationConfig()
     /// Error message from a failed test notification.
@@ -109,9 +111,6 @@ struct PushNotifSetupStep: View {
     private func sendTestNotification(for providerType: PushProvider) {
         isSendingTest = true
         testError = nil
-
-        // Configure notifiers from the current config before testing
-        serviceContainer.configurePushNotifiers(from: config)
 
         Task {
             do {

@@ -31,7 +31,9 @@ enum SetupStep: Int, CaseIterable {
 /// and navigation buttons (Back / Next / Skip / Done) at the bottom.
 struct SetupAssistantView: View {
     @ObservedObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    // TKT-060 (Phase 6): the wizard drives setup through the API client, not
+    // in-process server objects.
+    @EnvironmentObject var menuBarClient: MenuBarClient
     @Environment(\.dismiss) private var dismiss
     /// Dismissal action provided by the presenting view.
     var onDismiss: () -> Void
@@ -120,19 +122,17 @@ struct SetupAssistantView: View {
         switch currentStep {
         case .tailscale:
             TailscaleSetupStep(appState: appState)
-                .environmentObject(serviceContainer)
+                .environmentObject(menuBarClient)
         case .certificate:
             CertificateSetupStep(appState: appState)
-                .environmentObject(serviceContainer)
+                .environmentObject(menuBarClient)
         case .project:
             ProjectSetupStep(appState: appState)
-                .environmentObject(serviceContainer)
+                .environmentObject(menuBarClient)
         case .pushNotifications:
             PushNotifSetupStep(appState: appState)
-                .environmentObject(serviceContainer)
         case .complete:
             SetupCompleteStep(appState: appState, onStartServer: onStartServer)
-                .environmentObject(serviceContainer)
         }
     }
 
@@ -186,9 +186,11 @@ struct SetupAssistantView: View {
     /// Advances to the next step, clamped to the last step.
     /// Saves data from the current step before advancing.
     private func goForward() {
-        // Save push notification config when leaving that step
+        // Persist push notification config to the server when leaving that step.
+        // The server reconfigures its push notifiers on the settings write. TKT-060.
         if currentStep == .pushNotifications {
-            serviceContainer.configurePushNotifiers(from: appState.pushNotificationConfig)
+            let config = appState.pushNotificationConfig
+            Task { await menuBarClient.applySettings { $0.pushNotificationConfig = config } }
         }
         if let next = SetupStep(rawValue: currentStep.rawValue + 1) {
             currentStep = next

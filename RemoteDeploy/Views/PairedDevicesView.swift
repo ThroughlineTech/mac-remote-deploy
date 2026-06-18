@@ -5,11 +5,10 @@ import RemoteDeployShared
 
 /// Lists paired companion devices and provides management controls.
 ///
-/// TKT-056 (Phase 3): the device list + revoke flow through the API client. The
-/// "Pair New Device" QR flow stays local (the Mac mints a pending token via the
-/// pairing handler -- there is no client API for that direction).
+/// TKT-056 (Phase 3): the device list + revoke flow through the API client.
+/// TKT-060 (Phase 6): the "Pair New/Browser" flows also go through the API --
+/// the server mints the pending token (POST /api/v1/pair/pending).
 struct PairedDevicesTab: View {
-    @EnvironmentObject var serviceContainer: ServiceContainer
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var menuBarClient: MenuBarClient
 
@@ -20,8 +19,9 @@ struct PairedDevicesTab: View {
     }
     @State private var activeSheet: PairSheet?
 
-    /// Browser pairing needs HTTPS (the server rejects /api/v1/pair over plain HTTP).
-    private var canPairBrowser: Bool { appState.serverURL.hasPrefix("https") }
+    /// Pairing needs HTTPS (the server rejects /api/v1/pair over plain HTTP), so
+    /// gate the pairing actions on the server reporting HTTPS up. TKT-060.
+    private var serverHTTPSReady: Bool { menuBarClient.status?.serverRunning ?? false }
 
     /// Paired devices (the menu bar's own loopback record is filtered out).
     private var devices: [PairedDevice] { menuBarClient.devices }
@@ -72,14 +72,14 @@ struct PairedDevicesTab: View {
                 } label: {
                     Label("Pair New Device", systemImage: "qrcode")
                 }
-                .disabled(appState.serverURL.isEmpty)
+                .disabled(!serverHTTPSReady)
 
                 Button {
                     activeSheet = .browser
                 } label: {
                     Label("Pair Browser", systemImage: "globe")
                 }
-                .disabled(!canPairBrowser)
+                .disabled(!serverHTTPSReady)
 
                 Spacer()
 
@@ -101,14 +101,14 @@ struct PairedDevicesTab: View {
                     Task { await menuBarClient.refreshDevices() }
                 })
                 .environmentObject(appState)
-                .environmentObject(serviceContainer)
+                .environmentObject(menuBarClient)
             case .browser:
                 PairBrowserView(onDismiss: {
                     activeSheet = nil
                     Task { await menuBarClient.refreshDevices() }
                 })
                 .environmentObject(appState)
-                .environmentObject(serviceContainer)
+                .environmentObject(menuBarClient)
             }
         }
     }

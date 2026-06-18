@@ -286,6 +286,45 @@ final class MenuBarClient: ObservableObject {
         await refreshDevices()
     }
 
+    // MARK: - Filesystem (setup wizard + project form). TKT-060 (Phase 6).
+
+    /// Browses a directory on the server host for the project path picker.
+    func browseFilesystem(path: String?) async -> FilesystemBrowseResponse? {
+        await perform { try await $0.browseFilesystem(path: path) }
+    }
+
+    /// Detects Xcode schemes for a chosen .xcodeproj/.xcworkspace path.
+    func detectSchemes(projectPath: String) async -> [String]? {
+        await perform { try await $0.detectSchemes(path: projectPath).schemes }
+    }
+
+    // MARK: - Pairing mint (setup wizard + Pair Browser/Device). TKT-060.
+
+    /// Mints a one-time pairing token on the server for another device to claim.
+    func mintPairingToken() async -> PendingPairingResponse? {
+        await perform { try await $0.mintPairingToken() }
+    }
+
+    // MARK: - Certificate provisioning (setup wizard). TKT-060.
+
+    /// Starts server-side Tailscale cert provisioning. Poll `certificateStatus()`.
+    @discardableResult
+    func provisionCertificate() async -> CertProvisioningState? {
+        await perform { try await $0.provisionCertificate() }
+    }
+
+    /// Returns the current Tailscale cert provisioning state.
+    func certificateStatus() async -> CertProvisioningState? {
+        await perform { try await $0.certificateStatus() }
+    }
+
+    // MARK: - IPA upload (Utilities). TKT-060.
+
+    /// Uploads a prebuilt .ipa to the server for the given project.
+    func uploadIPA(projectID: UUID, fileName: String, data: Data) async -> IPAUploadResponse? {
+        await perform { try await $0.uploadIPA(projectID: projectID, fileName: fileName, data: data) }
+    }
+
     // MARK: - Installs
 
     func deleteInstall(id: UUID) async {

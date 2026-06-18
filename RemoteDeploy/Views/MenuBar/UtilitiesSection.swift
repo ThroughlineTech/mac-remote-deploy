@@ -1,10 +1,11 @@
 // Utility buttons at the bottom of the menu bar popover: Import IPA,
 // Setup Assistant, Settings, Quit. Extracted from MenuBarView in TKT-012.
 //
-// TKT-056 (Phase 3): the selected project comes from the MenuBarClient. IPA
-// import is a local file action with no API endpoint, so it stays in-process
-// (ipaImporter writes to the local serve directory); success/failure is surfaced
-// via a desktop notification rather than BuildManager's status.
+// TKT-056 (Phase 3): the selected project comes from the MenuBarClient.
+// TKT-060 (Phase 6): IPA import now uploads the file to the server over the API
+// (POST /api/v1/projects/:id/ipa) instead of writing the serve directory
+// in-process; success/failure is surfaced via a desktop notification.
+// notificationManager stays local (the documented client-side exception).
 import SwiftUI
 import os
 
@@ -83,24 +84,39 @@ struct UtilitiesSection: View {
 
             guard panel.runModal() == .OK, let url = panel.url else { return }
 
-            let slug = menuBarClient.selectedProject?.urlSlug ?? "imported"
-            let serveDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-                .appendingPathComponent("RemoteDeploy/serve").path
-
-            do {
-                let info = try serviceContainer.ipaImporter.importIPA(from: url, to: slug, serveDirectory: serveDir)
-                serviceContainer.notificationManager.postNotification(
-                    title: "IPA Imported",
-                    body: "\(info.bundleID) v\(info.version) is ready to serve at /\(slug)/",
-                    identifier: "ipa-import-\(slug)"
-                )
-                Logger.build.info("Imported IPA: \(info.bundleID, privacy: .public) v\(info.version, privacy: .public)")
-            } catch {
+            guard let project = menuBarClient.selectedProject else {
                 serviceContainer.notificationManager.postNotification(
                     title: "IPA Import Failed",
-                    body: error.localizedDescription,
+                    body: "Select a project first, then import an IPA for it.",
                     identifier: "ipa-import-failed"
                 )
+                return
+            }
+
+            Task {
+                do {
+                    let data = try Data(contentsOf: url)
+                    if let info = await menuBarClient.uploadIPA(projectID: project.id, fileName: url.lastPathComponent, data: data) {
+                        serviceContainer.notificationManager.postNotification(
+                            title: "IPA Imported",
+                            body: "\(info.bundleID) v\(info.version) is ready to serve at /\(info.slug)/",
+                            identifier: "ipa-import-\(info.slug)"
+                        )
+                        Logger.build.info("Uploaded IPA: \(info.bundleID, privacy: .public) v\(info.version, privacy: .public)")
+                    } else {
+                        serviceContainer.notificationManager.postNotification(
+                            title: "IPA Import Failed",
+                            body: menuBarClient.lastError ?? "Upload failed",
+                            identifier: "ipa-import-failed"
+                        )
+                    }
+                } catch {
+                    serviceContainer.notificationManager.postNotification(
+                        title: "IPA Import Failed",
+                        body: error.localizedDescription,
+                        identifier: "ipa-import-failed"
+                    )
+                }
             }
         }
     }

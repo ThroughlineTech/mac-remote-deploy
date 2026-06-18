@@ -78,7 +78,8 @@ struct RemoteDeployApp: App {
                     NotificationCenter.default.post(name: .startServerRequested, object: nil)
                 }
             )
-            .environmentObject(serviceContainer)
+            // TKT-060 (Phase 6): the wizard is a pure API client now.
+            .environmentObject(menuBarClient)
         }
         .windowResizability(.contentSize)
         .defaultSize(width: 600, height: 520)

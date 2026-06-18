@@ -7,7 +7,9 @@ import Foundation
 /// displays the machine's MagicDNS hostname, and provides install instructions if needed.
 struct TailscaleSetupStep: View {
     @ObservedObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    // TKT-060 (Phase 6): the menu bar is a pure client; Tailscale state comes
+    // from the server's status endpoint, not an in-process CLI call.
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     /// Whether Tailscale was detected on this machine.
     @State private var tailscaleDetected: Bool? = nil
@@ -125,25 +127,30 @@ struct TailscaleSetupStep: View {
         }
     }
 
-    /// Runs Tailscale detection asynchronously using the TailscaleProviderProtocol.
-    /// Updates local state and writes results to appState.
+    /// Refreshes Tailscale status from the server's status endpoint (the server
+    /// owns the Tailscale CLI) and mirrors the result into the wizard's local
+    /// state + AppState projection. TKT-060 (Phase 6).
     private func checkTailscale() {
         isChecking = true
         errorMessage = nil
 
         Task {
-            let connected = await serviceContainer.tailscaleProvider.isConnected()
+            await menuBarClient.refreshStatus()
+            guard let status = menuBarClient.status else {
+                errorMessage = "Could not reach the RemoteDeploy server. Is it running?"
+                tailscaleDetected = false
+                isChecking = false
+                return
+            }
+            let connected = status.tailscaleConnected
             appState.tailscaleConnected = connected
             tailscaleDetected = connected
 
             if connected {
-                do {
-                    let detectedHostname = try await serviceContainer.tailscaleProvider.detectHostname()
-                    hostname = detectedHostname
-                    appState.hostname = detectedHostname
-                    appState.serverURL = "https://\(detectedHostname):\(appState.serverPort)"
-                } catch {
-                    errorMessage = "Connected but failed to detect hostname: \(error.localizedDescription)"
+                hostname = status.hostname
+                appState.hostname = status.hostname
+                if !status.hostname.isEmpty {
+                    appState.serverURL = "https://\(status.hostname):\(appState.serverPort)"
                 }
             }
 
