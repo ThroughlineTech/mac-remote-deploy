@@ -196,6 +196,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await serviceContainer.sendPushNotification(title: title, message: message, priority: priority, url: url)
         }
 
+        // Construct the view-independent build owner now that AppState and
+        // BuildManager exist. Shared by the API adapters and the menu bar build
+        // button so neither drives a build through a view. TKT-054.
+        serviceContainer.buildCoordinator = BuildCoordinator(
+            buildManager: buildManager,
+            projectStore: serviceContainer.projectStore,
+            config: appState,
+            buildEngine: serviceContainer.buildEngine
+        )
+
         // Load persisted settings (cert paths, hostname, push config, etc.)
         loadSettings()
 
@@ -438,6 +448,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// for every injectable seam and handing them to `APIRouterFactory`.
     private func configureAPIRouter(on server: any DeployServerProtocol, appState: AppState, buildManager: BuildManager, services: ServiceContainer) {
         guard let nioServer = server as? NIODeployServer else { return }
+        guard let coordinator = services.buildCoordinator else {
+            Logger.server.error("configureAPIRouter called before BuildCoordinator was constructed")
+            return
+        }
 
         let bridge = AppStateBridge(appState: appState, buildManager: buildManager)
 
@@ -447,9 +461,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             installTracker: services.installTracker,
             schemeDetector: XcodebuildSchemeDetector(),
             statusProvider: AppStateStatusProvider(bridge: bridge, deployServer: nioServer),
-            buildTrigger: NotificationBuildTrigger(projectStore: services.projectStore),
-            buildStatus: AppStateBridgeBuildStatusProvider(bridge: bridge),
-            buildCanceler: NoopBuildCanceler(),
+            buildTrigger: DirectBuildTrigger(projectStore: services.projectStore, coordinator: coordinator),
+            buildStatus: BuildManagerBuildStatusProvider(buildManager: buildManager),
+            buildCanceler: CoordinatorBuildCanceler(coordinator: coordinator),
             buildHistory: EmptyBuildHistoryProvider(store: services.buildHistoryStore),
             settingsProvider: AppStateBridgeSettingsProvider(bridge: bridge),
             settingsUpdater: DeferredSettingsUpdater(

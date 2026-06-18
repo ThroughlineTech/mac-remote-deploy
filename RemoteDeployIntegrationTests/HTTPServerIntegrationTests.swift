@@ -31,6 +31,9 @@ final class HTTPServerIntegrationTests: XCTestCase {
         final class StubBuildStatus: BuildStatusProviding, @unchecked Sendable {
             func currentBuildStatus() -> BuildStatusInfo { BuildStatusInfo(state: "idle") }
         }
+        final class StubBuildCanceler: BuildCanceling, @unchecked Sendable {
+            func cancelCurrentBuild() -> Bool { false }
+        }
         final class StubSettingsProvider: SettingsProviding, @unchecked Sendable {
             func currentSettings() -> SettingsData { SettingsData() }
         }
@@ -42,7 +45,7 @@ final class HTTPServerIntegrationTests: XCTestCase {
             statusProvider: StubStatusProvider(stubStatus),
             buildTrigger: StubBuildTrigger(),
             buildStatus: StubBuildStatus(),
-            buildCanceler: NoopBuildCanceler(),
+            buildCanceler: StubBuildCanceler(),
             buildHistory: EmptyBuildHistoryProvider.empty(),
             settingsProvider: StubSettingsProvider(),
             settingsUpdater: DeferredSettingsUpdater.noop(),

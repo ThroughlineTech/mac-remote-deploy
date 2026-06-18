@@ -49,3 +49,10 @@ final class AppState: ObservableObject {
         self.currentError = err
     }
 }
+
+// MARK: - BuildConfigProviding
+
+/// AppState already publishes every field a build needs, so it is the live
+/// server/TLS config source the BuildCoordinator reads. TKT-054 (Phase 1).
+/// Phase 2 will move this to a store-backed source and drop the dual cache.
+extension AppState: BuildConfigProviding {}
