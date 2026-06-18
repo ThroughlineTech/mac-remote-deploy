@@ -8,7 +8,10 @@ import Foundation
 /// browse for an existing cert/key pair. Shows validation status.
 struct CertificateSetupStep: View {
     @ObservedObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    // TKT-060 (Phase 6): cert provisioning + manual cert paths go through the
+    // server over the API; the menu bar no longer runs `tailscale cert` or
+    // validates cert files in-process.
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     /// Path to the TLS certificate PEM file.
     @State private var certPath: String = ""
@@ -24,7 +27,8 @@ struct CertificateSetupStep: View {
     /// Possible validation outcomes for the certificate pair.
     enum CertValidation {
         case unknown
-        case valid(expiresOn: Date)
+        /// The server reports cert + key configured (expiry isn't exposed over the API).
+        case configured
         case invalid(reason: String)
     }
 
@@ -119,8 +123,8 @@ struct CertificateSetupStep: View {
         switch validationStatus {
         case .unknown:
             EmptyView()
-        case .valid(let expiresOn):
-            Label("Certificate valid -- expires \(expiresOn, style: .date)", systemImage: "checkmark.seal.fill")
+        case .configured:
+            Label("Certificate configured -- HTTPS is ready", systemImage: "checkmark.seal.fill")
                 .foregroundColor(.green)
                 .font(.subheadline)
         case .invalid(let reason):
@@ -132,75 +136,66 @@ struct CertificateSetupStep: View {
 
     // MARK: - Actions
 
-    /// Generates a TLS certificate via Tailscale's cert command.
-    /// Uses TailscaleProviderProtocol.generateCertificate and writes results to appState.
+    /// Asks the server to provision a Tailscale certificate for its hostname,
+    /// then polls until provisioning completes. The server persists the cert/key
+    /// paths and brings HTTPS up; the menu bar only reports progress. TKT-060.
     private func generateCertificate() {
         isGenerating = true
         errorMessage = nil
 
         Task {
-            do {
-                let hostname = appState.hostname
-                guard !hostname.isEmpty else {
-                    errorMessage = "No hostname detected. Please complete the Tailscale step first."
-                    isGenerating = false
-                    return
-                }
-                let appSupport = FileManager.default.urls(
-                    for: .applicationSupportDirectory,
-                    in: .userDomainMask
-                ).first!.path
-                let outputDir = "\(appSupport)/RemoteDeploy/certs"
-                try FileManager.default.createDirectory(
-                    atPath: outputDir,
-                    withIntermediateDirectories: true
-                )
-
-                let result = try await serviceContainer.tailscaleProvider.generateCertificate(
-                    hostname: hostname,
-                    outputDir: outputDir
-                )
-                certPath = result.certPath
-                keyPath = result.keyPath
-                appState.certPath = result.certPath
-                appState.keyPath = result.keyPath
-                validateCertificate()
-            } catch {
-                errorMessage = "Certificate generation failed: \(error.localizedDescription)"
+            guard let started = await menuBarClient.provisionCertificate() else {
+                errorMessage = "Could not reach the server to provision a certificate."
+                isGenerating = false
+                return
             }
+            if let error = started.lastError {
+                errorMessage = "Certificate generation failed: \(error)"
+                isGenerating = false
+                return
+            }
+
+            // Poll until provisioning finishes (timeout ~60s; `tailscale cert`
+            // can take a little while).
+            let deadline = Date().addingTimeInterval(60)
+            while Date() < deadline {
+                try? await Task.sleep(for: .seconds(2))
+                guard let state = await menuBarClient.certificateStatus() else { continue }
+                if state.inProgress { continue }
+                if let error = state.lastError {
+                    errorMessage = "Certificate generation failed: \(error)"
+                } else if state.certConfigured {
+                    validationStatus = .configured
+                    await menuBarClient.refreshStatus()
+                } else {
+                    errorMessage = "Certificate provisioning ended without a configured certificate."
+                }
+                isGenerating = false
+                return
+            }
+            errorMessage = "Certificate provisioning timed out. Check Tailscale and try again."
             isGenerating = false
         }
     }
 
-    /// Validates the selected certificate and key files using CertificateProviding.
-    /// Writes validated paths to appState.
+    /// Submits manually chosen cert/key paths to the server via the settings API.
+    /// The server validates the files exist + are readable and (re)starts HTTPS;
+    /// a nil result means the server rejected them. TKT-060.
     private func validateCertificate() {
         guard !certPath.isEmpty, !keyPath.isEmpty else { return }
+        let cert = certPath
+        let key = keyPath
 
-        do {
-            // Use the certificate provider to load and validate
-            let _ = try serviceContainer.certificateProvider.loadCertificate(
-                certPath: certPath,
-                keyPath: keyPath
-            )
-            let expiryDate = try serviceContainer.certificateProvider.certificateExpiryDate(
-                certPath: certPath
-            )
-            validationStatus = .valid(expiresOn: expiryDate)
-            // Write validated paths to appState
-            appState.certPath = certPath
-            appState.keyPath = keyPath
-        } catch {
-            // Fall back to basic file existence check
-            let certExists = FileManager.default.fileExists(atPath: certPath)
-            let keyExists = FileManager.default.fileExists(atPath: keyPath)
-            if !certExists || !keyExists {
-                validationStatus = .invalid(reason: certExists ? "Key file not found" : "Certificate file not found")
+        Task {
+            let updated = await menuBarClient.applySettings { settings in
+                settings.certPath = cert
+                settings.keyPath = key
+            }
+            if updated != nil {
+                validationStatus = .configured
+                await menuBarClient.refreshStatus()
             } else {
-                // Files exist but couldn't parse -- still usable, store paths
-                validationStatus = .valid(expiresOn: Date().addingTimeInterval(86400 * 90))
-                appState.certPath = certPath
-                appState.keyPath = keyPath
+                validationStatus = .invalid(reason: menuBarClient.lastError ?? "Server rejected the certificate paths")
             }
         }
     }

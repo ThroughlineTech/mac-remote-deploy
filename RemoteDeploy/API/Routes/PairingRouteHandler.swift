@@ -59,6 +59,9 @@ final class PairingRouteHandler: @unchecked Sendable {
         self.pendingTokens = OSAllocatedUnfairLock(initialState: [:])
     }
 
+    /// How long a pending pairing token remains claimable before it expires.
+    static let pendingTokenTTL: TimeInterval = 600
+
     /// Registers a token as available for pairing. Called when the Mac displays a QR code.
     ///
     /// - Parameter tokenHash: The SHA-256 hash of the token being offered for pairing.
@@ -66,12 +69,29 @@ final class PairingRouteHandler: @unchecked Sendable {
         pendingTokens.withLock { $0[tokenHash] = Date() }
     }
 
-    /// Removes expired pending tokens (older than 10 minutes).
+    /// Removes expired pending tokens (older than the TTL).
     func cleanupExpiredTokens() {
-        let cutoff = Date().addingTimeInterval(-600)
+        let cutoff = Date().addingTimeInterval(-Self.pendingTokenTTL)
         pendingTokens.withLock { tokens in
             tokens = tokens.filter { $0.value > cutoff }
         }
+    }
+
+    // MARK: - POST /api/v1/pair/pending
+
+    /// POST /api/v1/pair/pending — mint a one-time pairing token for another
+    /// device. The caller is already authenticated (the menu bar's loopback
+    /// token); this replaces the menu bar's former in-process call to
+    /// `registerPendingToken`. Generates a fresh token, registers its hash as
+    /// pending, and returns the raw token for the caller to surface as a QR
+    /// code or short code. TKT-060 (Phase 6).
+    func mintPending(_ request: APIRequest) -> APIResponse {
+        cleanupExpiredTokens()
+        let rawToken = JSONPairedDeviceStore.generateToken()
+        let tokenHash = JSONPairedDeviceStore.hashToken(rawToken)
+        registerPendingToken(tokenHash)
+        let response = PendingPairingResponse(token: rawToken, expiresInSeconds: Int(Self.pendingTokenTTL))
+        return .json(response, status: .created)
     }
 
     // MARK: - Rate Limit Helpers

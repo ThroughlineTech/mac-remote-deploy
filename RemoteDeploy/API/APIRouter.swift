@@ -88,6 +88,8 @@ final class APIRouter: @unchecked Sendable {
     private let settingsHandler: SettingsRouteHandler
     private let filesystemHandler: FilesystemRouteHandler
     private let devicesHandler: DevicesRouteHandler
+    private let tailscaleHandler: TailscaleRouteHandler
+    private let ipaHandler: IPAUploadRouteHandler
 
     /// Creates a new API router with all required dependencies.
     init(
@@ -99,7 +101,9 @@ final class APIRouter: @unchecked Sendable {
         installsHandler: InstallsRouteHandler,
         settingsHandler: SettingsRouteHandler,
         filesystemHandler: FilesystemRouteHandler,
-        devicesHandler: DevicesRouteHandler
+        devicesHandler: DevicesRouteHandler,
+        tailscaleHandler: TailscaleRouteHandler,
+        ipaHandler: IPAUploadRouteHandler
     ) {
         self.auth = auth
         self.pairingHandler = pairingHandler
@@ -110,6 +114,8 @@ final class APIRouter: @unchecked Sendable {
         self.settingsHandler = settingsHandler
         self.filesystemHandler = filesystemHandler
         self.devicesHandler = devicesHandler
+        self.tailscaleHandler = tailscaleHandler
+        self.ipaHandler = ipaHandler
     }
 
     /// Returns true if this path should be handled by the API router.
@@ -146,9 +152,24 @@ final class APIRouter: @unchecked Sendable {
             return .error(status: .unauthorized, message: "Invalid or missing bearer token")
         }
 
+        // Pairing: mint a one-time token for another device (auth required).
+        // Note: bare "/api/v1/pair" is handled unauthenticated above; this is a
+        // distinct sub-path, so it falls through to here. TKT-060 (Phase 6).
+        if path == "/api/v1/pair/pending" {
+            if method == "POST" { return pairingHandler.mintPending(authedRequest) }
+            return .error(status: .methodNotAllowed, message: "Method not allowed")
+        }
+
         // Status
         if path == "/api/v1/status" && method == "GET" {
             return statusHandler.getStatus(authedRequest)
+        }
+
+        // Tailscale certificate provisioning. TKT-060 (Phase 6).
+        if path == "/api/v1/tailscale/cert" {
+            if method == "POST" { return tailscaleHandler.provisionCertificate(authedRequest) }
+            if method == "GET" { return tailscaleHandler.certificateStatus(authedRequest) }
+            return .error(status: .methodNotAllowed, message: "Method not allowed")
         }
 
         // Projects
@@ -170,6 +191,12 @@ final class APIRouter: @unchecked Sendable {
                 if method == "POST" { return buildHandler.triggerBuild(authedRequest, projectID: projectID) }
                 if method == "GET" { return buildHandler.getBuildStatus(authedRequest, projectID: projectID) }
                 if method == "DELETE" { return buildHandler.cancelBuild(authedRequest, projectID: projectID) }
+                return .error(status: .methodNotAllowed, message: "Method not allowed")
+            }
+
+            // /api/v1/projects/:id/ipa — upload a prebuilt IPA. TKT-060 (Phase 6).
+            if parts.count > 1 && parts[1] == "ipa" {
+                if method == "POST" { return ipaHandler.upload(authedRequest, projectID: projectID) }
                 return .error(status: .methodNotAllowed, message: "Method not allowed")
             }
 

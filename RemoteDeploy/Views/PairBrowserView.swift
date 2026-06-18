@@ -9,12 +9,17 @@ import RemoteDeployShared
 /// Displays a one-time pairing code (and the web URL to enter it) for pairing a browser.
 struct PairBrowserView: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    // TKT-060 (Phase 6): the server mints the pairing code; the menu bar polls
+    // the devices list for completion.
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     /// The raw pairing code shown to the user (doubles as the browser's bearer token).
     @State private var rawToken: String = ""
-    /// The token hash to poll for.
-    @State private var tokenHash: String = ""
+    /// Paired-device count captured before minting, so a new pairing is detected
+    /// as an increase.
+    @State private var baselineDeviceCount = 0
+    /// Error surfaced if minting the pairing code fails.
+    @State private var errorMessage: String?
     /// Whether pairing was completed.
     @State private var pairingComplete = false
     /// Timer task for polling.
@@ -23,10 +28,13 @@ struct PairBrowserView: View {
     /// Dismiss action for the sheet.
     var onDismiss: () -> Void
 
-    /// The web-app URL the user opens in their browser to enter the code.
-    /// Empty when no HTTPS server URL is configured.
+    /// The web-app URL the user opens in their browser to enter the code. Derived
+    /// from the server status hostname, falling back to AppState's serverURL.
     private var webURL: String {
-        appState.serverURL.isEmpty ? "" : "\(appState.serverURL)/app/"
+        if let status = menuBarClient.status, !status.hostname.isEmpty {
+            return "https://\(status.hostname):\(status.serverPort)/app/"
+        }
+        return appState.serverURL.isEmpty ? "" : "\(appState.serverURL)/app/"
     }
 
     var body: some View {
@@ -100,6 +108,14 @@ struct PairBrowserView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
 
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 320)
+                }
+
                 Button("Cancel") {
                     pollTask?.cancel()
                     onDismiss()
@@ -110,30 +126,38 @@ struct PairBrowserView: View {
         .padding(30)
         .frame(minWidth: 380)
         .onAppear {
-            generateCode()
-            startPolling()
+            startPairing()
         }
         .onDisappear {
             pollTask?.cancel()
         }
     }
 
-    /// Generates a fresh code and registers its hash as a pending pairing token.
-    private func generateCode() {
-        let token = JSONPairedDeviceStore.generateToken()
-        rawToken = token
-        tokenHash = JSONPairedDeviceStore.hashToken(token)
-        serviceContainer.pairingHandler?.registerPendingToken(tokenHash)
+    /// Asks the server to mint a one-time pairing code, then polls for the
+    /// browser to claim it. TKT-060 (Phase 6).
+    private func startPairing() {
+        Task {
+            await menuBarClient.refreshDevices()
+            baselineDeviceCount = menuBarClient.devices.count
+
+            guard let pending = await menuBarClient.mintPairingToken() else {
+                errorMessage = "Could not start pairing: \(menuBarClient.lastError ?? "server unreachable")"
+                return
+            }
+            rawToken = pending.token
+            startPolling()
+        }
     }
 
-    /// Polls the device store every 2 seconds to detect when the browser claims the code.
+    /// Polls the devices list every 2 seconds; completes when the browser claims
+    /// the code (a new device appears).
     private func startPolling() {
         pollTask = Task {
             while !Task.isCancelled && !pairingComplete {
                 try? await Task.sleep(for: .seconds(2))
                 if Task.isCancelled { break }
-
-                if serviceContainer.pairedDeviceStore.device(forTokenHash: tokenHash) != nil {
+                await menuBarClient.refreshDevices()
+                if menuBarClient.devices.count > baselineDeviceCount {
                     withAnimation {
                         pairingComplete = true
                     }

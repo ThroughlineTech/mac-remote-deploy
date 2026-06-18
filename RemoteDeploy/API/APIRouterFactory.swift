@@ -26,6 +26,18 @@ struct APIRouterFactory {
         let settingsProvider: any SettingsProviding
         let settingsUpdater: any SettingsUpdating
         let serverName: String
+        // TKT-060 (Phase 6): defaulted so existing call sites (tests) keep
+        // compiling; production wires real values in configureAPIRouter.
+        var certProvisioner: any CertProvisioning = NoopCertProvisioner()
+        var ipaImporter: IPAImporter = IPAImporter()
+        var serveDirectory: String = APIRouterFactory.defaultServeDirectory
+    }
+
+    /// Canonical serve-directory root (`~/Library/Application Support/RemoteDeploy/serve`),
+    /// matching XcodeBuildEngine's layout. Used as the Dependencies default.
+    nonisolated static var defaultServeDirectory: String {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        return appSupport.map { $0.appendingPathComponent("RemoteDeploy/serve").path } ?? "/tmp/RemoteDeploy/serve"
     }
 
     /// The constructed router along with the pairing handler reference, which the
@@ -66,6 +78,12 @@ struct APIRouterFactory {
         )
         let filesystemHandler = FilesystemRouteHandler(schemeDetector: deps.schemeDetector)
         let devicesHandler = DevicesRouteHandler(deviceStore: deps.deviceStore)
+        let tailscaleHandler = TailscaleRouteHandler(certProvisioner: deps.certProvisioner)
+        let ipaHandler = IPAUploadRouteHandler(
+            projectStore: deps.projectStore,
+            ipaImporter: deps.ipaImporter,
+            serveDirectory: deps.serveDirectory
+        )
 
         let router = APIRouter(
             auth: auth,
@@ -76,7 +94,9 @@ struct APIRouterFactory {
             installsHandler: installsHandler,
             settingsHandler: settingsHandler,
             filesystemHandler: filesystemHandler,
-            devicesHandler: devicesHandler
+            devicesHandler: devicesHandler,
+            tailscaleHandler: tailscaleHandler,
+            ipaHandler: ipaHandler
         )
 
         return Output(router: router, pairingHandler: pairingHandler, auth: auth)
