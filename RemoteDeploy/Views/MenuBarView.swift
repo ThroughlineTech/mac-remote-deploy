@@ -14,7 +14,6 @@ import RemoteDeployShared
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var serviceContainer: ServiceContainer
-    @EnvironmentObject var buildManager: BuildManager
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -38,9 +37,6 @@ struct MenuBarView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 NSApp.windows.first { $0.title == "Setup Assistant" }?.orderFrontRegardless()
             }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .apiBuildRequested)) { notification in
-            handleAPIBuildRequest(notification)
         }
         .task {
             // TKT-030: trigger a fresh Tailscale status check each time the
@@ -70,29 +66,5 @@ struct MenuBarView: View {
                 }
             }
         }
-    }
-
-    /// Handles a build request from the companion app API.
-    /// Selects the requested project and triggers the same build flow as the UI button.
-    private func handleAPIBuildRequest(_ notification: Notification) {
-        guard let projectID = notification.userInfo?["projectID"] as? UUID else { return }
-        appState.selectedProjectID = projectID
-        if let config = notification.userInfo?["configuration"] as? String, !config.isEmpty {
-            appState.buildConfiguration = config
-        }
-        guard let project = appState.selectedProject else { return }
-        var buildProject = project
-        buildProject.buildConfiguration = appState.buildConfiguration
-        buildManager.triggerBuild(
-            project: buildProject,
-            serverURL: appState.serverURL,
-            serverPort: appState.serverPort,
-            certPath: appState.certPath,
-            keyPath: appState.keyPath,
-            serverRunning: appState.serverRunning,
-            onServerStarted: { [appState] in
-                appState.serverRunning = true
-            }
-        )
     }
 }

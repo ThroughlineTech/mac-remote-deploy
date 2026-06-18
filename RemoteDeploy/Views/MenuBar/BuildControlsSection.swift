@@ -80,22 +80,13 @@ struct BuildControlsSection: View {
         }
     }
 
-    /// Kicks off a build for the currently selected project via BuildManager.
+    /// Kicks off a build for the currently selected project via the
+    /// BuildCoordinator -- the same view-independent path the API uses. TKT-054.
     func performBuild() {
         guard let project = appState.selectedProject else { return }
-        var buildProject = project
-        buildProject.buildConfiguration = appState.buildConfiguration
-
-        buildManager.triggerBuild(
-            project: buildProject,
-            serverURL: appState.serverURL,
-            serverPort: appState.serverPort,
-            certPath: appState.certPath,
-            keyPath: appState.keyPath,
-            serverRunning: appState.serverRunning,
-            onServerStarted: { [appState] in
-                appState.serverRunning = true
-            }
+        serviceContainer.buildCoordinator?.triggerBuild(
+            projectID: project.id,
+            configuration: appState.buildConfiguration
         )
     }
 

@@ -6,7 +6,7 @@ import Foundation
 /// Factory that constructs an `APIRouter` from injectable dependencies.
 ///
 /// In production, `RemoteDeployApp.configureAPIRouter(...)` builds real adapters
-/// (XcodebuildSchemeDetector, NotificationBuildTrigger, etc.) and calls `make(deps:)`.
+/// (XcodebuildSchemeDetector, DirectBuildTrigger, etc.) and calls `make(deps:)`.
 /// Tests build the same `Dependencies` struct with mocks and dispatch requests through
 /// the resulting router to assert end-to-end behavior of each route handler.
 @MainActor

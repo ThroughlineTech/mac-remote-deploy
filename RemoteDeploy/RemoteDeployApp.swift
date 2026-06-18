@@ -143,6 +143,11 @@ final class ServiceContainer: ObservableObject {
     /// Set by AppDelegate when the API router is configured.
     var pairingHandler: PairingRouteHandler?
 
+    /// View-independent build owner. Constructed by AppDelegate at startup (once
+    /// AppState + BuildManager exist) and shared by the API adapters and the menu
+    /// bar build button so neither drives builds through a view. TKT-054.
+    var buildCoordinator: BuildCoordinator?
+
     init() {
         let manifestGen = ManifestGenerator()
         let installPageGen = InstallPageGenerator()
@@ -273,8 +278,6 @@ extension Notification.Name {
     static let saveSettingsRequested = Notification.Name("RemoteDeploy.saveSettingsRequested")
     /// Posted at launch to open the setup assistant window when no projects exist.
     static let openSetupAssistant = Notification.Name("RemoteDeploy.openSetupAssistant")
-    /// Posted by the API when a build is triggered remotely from a companion device.
-    static let apiBuildRequested = Notification.Name("RemoteDeploy.apiBuildRequested")
     /// Posted when the menu bar popover opens to trigger a fresh Tailscale status check.
     static let refreshTailscaleStatus = Notification.Name("RemoteDeploy.refreshTailscaleStatus")
     /// Posted from the Server settings tab to stop and restart the HTTPS server.
