@@ -21,6 +21,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var appState: AppState?
     private var serviceContainer: ServiceContainer?
     private var buildManager: BuildManager?
+    private var menuBarClient: MenuBarClient?
+
+    /// Loopback base URL the menu bar uses to talk to its own server. The local
+    /// HTTP listener binds on :8080 (plain HTTP); pairing over HTTP is blocked
+    /// but the menu bar uses a pre-seeded token, so it never calls /pair.
+    private static let loopbackBaseURL = URL(string: "http://127.0.0.1:8080")!
+
+    /// The cert/port HTTPS is currently bound with, so a settings change can
+    /// tell whether HTTPS needs to (re)start. Nil when HTTPS is not running.
+    /// TKT-056 (Phase 3).
+    private var runningHTTPSConfig: HTTPSConfig?
+
+    private struct HTTPSConfig: Equatable {
+        let port: Int
+        let certPath: String
+        let keyPath: String
+    }
 
     // MARK: - Lifecycle guards
 
@@ -50,12 +67,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func register(
         appState: AppState,
         serviceContainer: ServiceContainer,
-        buildManager: BuildManager
+        buildManager: BuildManager,
+        menuBarClient: MenuBarClient
     ) {
         guard !didRegister else { return }
         self.appState = appState
         self.serviceContainer = serviceContainer
         self.buildManager = buildManager
+        self.menuBarClient = menuBarClient
         self.didRegister = true
 
         // If the OS lifecycle callback fired before SwiftUI evaluated body,
@@ -218,8 +237,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Check Tailscale status and detect hostname
         await checkTailscaleStatus()
 
-        // Start the HTTPS server if certificates are already configured
+        // TKT-056 (Phase 3): configure the API router and bring up the always-on
+        // plain-HTTP API listener on :8080 so the menu bar (and local-WiFi
+        // companions) can reach the API even before TLS certs are configured.
+        await prepareServer()
+
+        // Start the HTTPS install server if certificates are already configured.
         startServer()
+
+        // TKT-056 (Phase 3): mint the loopback token and point the menu bar's
+        // API client at its own server. Safe to do before HTTPS is up -- the
+        // client reaches the API over the loopback HTTP listener.
+        configureMenuBarClient()
 
         // Show setup assistant if no projects are configured.
         if appState.projects.isEmpty {
@@ -251,10 +280,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Stops the running server, then restarts it with current settings. TKT-037.
     @objc private func handleRestartServerRequested() {
         Task { @MainActor [weak self] in
-            guard let self, let appState = self.appState, let serviceContainer = self.serviceContainer else { return }
-            await serviceContainer.deployServer.stop()
+            guard let self, let appState = self.appState, let serviceContainer = self.serviceContainer,
+                  let nioServer = serviceContainer.deployServer as? NIODeployServer else { return }
+            // TKT-056 (Phase 3): stop only HTTPS, leaving the :8080 API listener
+            // up so the menu bar's client stays connected across the restart.
+            // Settings are already persisted (the client PUT them), so just
+            // rebind HTTPS with the current config.
+            await nioServer.stopHTTPS()
             appState.serverRunning = false
-            self.saveSettings()
+            self.runningHTTPSConfig = nil
             self.startServer()
         }
     }
@@ -274,6 +308,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleSettingsDidChange() {
         Task { @MainActor [weak self] in
             self?.applySettingsFromStore()
+            // TKT-056 (Phase 3): a settings write may have set cert paths or
+            // changed the port (e.g. via the menu bar's API client). Bring HTTPS
+            // into line so the change takes effect without a relaunch.
+            self?.reconcileHTTPS()
         }
     }
 
@@ -375,6 +413,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if !settings.hostname.isEmpty {
             appState.serverURL = "https://\(settings.hostname):\(settings.serverPort)"
         }
+        // Keep the deploy server's base URL (used for install-page + manifest
+        // absolute URLs) in sync with the current hostname/port. TKT-056.
+        serviceContainer.deployServer.setBaseURL(appState.serverURL)
+        // TKT-056 (Phase 3): a settings write may have changed push config via
+        // the API client, so reconfigure the server process's push notifiers.
+        serviceContainer.configurePushNotifiers(from: settings.pushNotificationConfig)
     }
 
     /// Startup alias for the settings read side. Kept as `loadSettings()` so the
@@ -400,25 +444,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Server Lifecycle
 
-    /// Starts the HTTPS deploy server if certificates are configured and not already running.
-    private func startServer() {
+    /// Configures the API router and brings up the always-on plain-HTTP API
+    /// listener on :8080. Runs once at startup, before HTTPS, so the menu bar's
+    /// loopback client (and local-WiFi companions) can reach the API regardless
+    /// of whether TLS certs are configured yet. TKT-056 (Phase 3).
+    private func prepareServer() async {
         guard let appState, let serviceContainer, let buildManager else { return }
-        guard !appState.certPath.isEmpty, !appState.keyPath.isEmpty else { return }
-        guard !appState.serverRunning else { return }
+        guard let nioServer = serviceContainer.deployServer as? NIODeployServer else { return }
 
-        let server = serviceContainer.deployServer
+        nioServer.syncProjects(appState.projects)
+        nioServer.setBaseURL(appState.serverURL)
 
-        server.syncProjects(appState.projects)
-        server.setBaseURL(appState.serverURL)
+        configureAPIRouter(on: nioServer, buildManager: buildManager, services: serviceContainer)
 
-        configureAPIRouter(on: server, buildManager: buildManager, services: serviceContainer)
+        // TKT-027: capture the broadcaster here so the onIPADownload closure can
+        // fan out install events without reaching back through serviceContainer.
+        let broadcaster = nioServer as? any BuildEventBroadcasting
 
-        // TKT-027: capture the broadcaster here so the onIPADownload
-        // closure can fan out install events without reaching back
-        // through serviceContainer.
-        let broadcaster = server as? any BuildEventBroadcasting
-
-        server.onIPADownload = { [weak appState, serviceContainer] slug, ip, ua in
+        nioServer.onIPADownload = { [weak appState, serviceContainer] slug, ip, ua in
             Task {
                 await serviceContainer.installTracker.recordInstall(
                     projectName: slug,
@@ -434,14 +477,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
+        await nioServer.startAPIListener(httpPort: 8080)
+    }
+
+    /// Starts the HTTPS install server if certificates are configured and HTTPS
+    /// is not already running. The :8080 API listener is brought up separately
+    /// by `prepareServer()`. TKT-056 (Phase 3): HTTPS-only.
+    private func startServer() {
+        guard let appState, let serviceContainer else { return }
+        guard !appState.certPath.isEmpty, !appState.keyPath.isEmpty else { return }
+        guard !appState.serverRunning else { return }
+        guard let nioServer = serviceContainer.deployServer as? NIODeployServer else { return }
+
+        let config = HTTPSConfig(port: appState.serverPort, certPath: appState.certPath, keyPath: appState.keyPath)
+
         Task { @MainActor [weak self] in
             do {
-                try await server.start(
-                    port: appState.serverPort,
-                    certPath: appState.certPath,
-                    keyPath: appState.keyPath
+                try await nioServer.startHTTPS(
+                    port: config.port,
+                    certPath: config.certPath,
+                    keyPath: config.keyPath
                 )
                 appState.serverRunning = true
+                self?.runningHTTPSConfig = config
 
                 // TKT-021: defer Bonjour advertisement by a short interval so
                 // the HTTP listener on :8080 has time to fully finish binding
@@ -449,7 +507,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // publishing races the bind and Darwin logs two benign but
                 // noisy "send failed: Invalid argument" lines at startup.
                 let serverName = Host.current().localizedName ?? "RemoteDeploy"
-                let httpsPort = appState.serverPort
+                let httpsPort = config.port
                 let hostname = appState.hostname
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     serviceContainer.bonjourAdvertiser.start(
@@ -465,6 +523,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 Logger.server.error("Server failed to start: \(boundaryError.failureReason ?? "", privacy: .public)")
             }
         }
+    }
+
+    /// Brings HTTPS up once certs become available (the bootstrap case: the user
+    /// set cert paths via the menu bar's API client). Start-only -- changes to
+    /// the port/cert while HTTPS is already running take effect via the explicit
+    /// "Restart Server" control, so a per-keystroke settings write does not churn
+    /// the listener. TKT-056 (Phase 3).
+    private func reconcileHTTPS() {
+        guard let appState else { return }
+        let certsPresent = !appState.certPath.isEmpty && !appState.keyPath.isEmpty
+        guard certsPresent, !appState.serverRunning else { return }
+        startServer()
     }
 
     // MARK: - API Router
@@ -515,5 +585,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         nioServer.webSocketAuthenticator = { headers in
             auth.authenticate(headers: headers) != nil
         }
+    }
+
+    // MARK: - Menu bar loopback client (TKT-056 Phase 3)
+
+    /// Mints the loopback bearer token the menu bar uses to talk to its own
+    /// server, persists its hash as a "Menu bar (local)" paired device, and
+    /// points the MenuBarClient at http://127.0.0.1:8080.
+    ///
+    /// A fresh token is minted each launch (the raw token is not recoverable
+    /// from the stored hash), replacing any prior local record so exactly one
+    /// menu bar token is valid at a time. The raw token lives only in memory.
+    private func configureMenuBarClient() {
+        guard let serviceContainer, let menuBarClient else { return }
+        let store = serviceContainer.pairedDeviceStore
+        let rawToken = JSONPairedDeviceStore.generateToken()
+        let tokenHash = JSONPairedDeviceStore.hashToken(rawToken)
+
+        do {
+            // Revoke any stale local records so only the current token is valid.
+            let existing = (try? store.loadDevices()) ?? []
+            for device in existing where device.name == MenuBarClient.localDeviceName {
+                try? store.delete(deviceID: device.id)
+            }
+            try store.save(device: PairedDevice(name: MenuBarClient.localDeviceName, tokenHash: tokenHash))
+        } catch {
+            Logger.server.error("Failed to persist loopback token: \(error.localizedDescription, privacy: .public)")
+        }
+
+        menuBarClient.configure(baseURL: Self.loopbackBaseURL, token: rawToken)
     }
 }

@@ -1,12 +1,16 @@
 // Utility buttons at the bottom of the menu bar popover: Import IPA,
 // Setup Assistant, Settings, Quit. Extracted from MenuBarView in TKT-012.
+//
+// TKT-056 (Phase 3): the selected project comes from the MenuBarClient. IPA
+// import is a local file action with no API endpoint, so it stays in-process
+// (ipaImporter writes to the local serve directory); success/failure is surfaced
+// via a desktop notification rather than BuildManager's status.
 import SwiftUI
 import os
 
 struct UtilitiesSection: View {
-    @EnvironmentObject var appState: AppState
     @EnvironmentObject var serviceContainer: ServiceContainer
-    @EnvironmentObject var buildManager: BuildManager
+    @EnvironmentObject var menuBarClient: MenuBarClient
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -79,16 +83,24 @@ struct UtilitiesSection: View {
 
             guard panel.runModal() == .OK, let url = panel.url else { return }
 
-            let slug = appState.selectedProject?.urlSlug ?? "imported"
+            let slug = menuBarClient.selectedProject?.urlSlug ?? "imported"
             let serveDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
                 .appendingPathComponent("RemoteDeploy/serve").path
 
             do {
                 let info = try serviceContainer.ipaImporter.importIPA(from: url, to: slug, serveDirectory: serveDir)
-                buildManager.markImportSucceeded(ipaPath: "\(serveDir)/\(slug)/app.ipa")
+                serviceContainer.notificationManager.postNotification(
+                    title: "IPA Imported",
+                    body: "\(info.bundleID) v\(info.version) is ready to serve at /\(slug)/",
+                    identifier: "ipa-import-\(slug)"
+                )
                 Logger.build.info("Imported IPA: \(info.bundleID, privacy: .public) v\(info.version, privacy: .public)")
             } catch {
-                buildManager.markImportFailed(reason: error.localizedDescription)
+                serviceContainer.notificationManager.postNotification(
+                    title: "IPA Import Failed",
+                    body: error.localizedDescription,
+                    identifier: "ipa-import-failed"
+                )
             }
         }
     }

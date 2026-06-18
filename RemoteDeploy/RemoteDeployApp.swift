@@ -18,6 +18,10 @@ struct RemoteDeployApp: App {
     @StateObject private var serviceContainer = ServiceContainer()
     @StateObject private var buildManager = BuildManager()
 
+    /// TKT-056 (Phase 3): the menu bar's API client over loopback. Created here
+    /// and `configure`d by AppDelegate at startup once the loopback token exists.
+    @StateObject private var menuBarClient = MenuBarClient()
+
     /// AppDelegate wired up via SwiftUI's @NSApplicationDelegateAdaptor so we can run
     /// startup logic in `applicationDidFinishLaunching(_:)` — independent of whether
     /// the user has clicked the menu bar icon yet.
@@ -38,7 +42,8 @@ struct RemoteDeployApp: App {
         let _ = appDelegate.register(
             appState: appState,
             serviceContainer: serviceContainer,
-            buildManager: buildManager
+            buildManager: buildManager,
+            menuBarClient: menuBarClient
         )
 
         // Menu bar item — the primary (and only) UI entry point
@@ -47,8 +52,9 @@ struct RemoteDeployApp: App {
                 .environmentObject(appState)
                 .environmentObject(serviceContainer)
                 .environmentObject(buildManager)
+                .environmentObject(menuBarClient)
         } label: {
-            Label("RemoteDeploy", systemImage: appState.menuBarIconName)
+            Label("RemoteDeploy", systemImage: menuBarClient.menuBarIconName)
         }
         .menuBarExtraStyle(.window)
 
@@ -57,6 +63,7 @@ struct RemoteDeployApp: App {
             SettingsView()
                 .environmentObject(appState)
                 .environmentObject(serviceContainer)
+                .environmentObject(menuBarClient)
         }
 
         // Setup assistant — opens as a standalone window (not a sheet)
@@ -81,6 +88,7 @@ struct RemoteDeployApp: App {
             BuildLogView()
                 .environmentObject(serviceContainer)
                 .environmentObject(buildManager)
+                .environmentObject(menuBarClient)
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 600, height: 400)
@@ -216,21 +224,6 @@ final class ServiceContainer: ObservableObject {
                 Logger.notifications.error("Push notification failed: \(error.localizedDescription, privacy: .public)")
             }
         }
-    }
-}
-
-// MARK: - AppState Extension
-
-extension AppState {
-    /// Returns the appropriate SF Symbol name for the menu bar icon based on server state.
-    var menuBarIconName: String {
-        if !tailscaleConnected {
-            return "antenna.radiowaves.left.and.right.slash"
-        }
-        if serverRunning {
-            return "shippingbox.fill"
-        }
-        return "shippingbox"
     }
 }
 

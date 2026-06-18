@@ -4,16 +4,20 @@ import SwiftUI
 import RemoteDeployShared
 
 /// Lists paired companion devices and provides management controls.
+///
+/// TKT-056 (Phase 3): the device list + revoke flow through the API client. The
+/// "Pair New Device" QR flow stays local (the Mac mints a pending token via the
+/// pairing handler -- there is no client API for that direction).
 struct PairedDevicesTab: View {
     @EnvironmentObject var serviceContainer: ServiceContainer
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
-    /// The list of currently paired devices.
-    @State private var devices: [PairedDevice] = []
     /// Whether the pair device sheet is showing.
     @State private var showingPairSheet = false
-    /// Error message for display.
-    @State private var errorMessage: String?
+
+    /// Paired devices (the menu bar's own loopback record is filtered out).
+    private var devices: [PairedDevice] { menuBarClient.devices }
 
     var body: some View {
         VStack {
@@ -46,20 +50,13 @@ struct PairedDevicesTab: View {
                             }
                             Spacer()
                             Button("Revoke") {
-                                revokeDevice(device)
+                                Task { await menuBarClient.revokeDevice(id: device.id) }
                             }
                             .buttonStyle(.borderless)
                             .foregroundColor(.red)
                         }
                     }
                 }
-            }
-
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundColor(.red)
-                    .padding(.horizontal)
             }
 
             HStack {
@@ -79,36 +76,16 @@ struct PairedDevicesTab: View {
             .padding(.horizontal)
             .padding(.bottom, 8)
         }
-        .onAppear {
-            loadDevices()
+        .task {
+            await menuBarClient.refreshDevices()
         }
         .sheet(isPresented: $showingPairSheet) {
             PairDeviceView(onDismiss: {
                 showingPairSheet = false
-                loadDevices()
+                Task { await menuBarClient.refreshDevices() }
             })
             .environmentObject(appState)
             .environmentObject(serviceContainer)
-        }
-    }
-
-    /// Loads the list of paired devices from the store.
-    private func loadDevices() {
-        do {
-            devices = try serviceContainer.pairedDeviceStore.loadDevices()
-            errorMessage = nil
-        } catch {
-            errorMessage = "Failed to load devices: \(error.localizedDescription)"
-        }
-    }
-
-    /// Revokes a paired device's access.
-    private func revokeDevice(_ device: PairedDevice) {
-        do {
-            try serviceContainer.pairedDeviceStore.delete(deviceID: device.id)
-            loadDevices()
-        } catch {
-            errorMessage = "Failed to revoke device: \(error.localizedDescription)"
         }
     }
 }

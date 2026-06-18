@@ -21,7 +21,13 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
         var group: MultiThreadedEventLoopGroup?
         var serverChannel: Channel?
         var httpChannel: Channel?
+        /// Whether the HTTPS install server is bound. This is what "server
+        /// running" means to the user (devices can install).
         var isRunning = false
+        /// Whether the plain-HTTP API listener (:8080) is bound. TKT-056 split
+        /// this from `isRunning` so the loopback API can be up before TLS certs
+        /// are configured.
+        var httpRunning = false
         var port: Int = 8443
         var httpPort: Int = 8080
     }
@@ -154,40 +160,89 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
 
     // MARK: - Server Lifecycle
 
-    /// Starts the HTTPS server, binding to the given port with the provided TLS certificate.
+    /// Protocol entry point: starts the HTTPS install server (and, for callers
+    /// that want both at once, the plain-HTTP API listener on :8080).
     ///
-    /// This method configures a SwiftNIO `ServerBootstrap` with NIOSSL for TLS termination,
-    /// sets up the HTTP/1.1 pipeline, and installs the `HTTPHandler` to route requests.
-    /// The server listens on all interfaces (0.0.0.0) so it is reachable from the tailnet.
-    ///
-    /// Protocol conformance: delegates to the full `start(port:httpPort:certPath:keyPath:)`
-    /// with `httpPort: 8080`. TKT-028 added the httpPort parameter but keeping the
-    /// protocol shape unchanged means existing conformers (MockDeployServer,
-    /// production call sites that go through the protocol) don't need updates.
+    /// TKT-056 (Phase 3) split the two listeners -- see `startAPIListener` and
+    /// `startHTTPS` -- so the loopback API the menu bar talks to can be up
+    /// before TLS certs are configured. This combined entry point is preserved
+    /// for the protocol and for integration tests that exercise both at once.
     func start(port: Int, certPath: String, keyPath: String) async throws {
         try await start(port: port, httpPort: 8080, certPath: certPath, keyPath: keyPath)
     }
 
     /// - Parameter port: The TCP port for the HTTPS listener (e.g. 8443).
-    /// - Parameter httpPort: The TCP port for the secondary plain-HTTP listener
-    ///   used for local WiFi API access. Production uses 8080; integration tests
-    ///   pass a random ephemeral port to avoid collisions with any running
-    ///   RemoteDeploy host. TKT-028.
+    /// - Parameter httpPort: The TCP port for the plain-HTTP API listener.
+    ///   Production uses 8080; integration tests pass a random ephemeral port to
+    ///   avoid collisions with any running RemoteDeploy host. TKT-028.
     /// - Parameter certPath: Absolute path to the PEM-encoded TLS certificate file.
     /// - Parameter keyPath: Absolute path to the PEM-encoded TLS private key file.
     /// - Throws: If the HTTPS port is already in use, the cert/key files are
     ///   invalid or unreadable, or the HTTPS listener otherwise fails to bind.
-    ///   HTTP listener failures are logged but do not throw — the HTTP listener
-    ///   is best-effort (companions can still reach us via HTTPS over Tailscale).
     func start(port: Int, httpPort: Int, certPath: String, keyPath: String) async throws {
-        let alreadyRunning = lockedState.withLock { state -> Bool in
-            if state.isRunning { return true }
-            state.port = port
-            state.httpPort = httpPort
-            return false
-        }
-        guard !alreadyRunning else { return }
+        // HTTPS first so a bad cert/in-use port throws before the HTTP listener
+        // binds, preserving the original all-or-nothing failure semantics.
+        try await startHTTPS(port: port, certPath: certPath, keyPath: keyPath)
+        await startAPIListener(httpPort: httpPort)
+    }
 
+    /// Binds the plain-HTTP API listener on `httpPort` (default 8080), serving
+    /// the REST API + WebSocket fan-out. Safe to call regardless of TLS config:
+    /// this is the loopback surface the menu bar uses, and the same listener
+    /// local-WiFi companions reach. The pairing endpoint is rejected over plain
+    /// HTTP (tokens would be cleartext). Best-effort: a bind failure is logged,
+    /// not thrown. Idempotent -- a no-op if the HTTP listener is already bound.
+    func startAPIListener(httpPort: Int) async {
+        let needsBind = lockedState.withLock { state -> Bool in
+            if state.httpRunning { return false }
+            state.httpPort = httpPort
+            return true
+        }
+        guard needsBind else { return }
+
+        let group = ensureGroup()
+        let httpChannel = await bindHTTPListener(group: group, httpPort: httpPort)
+        lockedState.withLock { state in
+            state.httpChannel = httpChannel
+            state.httpRunning = (httpChannel != nil)
+        }
+    }
+
+    /// Binds the HTTPS install server on `port` using the given TLS cert/key.
+    /// Idempotent -- a no-op if HTTPS is already running. Throws if the port is
+    /// in use or the cert/key are invalid/unreadable (the `isRunning` flag is
+    /// left false so a later retry with a valid cert proceeds).
+    func startHTTPS(port: Int, certPath: String, keyPath: String) async throws {
+        let needsBind = lockedState.withLock { state -> Bool in
+            if state.isRunning { return false }
+            state.port = port
+            return true
+        }
+        guard needsBind else { return }
+
+        let group = ensureGroup()
+        let channel = try await bindHTTPSListener(group: group, port: port, certPath: certPath, keyPath: keyPath)
+        lockedState.withLock { state in
+            state.serverChannel = channel
+            state.isRunning = true
+        }
+    }
+
+    /// Returns the shared event-loop group, creating it on first use. Both
+    /// listeners share one group so a full `stop()` tears everything down.
+    private func ensureGroup() -> MultiThreadedEventLoopGroup {
+        lockedState.withLock { state in
+            if let group = state.group { return group }
+            let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
+            state.group = group
+            return group
+        }
+    }
+
+    /// Builds and binds the TLS-terminated HTTPS listener. Installs a
+    /// NIOWebSocketServerUpgrader so authenticated /api/v1/ws requests upgrade
+    /// to WebSocket; everything else flows through a per-channel HTTPHandler.
+    private func bindHTTPSListener(group: MultiThreadedEventLoopGroup, port: Int, certPath: String, keyPath: String) async throws -> Channel {
         // -- TLS Configuration --
         let cert = try NIOSSLCertificate.fromPEMFile(certPath)
         let privateKey = try NIOSSLPrivateKey(file: keyPath, format: .pem)
@@ -200,19 +255,9 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
 
         let sslContext = try NIOSSLContext(configuration: tlsConfig)
 
-        // -- Bootstrap --
-        let group = MultiThreadedEventLoopGroup(numberOfThreads: System.coreCount)
-
-        // TKT-011 / TKT-024 Commit 6: install a NIOWebSocketServerUpgrader on
-        // the HTTPS pipeline so /api/v1/ws upgrade requests that carry a valid
-        // bearer token are promoted to WebSocket connections. Failed upgrades
-        // (wrong path, missing/invalid auth) fall through to the normal HTTP
-        // pipeline, which in HTTPHandler returns 401 for /api/v1/ws so the
-        // client sees the intended error instead of a generic 404.
-        //
-        // We capture authenticator + manager + a server reference by value
-        // here so the @Sendable childChannelInitializer can build per-channel
-        // handlers without retaining `self` implicitly.
+        // TKT-011 / TKT-024 Commit 6: capture authenticator + manager + a server
+        // reference by value so the @Sendable childChannelInitializer can build
+        // per-channel handlers without retaining `self` implicitly.
         let wsAuth = self.webSocketAuthenticator
         let wsManager = self.webSocketManager
         let serverRef = self
@@ -270,18 +315,21 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
             .childChannelOption(.socketOption(.so_reuseaddr), value: 1)
             .childChannelOption(.maxMessagesPerRead, value: 1)
 
-        let channel = try await bootstrap.bind(host: "0.0.0.0", port: port).get()
+        return try await bootstrap.bind(host: "0.0.0.0", port: port).get()
+    }
 
-        // -- Secondary plain-HTTP listener for local WiFi API access --
-        // Restricted: no pairing endpoint over HTTP (tokens would be in cleartext).
-        // TKT-011 / TKT-024 Commit 6: per-channel HTTPHandler to match the
-        // HTTPS listener and avoid sharing mutable per-request state across
-        // concurrent connections.
+    /// Builds and binds the plain-HTTP API listener. Best-effort: returns nil
+    /// (logging) if the port is already in use. No TLS; the pairing endpoint is
+    /// rejected so raw tokens never travel in cleartext.
+    private func bindHTTPListener(group: MultiThreadedEventLoopGroup, httpPort: Int) async -> Channel? {
+        let serverRef = self
+        let capturedAPIRouter = self.apiRouter
+
         let httpBootstrap = ServerBootstrap(group: group)
             .serverChannelOption(.backlog, value: 256)
             .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)
             .childChannelInitializer { channel in
-                // No TLS — plain HTTP for local WiFi
+                // No TLS — plain HTTP for loopback + local WiFi
                 let perChannelHTTPHandler = HTTPHandler(server: serverRef)
                 perChannelHTTPHandler.apiRouter = capturedAPIRouter
                 perChannelHTTPHandler.rejectPairingOverHTTP = true
@@ -292,37 +340,43 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
             .childChannelOption(.socketOption(.so_reuseaddr), value: 1)
             .childChannelOption(.maxMessagesPerRead, value: 1)
 
-        // TKT-028: bind the HTTP listener on the configured port and log
-        // (rather than silently swallow) any bind failure. HTTP is
-        // best-effort — if the port is already in use, the HTTPS listener
-        // still runs and companions can reach the Mac over Tailscale.
-        let httpChannel: Channel?
+        // TKT-028: log (rather than silently swallow) any bind failure. HTTP is
+        // best-effort — if the port is already in use, the HTTPS listener still
+        // runs and companions can reach the Mac over Tailscale.
         do {
-            httpChannel = try await httpBootstrap.bind(host: "0.0.0.0", port: httpPort).get()
+            return try await httpBootstrap.bind(host: "0.0.0.0", port: httpPort).get()
         } catch {
-            Logger.server.error("HTTP listener failed to bind on port \(httpPort, privacy: .public): \(error.localizedDescription, privacy: .public). Local WiFi discovery will be unavailable; HTTPS still works.")
-            httpChannel = nil
-        }
-
-        lockedState.withLock { state in
-            state.serverChannel = channel
-            state.httpChannel = httpChannel
-            state.group = group
-            state.isRunning = true
+            Logger.server.error("HTTP listener failed to bind on port \(httpPort, privacy: .public): \(error.localizedDescription, privacy: .public). Local API/WiFi discovery will be unavailable; HTTPS still works.")
+            return nil
         }
     }
 
+    /// Stops only the HTTPS install server, leaving the HTTP API listener up.
+    /// Used to (re)start HTTPS after a cert/port change without dropping the
+    /// loopback API the menu bar depends on. TKT-056 (Phase 3).
+    func stopHTTPS() async {
+        let channel = lockedState.withLock { state -> Channel? in
+            guard state.isRunning else { return nil }
+            let ch = state.serverChannel
+            state.serverChannel = nil
+            state.isRunning = false
+            return ch
+        }
+        try? await channel?.close().get()
+    }
+
     /// Stops both the HTTPS and HTTP servers and releases listening sockets.
-    /// Shuts down the event loop group gracefully. No-op if the server is not running.
+    /// Shuts down the event loop group gracefully. No-op if neither is running.
     func stop() async {
         let (channel, httpCh, group) = lockedState.withLock { state -> (Channel?, Channel?, MultiThreadedEventLoopGroup?) in
-            guard state.isRunning else { return (nil, nil, nil) }
+            guard state.isRunning || state.httpRunning else { return (nil, nil, nil) }
             let ch = state.serverChannel
             let http = state.httpChannel
             let gr = state.group
             state.serverChannel = nil
             state.httpChannel = nil
             state.isRunning = false
+            state.httpRunning = false
             return (ch, http, gr)
         }
 
