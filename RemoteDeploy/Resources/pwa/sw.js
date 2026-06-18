@@ -1,6 +1,10 @@
 // Service worker for RemoteDeploy PWA.
-// Caches the app shell for offline access to the UI.
-const CACHE_NAME = 'remotedeploy-v2';
+// Caches the app shell only as an OFFLINE FALLBACK. The shell is served
+// network-first so a server redeploy is picked up immediately for online users
+// (the previous cache-first strategy pinned a stale app.js in the browser
+// forever, so PWA updates never reached users). Bump CACHE_NAME on shell
+// changes to purge the old cache on activate.
+const CACHE_NAME = 'remotedeploy-v3';
 const SHELL_FILES = ['/app/', '/app/style.css', '/app/app.js', '/app/manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -20,12 +24,20 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Network-first for API calls, cache-first for shell
+  // API calls always go to the network.
   if (event.request.url.includes('/api/')) {
     event.respondWith(fetch(event.request));
-  } else {
-    event.respondWith(
-      caches.match(event.request).then((cached) => cached || fetch(event.request))
-    );
+    return;
   }
+  // Shell: network-first so deploys propagate; refresh the cache on each
+  // success and fall back to the cached copy only when offline.
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
+  );
 });

@@ -237,7 +237,11 @@ extension HTTPHandler {
         headers.add(name: "Content-Type", value: contentType)
         headers.add(name: "Content-Length", value: "\(fileData.count)")
         headers.add(name: "Connection", value: "close")
-        headers.add(name: "Cache-Control", value: "public, max-age=3600")
+        // No long-lived caching: the PWA assets are unversioned and change on
+        // every deploy. `max-age=3600` (plus the service worker) used to pin the
+        // old app shell in browsers so server updates never reached users. Force
+        // revalidation so a redeploy is picked up on the next load.
+        headers.add(name: "Cache-Control", value: "no-cache")
         headers.add(name: "X-Content-Type-Options", value: "nosniff")
         headers.add(name: "X-Frame-Options", value: "DENY")
         if contentType.contains("text/html") {
