@@ -239,9 +239,66 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
         }
     }
 
-    /// Builds and binds the TLS-terminated HTTPS listener. Installs a
-    /// NIOWebSocketServerUpgrader so authenticated /api/v1/ws requests upgrade
-    /// to WebSocket; everything else flows through a per-channel HTTPHandler.
+    /// Builds the `/api/v1/ws` upgrade configuration installed on BOTH
+    /// listeners. The HTTPS listener (:8443) serves web + iOS over Tailscale;
+    /// the plain-HTTP listener (:8080) is the loopback surface the menu bar
+    /// connects to (`ws://127.0.0.1:8080`) and the one local-WiFi companions
+    /// reach. Both must carry the upgrader or the upgrade falls through to
+    /// HTTPHandler and the client's build log stays empty. Extracted here so
+    /// the two pipelines cannot drift (TKT-056 left it only on HTTPS, which is
+    /// why the menu bar build log was broken). Auth is enforced via `wsAuth`,
+    /// the same authenticator the REST routes use. On a successful upgrade the
+    /// per-channel HTTPHandler is removed so it does not try to decode WS
+    /// frames as HTTP parts.
+    private static func makeWebSocketUpgradeConfig(
+        wsAuth: (@Sendable ([(String, String)]) -> Bool)?,
+        wsManager: WebSocketManager,
+        perChannelHandler: HTTPHandler
+    ) -> NIOHTTPServerUpgradeConfiguration {
+        let wsUpgrader = NIOWebSocketServerUpgrader(
+            maxFrameSize: 16 * 1024,
+            shouldUpgrade: { (ch: Channel, head: HTTPRequestHead) -> EventLoopFuture<HTTPHeaders?> in
+                // Only upgrade the WebSocket endpoint.
+                let path = head.uri.split(separator: "?").first.map(String.init) ?? head.uri
+                guard path == "/api/v1/ws" else {
+                    return ch.eventLoop.makeSucceededFuture(nil)
+                }
+                // Enforce bearer token auth using the same authenticator the
+                // REST routes use. Browsers can't set Authorization on a WS
+                // handshake, so the authenticator also accepts the token via
+                // the Sec-WebSocket-Protocol subprotocol. TKT-058.
+                let headers = head.headers.map { ($0.name, $0.value) }
+                if wsAuth?(headers) == true {
+                    var responseHeaders = HTTPHeaders()
+                    // If the client offered the bearer subprotocol, confirm it
+                    // in the 101 response; URLSession and browsers fail the
+                    // handshake unless the server selects an offered one.
+                    if let offered = head.headers.first(name: "Sec-WebSocket-Protocol"),
+                       offered.split(separator: ",")
+                           .map({ $0.trimmingCharacters(in: .whitespaces) })
+                           .contains("bearer") {
+                        responseHeaders.add(name: "Sec-WebSocket-Protocol", value: "bearer")
+                    }
+                    return ch.eventLoop.makeSucceededFuture(responseHeaders)
+                }
+                return ch.eventLoop.makeSucceededFuture(nil)
+            },
+            upgradePipelineHandler: { (ch: Channel, _: HTTPRequestHead) -> EventLoopFuture<Void> in
+                // NIO's HTTPServerUpgradeHandler automatically removes the HTTP
+                // decoder/encoder/upgrader after a successful upgrade, but NOT
+                // any handler we added after it -- so perChannelHandler must be
+                // removed explicitly or it will crash decoding WS frames.
+                ch.pipeline.removeHandler(perChannelHandler).flatMap {
+                    ch.pipeline.addHandler(WebSocketChannelHandler(manager: wsManager))
+                }
+            }
+        )
+        return (upgraders: [wsUpgrader], completionHandler: { _ in })
+    }
+
+    /// Builds and binds the TLS-terminated HTTPS listener. Installs the shared
+    /// WebSocket upgrader so authenticated /api/v1/ws requests upgrade to
+    /// WebSocket; everything else flows through a per-channel HTTPHandler.
     private func bindHTTPSListener(group: MultiThreadedEventLoopGroup, port: Int, certPath: String, keyPath: String) async throws -> Channel {
         // -- TLS Configuration --
         let cert = try NIOSSLCertificate.fromPEMFile(certPath)
@@ -278,46 +335,9 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
                 let perChannelHandler = HTTPHandler(server: serverRef)
                 perChannelHandler.apiRouter = capturedAPIRouter
 
-                let wsUpgrader = NIOWebSocketServerUpgrader(
-                    maxFrameSize: 16 * 1024,
-                    shouldUpgrade: { (ch: Channel, head: HTTPRequestHead) -> EventLoopFuture<HTTPHeaders?> in
-                        // Only upgrade the WebSocket endpoint.
-                        let path = head.uri.split(separator: "?").first.map(String.init) ?? head.uri
-                        guard path == "/api/v1/ws" else {
-                            return ch.eventLoop.makeSucceededFuture(nil)
-                        }
-                        // Enforce bearer token auth using the same authenticator
-                        // the REST routes use. Browsers can't set Authorization on
-                        // a WS handshake, so the authenticator also accepts the
-                        // token via the Sec-WebSocket-Protocol subprotocol. TKT-058.
-                        let headers = head.headers.map { ($0.name, $0.value) }
-                        if wsAuth?(headers) == true {
-                            var responseHeaders = HTTPHeaders()
-                            // If the client offered the bearer subprotocol, confirm
-                            // it in the 101 response; URLSession and browsers fail
-                            // the handshake unless the server selects an offered one.
-                            if let offered = head.headers.first(name: "Sec-WebSocket-Protocol"),
-                               offered.split(separator: ",")
-                                   .map({ $0.trimmingCharacters(in: .whitespaces) })
-                                   .contains("bearer") {
-                                responseHeaders.add(name: "Sec-WebSocket-Protocol", value: "bearer")
-                            }
-                            return ch.eventLoop.makeSucceededFuture(responseHeaders)
-                        }
-                        return ch.eventLoop.makeSucceededFuture(nil)
-                    },
-                    upgradePipelineHandler: { (ch: Channel, _: HTTPRequestHead) -> EventLoopFuture<Void> in
-                        // NIO's HTTPServerUpgradeHandler automatically removes
-                        // the HTTP decoder/encoder/upgrader after a successful
-                        // upgrade, but NOT any handler we added after it —
-                        // so perChannelHandler must be removed explicitly
-                        // or it will crash trying to decode WS frames.
-                        ch.pipeline.removeHandler(perChannelHandler).flatMap {
-                            ch.pipeline.addHandler(WebSocketChannelHandler(manager: wsManager))
-                        }
-                    }
+                let upgradeConfig = NIODeployServer.makeWebSocketUpgradeConfig(
+                    wsAuth: wsAuth, wsManager: wsManager, perChannelHandler: perChannelHandler
                 )
-                let upgradeConfig: NIOHTTPServerUpgradeConfiguration = (upgraders: [wsUpgrader], completionHandler: { _ in })
                 return channel.pipeline.addHandler(sslHandler as RemovableChannelHandler).flatMap {
                     channel.pipeline.configureHTTPServerPipeline(withServerUpgrade: upgradeConfig).flatMap {
                         channel.pipeline.addHandler(perChannelHandler)
@@ -336,16 +356,25 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
     private func bindHTTPListener(group: MultiThreadedEventLoopGroup, httpPort: Int) async -> Channel? {
         let serverRef = self
         let capturedAPIRouter = self.apiRouter
+        let wsAuth = self.webSocketAuthenticator
+        let wsManager = self.webSocketManager
 
         let httpBootstrap = ServerBootstrap(group: group)
             .serverChannelOption(.backlog, value: 256)
             .serverChannelOption(.socketOption(.so_reuseaddr), value: 1)
             .childChannelInitializer { channel in
-                // No TLS — plain HTTP for loopback + local WiFi
+                // No TLS -- plain HTTP for loopback + local WiFi. The same WS
+                // upgrader the HTTPS listener uses is installed here so the menu
+                // bar (ws://127.0.0.1:8080) and local-WiFi companions receive
+                // live build-log frames. Without it the upgrade fell through to
+                // HTTPHandler and the menu bar's build log stayed empty.
                 let perChannelHTTPHandler = HTTPHandler(server: serverRef)
                 perChannelHTTPHandler.apiRouter = capturedAPIRouter
                 perChannelHTTPHandler.rejectPairingOverHTTP = true
-                return channel.pipeline.configureHTTPServerPipeline().flatMap {
+                let upgradeConfig = NIODeployServer.makeWebSocketUpgradeConfig(
+                    wsAuth: wsAuth, wsManager: wsManager, perChannelHandler: perChannelHTTPHandler
+                )
+                return channel.pipeline.configureHTTPServerPipeline(withServerUpgrade: upgradeConfig).flatMap {
                     channel.pipeline.addHandler(perChannelHTTPHandler)
                 }
             }
