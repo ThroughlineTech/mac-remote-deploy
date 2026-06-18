@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.remotedeploy.server.plist - LaunchAgent for the headless RemoteDeployServer
+  backend (TKT-060, Phase 6). This is the always-on process: it binds :8080 (API)
+  and :8443 (HTTPS install), runs builds, and serves the web/iOS clients. The menu
+  bar client is a SEPARATE agent (com.remotedeploy.app.plist) that talks to this
+  one over loopback; quitting the menu bar does not stop this server.
+
+  Installed to ~/Library/LaunchAgents/ by ./deploy.sh. Re-run ./deploy.sh to
+  reinstall; editing the repo copy does not take effect on its own.
+
+  Behavior:
+    - RunAtLoad: starts the server at login / when the agent is bootstrapped.
+    - KeepAlive (SuccessfulExit=false): restarts ONLY after a crash. A clean quit
+      is respected (e.g. the in-app self-deploy quitting itself), so this does not
+      fight RemoteDeploy's self-deploy relaunch.
+
+  Runs in the user's Aqua login session (per-user agent, not a pre-login daemon),
+  which is required for xcodebuild / code signing / keychain / Simulator access.
+  Points at the installed bundle in /Applications -- no dependency on the source
+  repo or any Xcode/DerivedData folder.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.remotedeploy.server</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/RemoteDeployServer.app/Contents/MacOS/RemoteDeployServer</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Interactive</string>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/remotedeploy.server.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/remotedeploy.server.log</string>
+</dict>
+</plist>

@@ -1,9 +1,15 @@
 #!/bin/bash
-# build-release.sh — Builds, signs, notarizes, and packages RemoteDeploy for distribution.
+# build-release.sh - Builds, signs, notarizes, and packages RemoteDeploy for
+# distribution. TKT-060 (Phase 6): there are now TWO products - the headless
+# backend (RemoteDeployServer) and the menu bar client (RemoteDeploy). By default
+# this builds BOTH; pass --product to build just one.
 #
 # Usage:
-#   ./scripts/build-release.sh
-#   ./scripts/build-release.sh --skip-notarize   # Skip notarization (for local testing)
+#   ./scripts/build-release.sh                    # build + notarize BOTH products
+#   ./scripts/build-release.sh --skip-notarize    # skip notarization (local testing)
+#   ./scripts/build-release.sh --product server   # just the headless backend
+#   ./scripts/build-release.sh --product menubar  # just the menu bar client
+#   ./scripts/build-release.sh --product all      # both (default)
 #
 # Prerequisites:
 #   - Xcode and xcodebuild
@@ -24,121 +30,123 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="/tmp/RemoteDeployRelease"
-VERSION=$(grep CFBundleShortVersionString "$PROJECT_DIR/RemoteDeploy/Info.plist" -A1 | grep string | sed 's/.*<string>\(.*\)<\/string>/\1/')
-APP_NAME="RemoteDeploy"
-DMG_NAME="RemoteDeploy-v${VERSION}-macOS"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application}"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-RDJQ523WP4}"
 NOTARIZE_PROFILE="${NOTARIZE_PROFILE:-RemoteDeploy-Notarize}"
 SKIP_NOTARIZE=false
+PRODUCT="all"
 
-for arg in "$@"; do
-    case $arg in
+while [[ $# -gt 0 ]]; do
+    case "$1" in
         --skip-notarize) SKIP_NOTARIZE=true ;;
+        --product) shift; PRODUCT="${1:-all}" ;;
+        --product=*) PRODUCT="${1#*=}" ;;
+        *) echo "build-release: unknown argument: $1" >&2; exit 2 ;;
     esac
+    shift
 done
 
-echo "=== RemoteDeploy Release Build ==="
-echo "Version: $VERSION"
-echo "Signing: $SIGNING_IDENTITY"
-echo "Notarize: $([[ $SKIP_NOTARIZE == true ]] && echo 'SKIP' || echo $NOTARIZE_PROFILE)"
-echo ""
+case "$PRODUCT" in
+    all|server|menubar) ;;
+    *) echo "build-release: --product must be all|server|menubar (got '$PRODUCT')" >&2; exit 2 ;;
+esac
 
-# Clean previous build
+# Reads CFBundleShortVersionString from a product's Info.plist.
+read_version() {
+    grep CFBundleShortVersionString "$PROJECT_DIR/$1" -A1 | grep string \
+        | sed 's/.*<string>\(.*\)<\/string>/\1/'
+}
+
+# build_product <scheme> <app_name> <info_plist_relpath>
+# Builds Release, code signs, notarizes (unless skipped), and packages a DMG+zip.
+build_product() {
+    local scheme="$1" app_name="$2" info_plist="$3"
+    local version; version="$(read_version "$info_plist")"
+    local app_path="$BUILD_DIR/Build/Products/Release/${app_name}.app"
+    local dmg_name="${app_name}-v${version}-macOS"
+
+    echo ""
+    echo "=== Building $app_name (scheme $scheme, v$version) ==="
+
+    # SYMROOT/OBJROOT are set explicitly so products land in $BUILD_DIR regardless
+    # of any "Custom" build location in Xcode prefs (command-line settings win).
+    xcodebuild build \
+        -project RemoteDeploy.xcodeproj \
+        -scheme "$scheme" \
+        -configuration Release \
+        -destination 'platform=macOS' \
+        -derivedDataPath "$BUILD_DIR" \
+        SYMROOT="$BUILD_DIR/Build/Products" \
+        OBJROOT="$BUILD_DIR/Build/Intermediates.noindex" \
+        CODE_SIGN_IDENTITY="-" \
+        2>&1 | tail -5
+
+    if [[ ! -d "$app_path" ]]; then
+        echo "ERROR: Build failed - $app_path not found" >&2
+        exit 1
+    fi
+    echo "Build succeeded: $app_path ($(du -sh "$app_path" | cut -f1))"
+
+    echo "--- Code signing with: $SIGNING_IDENTITY ---"
+    codesign --deep --force --options runtime \
+        --sign "$SIGNING_IDENTITY" \
+        --timestamp \
+        "$app_path"
+    codesign --verify --deep --strict "$app_path"
+    echo "Code signature valid"
+
+    if [[ $SKIP_NOTARIZE == false ]]; then
+        echo "--- Notarizing $app_name ---"
+        local notarize_zip="$BUILD_DIR/${app_name}-notarize.zip"
+        ditto -c -k --keepParent "$app_path" "$notarize_zip"
+        echo "Submitting to Apple for notarization..."
+        xcrun notarytool submit "$notarize_zip" \
+            --keychain-profile "$NOTARIZE_PROFILE" \
+            --wait
+        echo "Stapling notarization ticket..."
+        xcrun stapler staple "$app_path"
+        echo "Notarization complete"
+    else
+        echo "--- Skipping notarization for $app_name ---"
+    fi
+
+    echo "--- Creating DMG for $app_name ---"
+    local dmg_staging="$BUILD_DIR/dmg-staging-${app_name}"
+    local dmg_path="$BUILD_DIR/${dmg_name}.dmg"
+    rm -rf "$dmg_staging"
+    mkdir -p "$dmg_staging"
+    cp -R "$app_path" "$dmg_staging/"
+    ln -s /Applications "$dmg_staging/Applications"
+    hdiutil create -volname "$app_name" \
+        -srcfolder "$dmg_staging" \
+        -ov -format UDZO \
+        "$dmg_path"
+    echo "DMG: $dmg_path ($(du -sh "$dmg_path" | cut -f1))"
+
+    local zip_path="$BUILD_DIR/${dmg_name}.zip"
+    ditto -c -k --keepParent "$app_path" "$zip_path"
+    echo "ZIP: $zip_path ($(du -sh "$zip_path" | cut -f1))"
+}
+
+echo "=== RemoteDeploy Release Build ==="
+echo "Product:  $PRODUCT"
+echo "Signing:  $SIGNING_IDENTITY"
+echo "Notarize: $([[ $SKIP_NOTARIZE == true ]] && echo 'SKIP' || echo "$NOTARIZE_PROFILE")"
+
+# Clean once, generate the project once, then build the requested product(s).
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
-
-# Step 1: Generate Xcode project
 echo "--- Generating Xcode project ---"
 cd "$PROJECT_DIR"
 xcodegen generate
 
-# Step 2: Build Release
-# SYMROOT/OBJROOT are set explicitly so the build products land in $BUILD_DIR
-# regardless of any "Custom" build location configured in Xcode's preferences
-# (IDECustomBuildProductsPath). Without this, a relocated build folder -- e.g.
-# DerivedData/products moved to an external volume -- overrides -derivedDataPath
-# and the .app ends up somewhere this script doesn't look for it. Command-line
-# build settings take precedence over the IDE preference, so this keeps the
-# build self-contained under /tmp as intended.
-echo "--- Building Release configuration ---"
-xcodebuild build \
-    -project RemoteDeploy.xcodeproj \
-    -scheme RemoteDeploy \
-    -configuration Release \
-    -destination 'platform=macOS' \
-    -derivedDataPath "$BUILD_DIR" \
-    SYMROOT="$BUILD_DIR/Build/Products" \
-    OBJROOT="$BUILD_DIR/Build/Intermediates.noindex" \
-    CODE_SIGN_IDENTITY="-" \
-    2>&1 | tail -5
-
-APP_PATH="$BUILD_DIR/Build/Products/Release/${APP_NAME}.app"
-
-if [[ ! -d "$APP_PATH" ]]; then
-    echo "ERROR: Build failed — $APP_PATH not found"
-    exit 1
+if [[ "$PRODUCT" == "all" || "$PRODUCT" == "server" ]]; then
+    build_product "RemoteDeployServer" "RemoteDeployServer" "RemoteDeployServer/Info.plist"
+fi
+if [[ "$PRODUCT" == "all" || "$PRODUCT" == "menubar" ]]; then
+    build_product "RemoteDeploy" "RemoteDeploy" "RemoteDeploy/Info.plist"
 fi
 
-echo "Build succeeded: $APP_PATH"
-echo "Size: $(du -sh "$APP_PATH" | cut -f1)"
-
-# Step 3: Codesign the app bundle with Developer ID
-echo "--- Code signing with: $SIGNING_IDENTITY ---"
-codesign --deep --force --options runtime \
-    --sign "$SIGNING_IDENTITY" \
-    --timestamp \
-    "$APP_PATH"
-codesign --verify --deep --strict "$APP_PATH"
-echo "Code signature valid"
-
-# Step 4: Notarize (unless skipped)
-if [[ $SKIP_NOTARIZE == false ]]; then
-    echo "--- Notarizing ---"
-
-    # Create a zip for notarization
-    NOTARIZE_ZIP="$BUILD_DIR/${APP_NAME}-notarize.zip"
-    ditto -c -k --keepParent "$APP_PATH" "$NOTARIZE_ZIP"
-
-    echo "Submitting to Apple for notarization..."
-    xcrun notarytool submit "$NOTARIZE_ZIP" \
-        --keychain-profile "$NOTARIZE_PROFILE" \
-        --wait
-
-    echo "Stapling notarization ticket..."
-    xcrun stapler staple "$APP_PATH"
-
-    echo "Notarization complete"
-else
-    echo "--- Skipping notarization ---"
-fi
-
-# Step 5: Create DMG
-echo "--- Creating DMG ---"
-DMG_STAGING="$BUILD_DIR/dmg-staging"
-DMG_PATH="$BUILD_DIR/${DMG_NAME}.dmg"
-
-mkdir -p "$DMG_STAGING"
-cp -R "$APP_PATH" "$DMG_STAGING/"
-
-# Create a symlink to /Applications for drag-and-drop install
-ln -s /Applications "$DMG_STAGING/Applications"
-
-# Create the DMG
-hdiutil create -volname "$APP_NAME" \
-    -srcfolder "$DMG_STAGING" \
-    -ov -format UDZO \
-    "$DMG_PATH"
-
 echo ""
-echo "=== Release Build Complete ==="
-echo "DMG: $DMG_PATH ($(du -sh "$DMG_PATH" | cut -f1))"
-
-# Also create a zip for GitHub releases
-ZIP_PATH="$BUILD_DIR/${DMG_NAME}.zip"
-ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
-echo "ZIP: $ZIP_PATH ($(du -sh "$ZIP_PATH" | cut -f1))"
-
-echo ""
-echo "To upload to GitHub:"
-echo "  gh release create v${VERSION} '$DMG_PATH' '$ZIP_PATH' --title 'v${VERSION}'"
+echo "=== Release Build Complete ($PRODUCT) ==="
+ls -1 "$BUILD_DIR"/*.dmg 2>/dev/null || true

@@ -1,19 +1,23 @@
 #!/bin/bash
 #
-# deploy.sh — build RemoteDeploy from source and install it as a self-starting
-# app on THIS Mac, with no runtime dependency on Xcode, DerivedData, or this repo.
+# deploy.sh - build BOTH RemoteDeploy products from source and install them as
+# self-starting apps on THIS Mac, with no runtime dependency on Xcode,
+# DerivedData, or this repo. TKT-060 (Phase 6): two products now -
+#   - RemoteDeployServer (headless backend; binds :8080/:8443; the LaunchAgent
+#     that actually serves builds) -> installed + started FIRST.
+#   - RemoteDeploy (menu bar client; binds nothing; talks to the server over
+#     loopback) -> installed + started SECOND.
 #
-# What it does, in order:
-#   1. Build a Release .app (default: fast, signed-but-not-notarized).
-#   2. Stop the LaunchAgent so it won't relaunch the old binary mid-swap.
-#   3. Gracefully quit the running RemoteDeploy and wait for its port to free.
+# What it does, in order, per product:
+#   1. Build Release .apps (default: fast, signed-but-not-notarized).
+#   2. Stop each LaunchAgent so it won't relaunch the old binary mid-swap.
+#   3. Gracefully quit the running app and wait for its port to free.
 #   4. Install the fresh .app into /Applications.
 #   5. Install/refresh the LaunchAgent (auto-start at login + crash restart).
-#   6. Remove the legacy Login Item so it can't double-launch.
-#   7. Start the new version via launchd.
+#   6. Start the new version via launchd (server before menu bar).
 #
-# The build happens entirely in /tmp — it never touches an external/relocated
-# DerivedData volume. The installed app in /Applications is fully self-contained.
+# The build happens entirely in /tmp - it never touches an external/relocated
+# DerivedData volume. The installed apps in /Applications are self-contained.
 #
 # Usage:
 #   ./deploy.sh              Fast install (build-release.sh --skip-notarize).
@@ -21,24 +25,15 @@
 #   ./deploy.sh --no-build   Reuse the last /tmp build output; just (re)install.
 #
 # Prerequisites: Xcode command-line tools, XcodeGen (brew install xcodegen),
-# and — for the default path — a "Developer ID Application" cert in the keychain
+# and - for the default path - a "Developer ID Application" cert in the keychain
 # (use --release on a machine that has notarization credentials configured).
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR"
-
-APP_NAME="RemoteDeploy"
-BUNDLE_ID="com.remotedeploy.app"
-PORT="8443"
 INSTALL_DIR="/Applications"
-INSTALLED_APP="$INSTALL_DIR/$APP_NAME.app"
-BUILD_APP="/tmp/RemoteDeployRelease/Build/Products/Release/$APP_NAME.app"
-
-PLIST_LABEL="com.remotedeploy.app"
-PLIST_SRC="$PROJECT_DIR/LaunchAgent/$PLIST_LABEL.plist"
-PLIST_DST="$HOME/Library/LaunchAgents/$PLIST_LABEL.plist"
+BUILD_PRODUCTS="/tmp/RemoteDeployRelease/Build/Products/Release"
 GUI_DOMAIN="gui/$(id -u)"
 
 MODE="fast"
@@ -52,62 +47,80 @@ for arg in "$@"; do
     esac
 done
 
-echo "=== RemoteDeploy deploy ($MODE) ==="
+echo "=== RemoteDeploy deploy ($MODE) - server + menu bar ==="
 
-# --- 1. Build --------------------------------------------------------------
+# --- 1. Build both products ------------------------------------------------
 if $DO_BUILD; then
     if [[ "$MODE" == "release" ]]; then
-        echo "--- Building (full signed + notarized) ---"
+        echo "--- Building both products (full signed + notarized) ---"
         "$SCRIPT_DIR/scripts/build-release.sh"
     else
-        echo "--- Building (fast, skip notarization) ---"
+        echo "--- Building both products (fast, skip notarization) ---"
         "$SCRIPT_DIR/scripts/build-release.sh" --skip-notarize
     fi
 else
     echo "--- Skipping build (--no-build); reusing last output ---"
 fi
 
-if [[ ! -d "$BUILD_APP" ]]; then
-    echo "ERROR: built app not found at $BUILD_APP" >&2
-    echo "       (run without --no-build, or check the build output above)" >&2
-    exit 1
-fi
-echo "Build artifact: $BUILD_APP"
+# install_product <app_name> <plist_label> <port-or-empty>
+install_product() {
+    local app_name="$1" plist_label="$2" port="$3"
+    local built_app="$BUILD_PRODUCTS/$app_name.app"
+    local installed_app="$INSTALL_DIR/$app_name.app"
+    local plist_src="$PROJECT_DIR/LaunchAgent/$plist_label.plist"
+    local plist_dst="$HOME/Library/LaunchAgents/$plist_label.plist"
 
-# --- 2. Stop the LaunchAgent so KeepAlive won't relaunch the old binary -----
-if launchctl print "$GUI_DOMAIN/$PLIST_LABEL" >/dev/null 2>&1; then
-    echo "--- Stopping existing LaunchAgent ---"
-    launchctl bootout "$GUI_DOMAIN/$PLIST_LABEL" 2>/dev/null || true
-fi
+    echo ""
+    echo "=== Installing $app_name ==="
+    if [[ ! -d "$built_app" ]]; then
+        echo "ERROR: built app not found at $built_app" >&2
+        echo "       (run without --no-build, or check the build output above)" >&2
+        exit 1
+    fi
 
-# --- 3. Gracefully quit the running app ------------------------------------
-echo "--- Quitting running $APP_NAME (if any) ---"
-"$SCRIPT_DIR/scripts/graceful-relaunch.sh" "$APP_NAME" --port "$PORT" --no-relaunch
+    # Stop the agent so KeepAlive won't relaunch the old binary mid-swap.
+    if launchctl print "$GUI_DOMAIN/$plist_label" >/dev/null 2>&1; then
+        echo "--- Stopping LaunchAgent $plist_label ---"
+        launchctl bootout "$GUI_DOMAIN/$plist_label" 2>/dev/null || true
+    fi
 
-# --- 4. Install into /Applications -----------------------------------------
-echo "--- Installing to $INSTALLED_APP ---"
-rm -rf "$INSTALLED_APP"
-ditto "$BUILD_APP" "$INSTALLED_APP"
+    # Gracefully quit the running app and free its port (if it binds one).
+    echo "--- Quitting running $app_name (if any) ---"
+    if [[ -n "$port" ]]; then
+        "$SCRIPT_DIR/scripts/graceful-relaunch.sh" "$app_name" --port "$port" --no-relaunch
+    else
+        "$SCRIPT_DIR/scripts/graceful-relaunch.sh" "$app_name" --no-relaunch
+    fi
 
-# --- 5. Install / refresh the LaunchAgent ----------------------------------
-echo "--- Installing LaunchAgent ---"
-mkdir -p "$(dirname "$PLIST_DST")"
-cp "$PLIST_SRC" "$PLIST_DST"
+    echo "--- Installing to $installed_app ---"
+    rm -rf "$installed_app"
+    ditto "$built_app" "$installed_app"
 
-# --- 6. Drop the legacy Login Item (avoid double-launch with the agent) -----
+    echo "--- Installing LaunchAgent $plist_label ---"
+    mkdir -p "$(dirname "$plist_dst")"
+    cp "$plist_src" "$plist_dst"
+
+    echo "--- Starting $app_name via launchd ---"
+    launchctl bootstrap "$GUI_DOMAIN" "$plist_dst"
+    launchctl kickstart -k "$GUI_DOMAIN/$plist_label"
+
+    local version build
+    version=$(defaults read "$installed_app/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "?")
+    build=$(defaults read "$installed_app/Contents/Info.plist" CFBundleVersion 2>/dev/null || echo "?")
+    echo "Deployed $app_name v$version (build $build) -> $installed_app"
+}
+
+# --- Drop the legacy single-app Login Item (avoid double-launch) -----------
 echo "--- Removing legacy Login Item (if present) ---"
-osascript -e "tell application \"System Events\" to delete login item \"$APP_NAME\"" 2>/dev/null || true
+osascript -e 'tell application "System Events" to delete login item "RemoteDeploy"' 2>/dev/null || true
 
-# --- 7. Start via launchd ---------------------------------------------------
-echo "--- Starting $APP_NAME via launchd ---"
-launchctl bootstrap "$GUI_DOMAIN" "$PLIST_DST"
-launchctl kickstart -k "$GUI_DOMAIN/$PLIST_LABEL"
+# --- Install the SERVER first (so it is up before the menu bar connects) ----
+install_product "RemoteDeployServer" "com.remotedeploy.server" "8443"
 
-VERSION=$(defaults read "$INSTALLED_APP/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "?")
-BUILD=$(defaults read "$INSTALLED_APP/Contents/Info.plist" CFBundleVersion 2>/dev/null || echo "?")
+# --- Then the MENU BAR client ----------------------------------------------
+install_product "RemoteDeploy" "com.remotedeploy.app" ""
 
 echo ""
-echo "=== Deployed RemoteDeploy v$VERSION (build $BUILD) ==="
-echo "Installed:  $INSTALLED_APP"
-echo "Autostart:  $PLIST_DST (RunAtLoad + crash restart)"
-echo "Logs:       /tmp/remotedeploy.launchagent.log"
+echo "=== Deploy complete ==="
+echo "Server logs:   /tmp/remotedeploy.server.log"
+echo "Menu bar logs: /tmp/remotedeploy.launchagent.log"
