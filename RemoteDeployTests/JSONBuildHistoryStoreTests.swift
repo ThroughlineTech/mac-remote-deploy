@@ -1,6 +1,6 @@
 // Unit tests for JSONBuildHistoryStore (TKT-008 cleanup via TKT-024).
 // Exercises the on-disk JSON store in an isolated temp directory.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

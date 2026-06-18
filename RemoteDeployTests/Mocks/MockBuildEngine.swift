@@ -1,4 +1,4 @@
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import Foundation
 
 final class MockBuildEngine: BuildEngineProtocol, @unchecked Sendable {

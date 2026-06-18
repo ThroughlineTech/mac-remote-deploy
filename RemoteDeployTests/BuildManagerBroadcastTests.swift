@@ -5,7 +5,7 @@
 // IPA path) + MockBuildEventBroadcaster (records calls) to drive the
 // triggerBuild pipeline end-to-end without touching xcodebuild or the
 // real deploy server.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

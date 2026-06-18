@@ -1,7 +1,7 @@
 // Shared helpers for the API route handler test suite (TKT-003).
 // All API test files import this to build APIRequests, decode responses,
 // and seed test data into mock stores.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import Foundation
 import XCTest
 import NIOHTTP1

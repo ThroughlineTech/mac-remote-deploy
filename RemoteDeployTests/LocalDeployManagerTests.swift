@@ -2,7 +2,7 @@
 // Covers ProjectConfig backward compatibility and LocalDeployManager
 // protocol conformance.
 import XCTest
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import RemoteDeployShared
 
 // MARK: - Mock LocalDeployManager

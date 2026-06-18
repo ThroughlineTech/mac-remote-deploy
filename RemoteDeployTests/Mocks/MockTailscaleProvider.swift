@@ -1,4 +1,4 @@
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import Foundation
 
 final class MockTailscaleProvider: TailscaleProviderProtocol, @unchecked Sendable {

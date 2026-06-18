@@ -1,7 +1,7 @@
 // Tests for ProjectConfig backward-compatible decoding of the new
 // projectType and expoAppDirectory fields. TKT-048.
 import XCTest
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class ProjectConfigCodingTests: XCTestCase {
 

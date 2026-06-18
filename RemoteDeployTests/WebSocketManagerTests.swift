@@ -10,7 +10,7 @@
 // NIODeployServer, the iOS client, and additional tests. This ticket delivers
 // unit coverage for the manager's internal state machine so future wiring
 // work has a regression net.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import NIO

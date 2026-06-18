@@ -1,7 +1,7 @@
 // Tests for the real DeferredSettingsUpdater from TKT-009. Covers port
 // validation, cert/key path validation, and the happy path through the
 // applyOnMain callback.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

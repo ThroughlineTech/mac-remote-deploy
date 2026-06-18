@@ -1,7 +1,7 @@
 // Tests for NIODeployServer.syncProjects, the replace-all slug registry sync
 // that keeps install routes current after any project store change. TKT-055.
 import XCTest
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import RemoteDeployShared
 
 final class NIODeployServerSyncProjectsTests: XCTestCase {

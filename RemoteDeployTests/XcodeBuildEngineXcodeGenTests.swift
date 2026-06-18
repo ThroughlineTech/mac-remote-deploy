@@ -7,7 +7,7 @@
 // project and reports its scheme -- proving the regeneration happens and feeds
 // scheme detection. They use the real xcodegen + xcodebuild tools and skip when
 // either is unavailable (e.g. CI with only the Command Line Tools).
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 

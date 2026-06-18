@@ -13,7 +13,7 @@ import RemoteDeployShared
 /// and navigation to settings/setup. Actual UI lives in the five MenuBar/ subviews.
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    @EnvironmentObject var menuBarClient: MenuBarClient
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -39,12 +39,11 @@ struct MenuBarView: View {
             }
         }
         .task {
-            // TKT-030: trigger a fresh Tailscale status check each time the
-            // popover appears so the indicator is never stale from the
-            // 10-second poll gap. Posts a notification handled by AppDelegate,
-            // keeping the view decoupled from the delegate. Runs post-layout
-            // (not during body evaluation) to avoid TKT-021 layout recursion.
-            NotificationCenter.default.post(name: .refreshTailscaleStatus, object: nil)
+            // TKT-030 / TKT-060 (Phase 6): force an immediate client refresh each
+            // time the popover appears so status/projects are never stale from the
+            // poll gap. The server owns the Tailscale CLI; the menu bar just reads
+            // its status endpoint via the client.
+            menuBarClient.refreshNow()
         }
         // TKT-007: surface boundary errors as an alert so the user sees what failed.
         .alert(

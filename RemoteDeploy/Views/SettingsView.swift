@@ -10,14 +10,14 @@ import os
 /// and general preferences.
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
     @EnvironmentObject var menuBarClient: MenuBarClient
 
     var body: some View {
         // TKT-056 (Phase 3): the data tabs read/write through the MenuBarClient.
-        // `appState.selectedSettingsTab` is pure UI navigation (which tab the
-        // menu bar asked to open); `serviceContainer` is still handed to the
-        // Projects tab for ProjectFormView's local scheme detection + path picker.
+        // `appState.selectedSettingsTab` is pure UI navigation (which tab the menu
+        // bar asked to open). TKT-060 (Phase 6): scheme detection + path picking
+        // also go through the client (server-side over the API), so no
+        // ServiceContainer is needed anymore.
         TabView(selection: $appState.selectedSettingsTab) {
             ServerSettingsTab()
                 .environmentObject(menuBarClient)
@@ -27,7 +27,6 @@ struct SettingsView: View {
                 .tag("server")
 
             ProjectsSettingsTab()
-                .environmentObject(serviceContainer)
                 .environmentObject(menuBarClient)
                 .tabItem {
                     Label("Projects", systemImage: "folder")
@@ -115,7 +114,12 @@ struct ServerSettingsTab: View {
 
                     HStack {
                         Button("Restart Server") {
-                            NotificationCenter.default.post(name: .restartServerRequested, object: nil)
+                            // TKT-060 (Phase 6): the server is a separate process,
+                            // so the menu bar can't post an in-process restart. Re-
+                            // apply the current settings through the API; the
+                            // server's settings-change reconcile rebinds HTTPS if
+                            // the port or cert/key path changed.
+                            Task { await menuBarClient.applySettings { _ in } }
                         }
                         .disabled(!isRunning)
                     }
@@ -285,8 +289,8 @@ struct ServerSettingsTab: View {
 
 /// Lists configured projects with add, edit, and delete controls.
 struct ProjectsSettingsTab: View {
-    // serviceContainer is still in the environment for ProjectFormView's local
-    // scheme detection + native path picker (no API endpoint for those).
+    // TKT-060 (Phase 6): ProjectFormView does scheme detection + path browsing
+    // through the client (server-side over the API), so no ServiceContainer here.
     @EnvironmentObject var menuBarClient: MenuBarClient
 
     /// Tracks the project currently being edited in the sheet.

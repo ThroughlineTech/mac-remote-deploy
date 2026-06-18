@@ -1,6 +1,6 @@
 // Tests for PairingRouteHandler — pair and unpair flows, token bookkeeping,
 // and the cleanupExpiredTokens behavior (which is currently dead code; see TKT-018).
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

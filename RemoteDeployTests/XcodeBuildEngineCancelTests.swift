@@ -1,7 +1,7 @@
 // Tests for the cancellation race-condition safeguards added in TKT-016.
 // These verify the lock-state behavior of cancelBuild() — idempotency and
 // the cancel-status set — without spinning up a real xcodebuild process.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 

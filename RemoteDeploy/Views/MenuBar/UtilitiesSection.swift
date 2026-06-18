@@ -10,7 +10,6 @@ import SwiftUI
 import os
 
 struct UtilitiesSection: View {
-    @EnvironmentObject var serviceContainer: ServiceContainer
     @EnvironmentObject var menuBarClient: MenuBarClient
     @Environment(\.openWindow) private var openWindow
 
@@ -85,7 +84,7 @@ struct UtilitiesSection: View {
             guard panel.runModal() == .OK, let url = panel.url else { return }
 
             guard let project = menuBarClient.selectedProject else {
-                serviceContainer.notificationManager.postNotification(
+                NotificationManager.shared.postNotification(
                     title: "IPA Import Failed",
                     body: "Select a project first, then import an IPA for it.",
                     identifier: "ipa-import-failed"
@@ -97,21 +96,21 @@ struct UtilitiesSection: View {
                 do {
                     let data = try Data(contentsOf: url)
                     if let info = await menuBarClient.uploadIPA(projectID: project.id, fileName: url.lastPathComponent, data: data) {
-                        serviceContainer.notificationManager.postNotification(
+                        NotificationManager.shared.postNotification(
                             title: "IPA Imported",
                             body: "\(info.bundleID) v\(info.version) is ready to serve at /\(info.slug)/",
                             identifier: "ipa-import-\(info.slug)"
                         )
                         Logger.build.info("Uploaded IPA: \(info.bundleID, privacy: .public) v\(info.version, privacy: .public)")
                     } else {
-                        serviceContainer.notificationManager.postNotification(
+                        NotificationManager.shared.postNotification(
                             title: "IPA Import Failed",
                             body: menuBarClient.lastError ?? "Upload failed",
                             identifier: "ipa-import-failed"
                         )
                     }
                 } catch {
-                    serviceContainer.notificationManager.postNotification(
+                    NotificationManager.shared.postNotification(
                         title: "IPA Import Failed",
                         body: error.localizedDescription,
                         identifier: "ipa-import-failed"

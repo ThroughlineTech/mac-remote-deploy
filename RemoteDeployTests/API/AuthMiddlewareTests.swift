@@ -1,5 +1,5 @@
 // Tests for AuthMiddleware — bearer token extraction, validation, and last-seen updates.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

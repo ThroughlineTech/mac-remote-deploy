@@ -1,6 +1,6 @@
 import XCTest
 import RemoteDeployShared
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 // TKT-056 (Phase 3): the API client now lives in RemoteDeployShared and is used
 // by both the iOS companion and the macOS menu bar. These tests round-trip every

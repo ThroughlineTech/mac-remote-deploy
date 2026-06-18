@@ -1,7 +1,7 @@
 // Tests for ExpoBuildEngine phase sequencing, cancellation, and error handling.
 // Uses MockProcessRunner to verify commands without spawning real processes. TKT-048.
 import XCTest
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class ExpoBuildEngineTests: XCTestCase {
 

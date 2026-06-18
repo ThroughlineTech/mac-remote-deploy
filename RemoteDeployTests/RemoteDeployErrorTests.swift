@@ -1,5 +1,5 @@
 // Tests for the unified RemoteDeployError boundary type from TKT-010.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

@@ -1,7 +1,7 @@
 // Test double for BuildEventBroadcasting. Records every call into public
 // arrays so tests can assert on the sequence and payload of broadcasts.
 // TKT-027.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import Foundation
 import RemoteDeployShared
 

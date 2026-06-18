@@ -1,5 +1,5 @@
 // Tests for ProjectSetupValidators extracted from ProjectSetupStep. TKT-014.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 
 final class ProjectSetupValidatorsTests: XCTestCase {

@@ -1,4 +1,4 @@
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import Foundation
 
 /// Mock build engine for Expo projects. Mirrors MockBuildEngine's pattern
