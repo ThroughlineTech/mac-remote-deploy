@@ -27,6 +27,37 @@
 
 set -euo pipefail
 
+# xcodebuild requires a full Xcode; the bare Command Line Tools cannot build the
+# project. If the active developer directory (or an inherited $DEVELOPER_DIR)
+# doesn't point at an Xcode, locate one and export DEVELOPER_DIR -- so deploy.sh
+# works from a plain shell without the caller pre-exporting it. An explicit,
+# valid DEVELOPER_DIR / xcode-select Xcode is respected and not overridden.
+ensure_xcode() {
+    local active xcb app
+    active="${DEVELOPER_DIR:-$(xcode-select -p 2>/dev/null || true)}"
+    if [[ -n "$active" && "$active" != *CommandLineTools* && -x "$active/usr/bin/xcodebuild" ]]; then
+        export DEVELOPER_DIR="$active"
+        return 0
+    fi
+    for app in \
+        $(mdfind 'kMDItemCFBundleIdentifier == "com.apple.dt.Xcode"' 2>/dev/null) \
+        /Applications/Xcode.app \
+        /Applications/Xcode-beta.app; do
+        xcb="$app/Contents/Developer/usr/bin/xcodebuild"
+        if [[ -x "$xcb" ]]; then
+            export DEVELOPER_DIR="$app/Contents/Developer"
+            echo "--- Using Xcode: $app ---"
+            return 0
+        fi
+    done
+    echo "ERROR: xcodebuild needs a full Xcode, but none was found." >&2
+    echo "       Active developer dir: ${active:-<unset>} (Command Line Tools cannot build)." >&2
+    echo "       Fix: install Xcode and 'sudo xcode-select -s /Applications/Xcode.app'," >&2
+    echo "       or export DEVELOPER_DIR=/path/to/Xcode.app/Contents/Developer." >&2
+    exit 1
+}
+ensure_xcode
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 BUILD_DIR="/tmp/RemoteDeployRelease"

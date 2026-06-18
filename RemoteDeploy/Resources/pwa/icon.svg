@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="RemoteDeploy">
+  <defs>
+    <linearGradient id="rdTile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a9bff"></stop>
+      <stop offset="1" stop-color="#0061dd"></stop>
+    </linearGradient>
+    <linearGradient id="rdGloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.18"></stop>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="96" height="96" rx="23" fill="url(#rdTile)"></rect>
+  <rect x="2" y="2" width="96" height="50" rx="23" fill="url(#rdGloss)"></rect>
+  <g fill="#ffffff">
+    <path d="M50 22 L69 45 H57.5 V62 H42.5 V45 H31 Z"></path>
+    <path d="M30 69 h40 a4.5 4.5 0 0 1 4.5 4.5 v0.5 a4.5 4.5 0 0 1 -4.5 4.5 h-40 a4.5 4.5 0 0 1 -4.5 -4.5 v-0.5 a4.5 4.5 0 0 1 4.5 -4.5 Z" opacity="0.92"></path>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" opacity="0.55">
+    <path d="M22 34 a12 12 0 0 1 7 -8"></path>
+    <path d="M78 34 a12 12 0 0 0 -7 -8"></path>
+  </g>
+</svg>

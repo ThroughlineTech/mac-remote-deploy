@@ -92,7 +92,10 @@ public final class WebSocketClient: ObservableObject {
         task = session?.webSocketTask(with: request)
         task?.resume()
 
-        buildLogLines = []
+        // NOTE: do NOT clear buildLogLines here. openSocket() also runs on every
+        // reconnect (the backoff loop), so clearing here wiped the log on any
+        // transient drop. The log is instead reset when a new build starts (see
+        // the "buildstatus" -> "building" transition in handleMessage).
 
         // Subscribe to channels and start receiving.
         // If the handshake fails, receiveMessages() will schedule a reconnect.
@@ -184,6 +187,13 @@ public final class WebSocketClient: ObservableObject {
         case "buildstatus":
             if let statusData = msg.payload.data(using: .utf8),
                let status = try? JSONDecoder().decode(BuildStatusInfo.self, from: statusData) {
+                // A fresh build starting clears the prior build's lines so the
+                // live stream shows only the current build. Gated on the
+                // transition (not every "building" frame) so reconnects mid-
+                // build -- which re-broadcast "building" -- preserve the log.
+                if status.state == "building", latestStatus?.state != "building" {
+                    buildLogLines = []
+                }
                 latestStatus = status
             }
         default:

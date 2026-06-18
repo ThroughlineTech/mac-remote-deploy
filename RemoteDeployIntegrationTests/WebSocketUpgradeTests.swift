@@ -251,6 +251,64 @@ final class WebSocketUpgradeTests: XCTestCase {
         task.cancel(with: .normalClosure, reason: nil)
     }
 
+    /// Regression for the menu bar build log: the plain-HTTP loopback listener
+    /// (:8080 in production, an ephemeral port here) must ALSO upgrade
+    /// `/api/v1/ws`. The menu bar connects over `ws://127.0.0.1:8080`; TKT-056
+    /// split the listeners but wired the upgrader only into the HTTPS pipeline,
+    /// so the loopback upgrade fell through to HTTPHandler and the menu bar's
+    /// build log never streamed. Mirrors the authenticated HTTPS flow but over
+    /// plain `ws://` on `httpPort` -- the exact surface the menu bar uses.
+    func testLoopbackPlainHTTPUpgradeAcceptsAndBroadcastsFlow() async throws {
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
+
+        let token = try pairTestDevice()
+
+        let wsURL = URL(string: "ws://localhost:\(httpPort!)/api/v1/ws")!
+        var request = URLRequest(url: wsURL)
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let task = session.webSocketTask(with: request)
+
+        let receivedFrame = expectation(description: "WebSocket frame received")
+        var receivedText: String?
+        task.receive { result in
+            if case .success(let msg) = result {
+                switch msg {
+                case .string(let text): receivedText = text
+                case .data(let data): receivedText = String(data: data, encoding: .utf8)
+                @unknown default: break
+                }
+                receivedFrame.fulfill()
+            }
+        }
+        task.resume()
+
+        let sendExpectation = expectation(description: "subscribe sent")
+        let subscribeMsg = WSMessage(type: "subscribe", payload: "buildlog")
+        let subscribeJSON = String(data: try JSONEncoder().encode(subscribeMsg), encoding: .utf8)!
+        task.send(.string(subscribeJSON)) { error in
+            XCTAssertNil(error, "Subscribe send should not error: \(String(describing: error))")
+            sendExpectation.fulfill()
+        }
+        wait(for: [sendExpectation], timeout: 5.0)
+        Thread.sleep(forTimeInterval: 0.5)
+
+        XCTAssertGreaterThan(
+            server.webSocketManager.connectionCount,
+            0,
+            "Expected a WebSocket client registered after the loopback (plain-HTTP) upgrade"
+        )
+
+        server.webSocketManager.broadcast(type: "buildlog", payload: "hello over loopback")
+        wait(for: [receivedFrame], timeout: 5.0)
+
+        let text = receivedText ?? ""
+        XCTAssertTrue(text.contains("buildlog"), "Expected frame to carry the broadcast type, got: \(text)")
+        XCTAssertTrue(text.contains("hello over loopback"), "Expected frame to carry the payload, got: \(text)")
+
+        task.cancel(with: .normalClosure, reason: nil)
+    }
+
     // MARK: - Helpers
 
     /// Writes a paired device directly into the shared store and returns

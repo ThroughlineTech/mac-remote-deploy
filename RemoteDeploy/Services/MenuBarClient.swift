@@ -77,8 +77,17 @@ final class MenuBarClient: ObservableObject {
         installs.max { $0.timestamp < $1.timestamp }
     }
 
-    /// Live build log lines streamed over the WebSocket.
-    var buildLogLines: [String] { webSocket.buildLogLines }
+    /// Lines shown in the build-log window. Prefers the live WebSocket stream;
+    /// when nothing is streaming (fresh launch, between builds) it backfills
+    /// from the most recent completed build's persisted log so the window is
+    /// never blank. While a build is in progress the live stream is always
+    /// authoritative, even momentarily empty, so we don't flash a stale log.
+    var buildLogLines: [String] {
+        let live = webSocket.buildLogLines
+        if !live.isEmpty || isBuilding { return live }
+        guard let log = lastBuildResult?.buildLog, !log.isEmpty else { return [] }
+        return log.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+    }
 
     /// Whether a build is in progress. Prefers the live WebSocket status frame,
     /// falling back to the polled status snapshot.

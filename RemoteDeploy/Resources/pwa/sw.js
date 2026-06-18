@@ -4,7 +4,7 @@
 // (the previous cache-first strategy pinned a stale app.js in the browser
 // forever, so PWA updates never reached users). Bump CACHE_NAME on shell
 // changes to purge the old cache on activate.
-const CACHE_NAME = 'remotedeploy-v3';
+const CACHE_NAME = 'remotedeploy-v4';
 const SHELL_FILES = ['/app/', '/app/style.css', '/app/app.js', '/app/manifest.json'];
 
 self.addEventListener('install', (event) => {
