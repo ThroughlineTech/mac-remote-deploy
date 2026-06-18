@@ -6,6 +6,8 @@ public enum APIEndpoint {
     // Authentication
     case pair
     case unpair
+    /// Mint a one-time pairing token for another device (Phase 6).
+    case mintPairingToken
 
     // Status
     case status
@@ -34,6 +36,13 @@ public enum APIEndpoint {
     case browseFilesystem
     case detectSchemes
 
+    // Certificate provisioning (Phase 6)
+    case provisionCertificate
+    case certificateStatus
+
+    // IPA upload (Phase 6)
+    case uploadIPA(UUID)
+
     // Paired devices
     case listDevices
     case revokeDevice(UUID)
@@ -46,6 +55,7 @@ public enum APIEndpoint {
         switch self {
         case .pair: "/api/v1/pair"
         case .unpair: "/api/v1/pair"
+        case .mintPairingToken: "/api/v1/pair/pending"
         case .status: "/api/v1/status"
         case .listProjects, .createProject: "/api/v1/projects"
         case .getProject(let id), .updateProject(let id), .deleteProject(let id):
@@ -57,6 +67,8 @@ public enum APIEndpoint {
         case .getSettings, .updateSettings: "/api/v1/settings"
         case .browseFilesystem: "/api/v1/filesystem/browse"
         case .detectSchemes: "/api/v1/filesystem/schemes"
+        case .provisionCertificate, .certificateStatus: "/api/v1/tailscale/cert"
+        case .uploadIPA(let id): "/api/v1/projects/\(id.uuidString)/ipa"
         case .listDevices: "/api/v1/devices"
         case .revokeDevice(let id): "/api/v1/devices/\(id.uuidString)"
         case .webSocket: "/api/v1/ws"
@@ -66,7 +78,7 @@ public enum APIEndpoint {
     /// The HTTP method for this endpoint.
     public var method: String {
         switch self {
-        case .pair, .createProject, .triggerBuild:
+        case .pair, .createProject, .triggerBuild, .mintPairingToken, .provisionCertificate, .uploadIPA:
             "POST"
         case .unpair, .deleteProject, .cancelBuild, .revokeDevice:
             "DELETE"

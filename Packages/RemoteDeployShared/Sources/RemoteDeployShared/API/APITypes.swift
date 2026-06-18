@@ -31,6 +31,23 @@ public struct PairResponse: Codable, Sendable {
     }
 }
 
+/// Returned when an authenticated client (e.g. the menu bar) mints a one-time
+/// pairing token on the server for another device (a browser or the iOS app)
+/// to claim via POST /api/v1/pair. TKT-060 (Phase 6): replaces the menu bar's
+/// in-process `pairingHandler.registerPendingToken` call so the menu bar can be
+/// a pure client process.
+public struct PendingPairingResponse: Codable, Sendable {
+    /// The raw one-time token the new device submits to POST /api/v1/pair.
+    public var token: String
+    /// Seconds until the pending token expires.
+    public var expiresInSeconds: Int
+
+    public init(token: String, expiresInSeconds: Int) {
+        self.token = token
+        self.expiresInSeconds = expiresInSeconds
+    }
+}
+
 // MARK: - Status
 
 /// Overall server status snapshot.
@@ -114,6 +131,49 @@ public struct SchemesResponse: Codable, Sendable {
 
     public init(schemes: [String]) {
         self.schemes = schemes
+    }
+}
+
+// MARK: - Certificate provisioning
+
+/// State of server-side Tailscale TLS certificate provisioning. TKT-060
+/// (Phase 6): the server owns `tailscale cert`; clients POST to start it and
+/// poll this state, replacing the menu bar's in-process cert generation.
+public struct CertProvisioningState: Codable, Sendable {
+    /// True while `tailscale cert` is running in the background.
+    public var inProgress: Bool
+    /// True once cert + key paths are configured on disk (HTTPS can bind).
+    public var certConfigured: Bool
+    /// Error message from the most recent provisioning attempt, if it failed.
+    public var lastError: String?
+
+    public init(inProgress: Bool, certConfigured: Bool, lastError: String? = nil) {
+        self.inProgress = inProgress
+        self.certConfigured = certConfigured
+        self.lastError = lastError
+    }
+}
+
+// MARK: - IPA upload
+
+/// Returned after a prebuilt .ipa is uploaded and copied into the serve
+/// directory. TKT-060 (Phase 6): replaces the menu bar's in-process IPA import
+/// so the menu bar can upload over the API instead of writing the serve dir.
+public struct IPAUploadResponse: Codable, Sendable {
+    /// The app's CFBundleIdentifier read from the IPA.
+    public var bundleID: String
+    /// The app's CFBundleShortVersionString.
+    public var version: String
+    /// The app's CFBundleVersion build number.
+    public var buildNumber: String
+    /// The project URL slug the IPA was served under.
+    public var slug: String
+
+    public init(bundleID: String, version: String, buildNumber: String, slug: String) {
+        self.bundleID = bundleID
+        self.version = version
+        self.buildNumber = buildNumber
+        self.slug = slug
     }
 }
 

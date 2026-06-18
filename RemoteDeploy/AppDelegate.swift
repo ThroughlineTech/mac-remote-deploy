@@ -571,7 +571,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             buildHistory: EmptyBuildHistoryProvider(store: services.buildHistoryStore),
             settingsProvider: services.settingsStore,
             settingsUpdater: DeferredSettingsUpdater(settingsStore: services.settingsStore),
-            serverName: Host.current().localizedName ?? "Mac"
+            serverName: Host.current().localizedName ?? "Mac",
+            // TKT-060 (Phase 6): server-owned cert provisioning + IPA upload so
+            // the menu bar drives both over the API rather than in-process.
+            certProvisioner: TailscaleCertProvisioner(
+                tailscaleProvider: services.tailscaleProvider,
+                settingsStore: services.settingsStore
+            ),
+            ipaImporter: services.ipaImporter,
+            serveDirectory: APIRouterFactory.defaultServeDirectory
         )
 
         let output = APIRouterFactory.make(deps: deps)

@@ -164,6 +164,41 @@ public final class APIClient: @unchecked Sendable {
         return try await post("/api/v1/pair", body: request, authenticated: false)
     }
 
+    /// Mints a one-time pairing token on the server for another device to claim.
+    /// TKT-060 (Phase 6): used by the menu bar's "Pair Browser/Device" actions.
+    public func mintPairingToken() async throws -> PendingPairingResponse {
+        struct Empty: Encodable {}
+        return try await post("/api/v1/pair/pending", body: Empty())
+    }
+
+    // MARK: - Certificate provisioning (Phase 6)
+
+    /// Starts (or no-ops if already running) server-side Tailscale cert
+    /// provisioning. Returns the current state; poll `certificateStatus()` for
+    /// completion.
+    public func provisionCertificate() async throws -> CertProvisioningState {
+        struct Empty: Encodable {}
+        return try await post("/api/v1/tailscale/cert", body: Empty())
+    }
+
+    /// Returns the current Tailscale cert provisioning state.
+    public func certificateStatus() async throws -> CertProvisioningState {
+        try await get("/api/v1/tailscale/cert")
+    }
+
+    // MARK: - IPA upload (Phase 6)
+
+    /// Uploads a prebuilt .ipa to the server, which copies it into the serve
+    /// directory for the given project. The body is the raw IPA bytes.
+    public func uploadIPA(projectID: UUID, fileName: String, data: Data) async throws -> IPAUploadResponse {
+        let encoded = fileName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "upload.ipa"
+        return try await postData(
+            "/api/v1/projects/\(projectID.uuidString)/ipa?filename=\(encoded)",
+            data: data,
+            contentType: "application/octet-stream"
+        )
+    }
+
     // MARK: - Private HTTP Methods
 
     /// Builds a URL by appending the path to the base URL string.
@@ -190,6 +225,17 @@ public final class APIClient: @unchecked Sendable {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         request.httpBody = try JSONEncoder().encode(body)
+        return try await execute(request)
+    }
+
+    /// POSTs raw bytes (not JSON) with the given content type. Used for binary
+    /// uploads like IPA files. TKT-060 (Phase 6).
+    private func postData<T: Decodable>(_ path: String, data: Data, contentType: String) async throws -> T {
+        var request = URLRequest(url: buildURL(path))
+        request.httpMethod = "POST"
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = data
         return try await execute(request)
     }
 
