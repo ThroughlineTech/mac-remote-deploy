@@ -112,4 +112,82 @@ final class SettingsRouteHandlerTests: XCTestCase {
         let response = handler.update(req)
         XCTAssertEqual(response.status, .internalServerError)
     }
+
+    // MARK: - update placeholder preservation
+
+    /// A client that round-trips the redacted GET payload sends the placeholders
+    /// back; those fields must be restored from the stored settings, not applied
+    /// literally (which would 500 on "[configured]" or store "[redacted]").
+    func test_update_preservesRedactedFieldsWhenPlaceholdersSentBack() {
+        let (handler, provider, updater) = makeHandler()
+        var push = PushNotificationConfig()
+        push.prowlAPIKey = "real-prowl-key"
+        push.pushoverAppToken = "real-pushover-token"
+        push.pushoverUserKey = "real-pushover-user"
+        push.ntfyTopic = "real-ntfy-topic"
+        provider.stubbedSettings = SettingsData(
+            serverPort: 8443, hostname: "old-host",
+            certPath: "/real/cert.pem", keyPath: "/real/key.pem",
+            pushNotificationConfig: push
+        )
+
+        // Simulate the client editing only the port, leaving redacted fields as-is.
+        var edited = SettingsData(
+            serverPort: 9000, hostname: "new-host",
+            certPath: SettingsRouteHandler.pathPlaceholder,
+            keyPath: SettingsRouteHandler.pathPlaceholder,
+            pushNotificationConfig: PushNotificationConfig()
+        )
+        edited.pushNotificationConfig.prowlAPIKey = SettingsRouteHandler.secretPlaceholder
+        edited.pushNotificationConfig.pushoverAppToken = SettingsRouteHandler.secretPlaceholder
+        edited.pushNotificationConfig.pushoverUserKey = SettingsRouteHandler.secretPlaceholder
+        edited.pushNotificationConfig.ntfyTopic = SettingsRouteHandler.secretPlaceholder
+
+        let body = try! APITestSupport.encoder().encode(edited)
+        let req = APITestSupport.makeRequest(method: .PUT, uri: "/api/v1/settings", body: body)
+        let response = handler.update(req)
+
+        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(updater.lastUpdatedSettings?.serverPort, 9000, "Non-placeholder fields apply normally")
+        XCTAssertEqual(updater.lastUpdatedSettings?.hostname, "new-host")
+        XCTAssertEqual(updater.lastUpdatedSettings?.certPath, "/real/cert.pem", "Placeholder restored from stored value")
+        XCTAssertEqual(updater.lastUpdatedSettings?.keyPath, "/real/key.pem")
+        XCTAssertEqual(updater.lastUpdatedSettings?.pushNotificationConfig.prowlAPIKey, "real-prowl-key")
+        XCTAssertEqual(updater.lastUpdatedSettings?.pushNotificationConfig.pushoverAppToken, "real-pushover-token")
+        XCTAssertEqual(updater.lastUpdatedSettings?.pushNotificationConfig.pushoverUserKey, "real-pushover-user")
+        XCTAssertEqual(updater.lastUpdatedSettings?.pushNotificationConfig.ntfyTopic, "real-ntfy-topic")
+    }
+
+    /// A real (non-placeholder) value submitted for a secret field is applied,
+    /// allowing the user to rotate a key.
+    func test_update_appliesNewSecretWhenNotPlaceholder() {
+        let (handler, provider, updater) = makeHandler()
+        var push = PushNotificationConfig()
+        push.prowlAPIKey = "old-key"
+        provider.stubbedSettings = SettingsData(pushNotificationConfig: push)
+
+        var edited = SettingsData()
+        edited.pushNotificationConfig.prowlAPIKey = "rotated-key"
+        let body = try! APITestSupport.encoder().encode(edited)
+        let req = APITestSupport.makeRequest(method: .PUT, uri: "/api/v1/settings", body: body)
+        _ = handler.update(req)
+
+        XCTAssertEqual(updater.lastUpdatedSettings?.pushNotificationConfig.prowlAPIKey, "rotated-key")
+    }
+
+    /// The PUT response must be redacted so it matches GET and never echoes a
+    /// real secret back over the wire.
+    func test_update_responseIsRedacted() {
+        let (handler, _, _) = makeHandler()
+        let edited = SettingsData(
+            serverPort: 8443, hostname: "host",
+            certPath: "/real/cert.pem", keyPath: "/real/key.pem"
+        )
+        let body = try! APITestSupport.encoder().encode(edited)
+        let req = APITestSupport.makeRequest(method: .PUT, uri: "/api/v1/settings", body: body)
+        let response = handler.update(req)
+        let decoded = try? APITestSupport.decoder().decode(SettingsData.self, from: response.body)
+        XCTAssertEqual(decoded?.certPath, "[configured]")
+        XCTAssertEqual(decoded?.keyPath, "[configured]")
+    }
 }
