@@ -358,6 +358,11 @@ directly; all data flows through the client.
 
 ## Phase 4 - Browser pairing + web client correctness
 
+**Status (2026-06-17):** implemented on branch `tkt-057-browser-pairing` (TKT-057);
+pending the human ship gate. PWA Connect screen is a `<form>` (Enter submits) and
+self-pairs via POST `/api/v1/pair`; a Mac "Pair Browser" action (Settings >
+Devices) surfaces a one-time code + the `https://<host>:8443/app/` URL.
+
 **Depends on:** the pairing endpoint exists today (`PairingRouteHandler`). Can be
 built in parallel with Phases 1-3; logically lands around Phase 3.
 

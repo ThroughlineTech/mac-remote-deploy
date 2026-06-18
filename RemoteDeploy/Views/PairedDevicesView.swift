@@ -13,8 +13,15 @@ struct PairedDevicesTab: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var menuBarClient: MenuBarClient
 
-    /// Whether the pair device sheet is showing.
-    @State private var showingPairSheet = false
+    /// Which pairing sheet is showing (device QR or browser code), if any.
+    private enum PairSheet: Int, Identifiable {
+        case device, browser
+        var id: Int { rawValue }
+    }
+    @State private var activeSheet: PairSheet?
+
+    /// Browser pairing needs HTTPS (the server rejects /api/v1/pair over plain HTTP).
+    private var canPairBrowser: Bool { appState.serverURL.hasPrefix("https") }
 
     /// Paired devices (the menu bar's own loopback record is filtered out).
     private var devices: [PairedDevice] { menuBarClient.devices }
@@ -61,11 +68,18 @@ struct PairedDevicesTab: View {
 
             HStack {
                 Button {
-                    showingPairSheet = true
+                    activeSheet = .device
                 } label: {
                     Label("Pair New Device", systemImage: "qrcode")
                 }
                 .disabled(appState.serverURL.isEmpty)
+
+                Button {
+                    activeSheet = .browser
+                } label: {
+                    Label("Pair Browser", systemImage: "globe")
+                }
+                .disabled(!canPairBrowser)
 
                 Spacer()
 
@@ -79,13 +93,23 @@ struct PairedDevicesTab: View {
         .task {
             await menuBarClient.refreshDevices()
         }
-        .sheet(isPresented: $showingPairSheet) {
-            PairDeviceView(onDismiss: {
-                showingPairSheet = false
-                Task { await menuBarClient.refreshDevices() }
-            })
-            .environmentObject(appState)
-            .environmentObject(serviceContainer)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .device:
+                PairDeviceView(onDismiss: {
+                    activeSheet = nil
+                    Task { await menuBarClient.refreshDevices() }
+                })
+                .environmentObject(appState)
+                .environmentObject(serviceContainer)
+            case .browser:
+                PairBrowserView(onDismiss: {
+                    activeSheet = nil
+                    Task { await menuBarClient.refreshDevices() }
+                })
+                .environmentObject(appState)
+                .environmentObject(serviceContainer)
+            }
         }
     }
 }
