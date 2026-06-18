@@ -65,7 +65,7 @@ function connectWS() {
     try {
       const msg = JSON.parse(e.data);
       if (msg.type === 'buildlog') {
-        state.buildLog.push(msg.payload);
+        state.buildLog.push({ t: Date.now(), text: msg.payload });
         if (state.tab === 'build' && !state.view) renderBuildLog();
       } else if (msg.type === 'buildstatus') {
         state.buildStatus = JSON.parse(msg.payload);
@@ -81,13 +81,37 @@ function connectWS() {
 
 function render() {
   const app = document.getElementById('app');
-  if (!state.token) { app.innerHTML = renderConnect(); return; }
+  if (!state.token) { app.innerHTML = renderHeader(false) + renderConnect(); return; }
   // Overlay screens (defined in projectform.js) take over the whole viewport.
   if (state.view === 'browser') { app.innerHTML = renderBrowser(); return; }
   if (state.view === 'projectForm') { app.innerHTML = renderProjectForm(); return; }
-  app.innerHTML = renderTabs() + renderTabContent();
+  app.innerHTML = renderHeader() + renderTabs() + renderTabContent();
   connectWS();
 }
+
+// Top toolbar: brand mark + theme toggle. showBrand=false on the connect screen
+// (which already shows the large app icon) leaves just the theme control.
+function renderHeader(showBrand) {
+  const brand = showBrand === false
+    ? '<span></span>'
+    : `<div class="brand"><span class="brand-mark"></span><span class="brand-name">RemoteDeploy</span></div>`;
+  return `<header class="appbar">${brand}<button class="theme-toggle" data-click="toggleTheme" aria-label="Toggle theme" title="Theme: tap to cycle auto / light / dark"></button></header>`;
+}
+
+// Theme: auto (follow system) | light | dark, persisted in localStorage and
+// reflected as data-theme on <html>. Applied before first render to avoid flash.
+function applyTheme() {
+  const t = localStorage.getItem('rd_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+}
+ACTIONS.toggleTheme = () => {
+  const order = ['dark', 'light', 'auto'];
+  const cur = localStorage.getItem('rd_theme') || 'dark';
+  const next = order[(order.indexOf(cur) + 1) % order.length];
+  localStorage.setItem('rd_theme', next);
+  applyTheme();
+  render();
+};
 
 function renderConnect() {
   // Pairing requires HTTPS; the server rejects /api/v1/pair over plain HTTP.
@@ -155,30 +179,32 @@ function renderProjects() {
 function renderBuild() {
   const proj = state.projects.find(p => p.id === state.selectedProjectId);
   const isMacOS = proj && proj.platform && proj.platform.toLowerCase() === 'macos';
+  const building = state.buildStatus && state.buildStatus.state === 'building';
   const statusHtml = state.buildStatus
-    ? `<div style="margin:8px 0"><span class="status-dot ${statusColor(state.buildStatus.state)}"></span>${state.buildStatus.state}${state.buildStatus.message ? ': ' + esc(state.buildStatus.message) : ''}</div>`
+    ? `<div class="build-status ${statusColor(state.buildStatus.state)}"><span class="status-dot ${statusColor(state.buildStatus.state)}"></span><span class="bs-label">${esc(state.buildStatus.state)}</span>${state.buildStatus.message ? `<span class="bs-msg">${esc(state.buildStatus.message)}</span>` : ''}</div>`
     : '';
-  const buildBtnLabel = isMacOS ? 'Build & Package' : 'Build & Deploy';
+  const buildBtnLabel = building ? (isMacOS ? 'Building…' : 'Deploying…') : (isMacOS ? 'Build & Package' : 'Build & Deploy');
+  const zipBtn = isMacOS && state.buildStatus && state.buildStatus.state === 'success'
+    ? `<a class="btn btn-secondary" href="/${esc(proj.urlSlug)}/app.zip">Download .zip</a>` : '';
   return `
     <h1>Build</h1>
     <select data-change="selectBuildProject">
-      <option value="">Select project...</option>
+      <option value="">Select a project…</option>
       ${state.projects.map(p => `<option value="${esc(p.id)}" ${p.id === state.selectedProjectId ? 'selected' : ''}>${esc(p.name)}${p.platform && p.platform.toLowerCase() === 'macos' ? ' (macOS)' : ''}</option>`).join('')}
     </select>
     ${statusHtml}
-    <button class="btn btn-primary" data-click="triggerBuild" ${state.selectedProjectId ? '' : 'disabled'}>${buildBtnLabel}</button>
-    ${isMacOS && state.buildStatus && state.buildStatus.state === 'success' ? `<a class="btn btn-primary" href="/${esc(proj.urlSlug)}/app.zip" style="display:inline-block;margin-left:8px;text-decoration:none">Download .zip</a>` : ''}
-    <div style="margin-top:4px">
-      <button class="btn btn-secondary" data-click="clearLog" style="font-size:13px;padding:8px">Clear Log</button>
+    <div class="build-actions">
+      <button class="btn btn-primary${building ? ' loading' : ''}" data-click="triggerBuild" ${state.selectedProjectId && !building ? '' : 'disabled'}>${buildBtnLabel}</button>
+      ${zipBtn}
     </div>
-    <h2>Build Log</h2>
-    <div class="log" id="build-log">${state.buildLog.map(l => `<div class="${logClass(l)}">${esc(l)}</div>`).join('')}</div>`;
+    <div class="row-between"><h2>Build Log</h2><button class="btn-sm btn-secondary" data-click="clearLog">Clear Log</button></div>
+    <div class="log" id="build-log">${state.buildLog.map(logRow).join('')}</div>`;
 }
 
 function renderBuildLog() {
   const el = document.getElementById('build-log');
   if (el) {
-    el.innerHTML = state.buildLog.map(l => `<div class="${logClass(l)}">${esc(l)}</div>`).join('');
+    el.innerHTML = state.buildLog.map(logRow).join('');
     el.scrollTop = el.scrollHeight;
   }
 }
@@ -187,7 +213,7 @@ function renderBuildStatus() {
   // Re-render the build tab to update status
   if (state.tab === 'build') {
     const app = document.getElementById('app');
-    app.innerHTML = renderTabs() + renderBuild();
+    app.innerHTML = renderHeader() + renderTabs() + renderBuild();
   }
 }
 
@@ -356,7 +382,20 @@ function handleApiError(e) {
 function projectById(id) { return state.projects.find(p => p.id === id); }
 function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML.replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
 function statusColor(s) { return { building: 'orange', success: 'green', failure: 'red' }[s] || 'gray'; }
-function logClass(l) { if (l.includes('error:')) return 'error'; if (l.includes('warning:')) return 'warning'; return ''; }
+function logClass(l) { const s = (l && typeof l === 'object') ? l.text : l; if (s.includes('error:')) return 'error'; if (s.includes('warning:')) return 'warning'; return ''; }
+// Build-log line -> structured row: client-stamped time + severity chip + text.
+// Tolerates legacy plain-string entries.
+function logLevel(t) { if (/(^|\s)error:|\bfatal\b|❌/i.test(t)) return 'error'; if (/(^|\s)warning:|⚠/i.test(t)) return 'warn'; return 'info'; }
+function fmtLogTime(ms) { return new Date(ms || Date.now()).toTimeString().slice(0, 8); }
+function logRow(l) {
+  const text = (l && typeof l === 'object') ? l.text : l;
+  const t = (l && typeof l === 'object') ? l.t : Date.now();
+  const lvl = logLevel(text || '');
+  const chip = lvl === 'error' ? '<span class="log-chip">Error</span>'
+    : lvl === 'warn' ? '<span class="log-chip">Warn</span>'
+    : '<span class="log-chip" aria-hidden="true"></span>';
+  return `<div class="log-row level-${lvl}"><span class="log-time">${fmtLogTime(t)}</span>${chip}<span class="log-text">${esc(text)}</span></div>`;
+}
 function uuid() { return (crypto && crypto.randomUUID) ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); }); }
 function slugify(name) {
   return (name || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -382,6 +421,7 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/app/sw.js');
 }
 
+applyTheme();
 initEvents();
 render();
 if (state.token) loadData();
