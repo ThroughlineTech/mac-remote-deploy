@@ -131,6 +131,17 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
         lockedProjectsBySlug.withLock { _ = $0.removeValue(forKey: slug) }
     }
 
+    /// Replaces the entire slug registry so it exactly matches `projects`. Adds
+    /// new slugs, updates changed ones, and drops slugs no longer present. Called
+    /// whenever the project store changes via any path so create/edit/delete take
+    /// effect immediately. TKT-055 (Phase 2).
+    ///
+    /// - Parameter projects: The full, authoritative set of projects to serve.
+    func syncProjects(_ projects: [ProjectConfig]) {
+        let bySlug = Dictionary(projects.map { ($0.urlSlug, $0) }, uniquingKeysWith: { _, latest in latest })
+        lockedProjectsBySlug.withLock { $0 = bySlug }
+    }
+
     /// Updates the base URL used when generating absolute URLs in manifests and install pages.
     ///
     /// This should be called whenever the hostname or port changes (e.g. when the Tailscale

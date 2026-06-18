@@ -1,5 +1,5 @@
 // Protocol for providing the current ServerStatus snapshot to API consumers.
-// Decouples StatusRouteHandler from AppState, AppStateBridge, and the deploy server.
+// Decouples StatusRouteHandler from the concrete status source (ServerStatusProvider).
 import Foundation
 import RemoteDeployShared
 

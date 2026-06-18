@@ -42,7 +42,7 @@ extension NIODeployServer: BuildEventBroadcasting {
 
     /// Converts an internal `BuildStatus` enum to the wire-format
     /// `BuildStatusInfo` struct. Mirrors the mapping in
-    /// `AppStateBridge.buildStatusInfo()` so both the REST and WS paths
+    /// `BuildManagerBuildStatusProvider` so both the REST and WS paths
     /// agree on payload shape.
     static func buildStatusInfo(from status: BuildStatus) -> BuildStatusInfo {
         switch status {

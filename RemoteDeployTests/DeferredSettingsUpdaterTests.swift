@@ -108,24 +108,42 @@ final class DeferredSettingsUpdaterTests: XCTestCase {
         )
     }
 
-    // MARK: - Apply callback
+    // MARK: - Apply through the settings store (TKT-055)
 
-    @MainActor
-    func test_update_invokesApplyOnMainCallbackOnSuccess() async {
-        // Use the full init to exercise the apply path.
-        // Need an AppStateBridge — construct via AppState.
-        let appState = AppState()
-        let buildManager = BuildManager()
-        let bridge = AppStateBridge(appState: appState, buildManager: buildManager)
+    /// On success the updater writes the validated settings through the
+    /// SettingsStore (the single source of truth), so a subsequent read reflects
+    /// them. Replaces the pre-TKT-055 applyOnMain/AppStateBridge callback test.
+    func test_update_persistsThroughSettingsStoreOnSuccess() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DeferredSettingsUpdaterTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        let expectation = XCTestExpectation(description: "applyOnMain invoked")
-        let updater = DeferredSettingsUpdater(bridge: bridge) { _ in
-            expectation.fulfill()
-        }
+        let store = SettingsStore(directory: tempDir)
+        let updater = DeferredSettingsUpdater(settingsStore: store)
 
-        let settings = SettingsData(serverPort: 8443, hostname: "host", certPath: "", keyPath: "")
+        let settings = SettingsData(serverPort: 9443, hostname: "mac.tailnet.ts.net", certPath: "", keyPath: "")
         let err = updater.updateSettings(settings)
+
         XCTAssertNil(err)
-        await fulfillment(of: [expectation], timeout: 1.0)
+        XCTAssertEqual(store.current().serverPort, 9443)
+        XCTAssertEqual(store.current().hostname, "mac.tailnet.ts.net")
+    }
+
+    /// A validation failure must NOT touch the store.
+    func test_update_doesNotPersistWhenValidationFails() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("DeferredSettingsUpdaterTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let store = SettingsStore(directory: tempDir)
+        let original = store.current().serverPort
+        let updater = DeferredSettingsUpdater(settingsStore: store)
+
+        let err = updater.updateSettings(SettingsData(serverPort: 80, hostname: "", certPath: "", keyPath: ""))
+
+        XCTAssertNotNil(err)
+        XCTAssertEqual(store.current().serverPort, original, "Store must be untouched on validation failure")
     }
 }

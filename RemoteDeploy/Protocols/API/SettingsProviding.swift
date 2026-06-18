@@ -1,5 +1,5 @@
 // Protocol for reading the current SettingsData snapshot for the API layer.
-// Decouples SettingsRouteHandler from AppStateBridge.
+// Decouples SettingsRouteHandler from the concrete settings source (SettingsStore).
 import Foundation
 import RemoteDeployShared
 

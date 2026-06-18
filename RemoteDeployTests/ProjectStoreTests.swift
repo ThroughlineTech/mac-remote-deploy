@@ -175,6 +175,23 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(loaded.first?.name, "Persistent")
     }
 
+    // MARK: - Change Notification (TKT-055)
+
+    func testSavePostsProjectsDidChange() throws {
+        let project = ProjectConfig(name: "Notify", projectPath: "/path")
+        let expectation = XCTNSNotificationExpectation(name: .projectsDidChange, object: nil)
+        try sut.save(project: project)
+        wait(for: [expectation], timeout: 1.0)
+    }
+
+    func testDeletePostsProjectsDidChange() throws {
+        let project = ProjectConfig(name: "Notify", projectPath: "/path")
+        try sut.save(project: project)
+        let expectation = XCTNSNotificationExpectation(name: .projectsDidChange, object: nil)
+        try sut.delete(projectID: project.id)
+        wait(for: [expectation], timeout: 1.0)
+    }
+
     // MARK: - ID Preservation
 
     func testSavedProjectRetainsOriginalID() throws {

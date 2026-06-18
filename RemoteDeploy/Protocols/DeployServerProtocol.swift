@@ -49,10 +49,30 @@ protocol DeployServerProtocol: AnyObject, Sendable {
     /// - Parameter slug: The URL slug of the project to unregister.
     func unregisterProject(slug: String)
 
+    /// Replaces the entire set of registered projects so the routing table
+    /// exactly matches the given list (adds new slugs, drops removed ones,
+    /// updates changed ones). Call this whenever the project store changes via
+    /// any path so create/edit/delete take effect immediately without a server
+    /// restart. TKT-055 (Phase 2).
+    /// - Parameter projects: The full, authoritative set of projects to serve.
+    func syncProjects(_ projects: [ProjectConfig])
+
     /// Sets the base HTTPS URL used to construct absolute URLs in manifests and install pages.
     /// - Parameter url: The full base URL (e.g., "https://hostname:8443").
     func setBaseURL(_ url: String)
 
     /// Callback invoked when an IPA is downloaded. Arguments: (projectSlug, sourceIP, userAgent).
     var onIPADownload: ((String, String, String) -> Void)? { get set }
+}
+
+extension DeployServerProtocol {
+
+    /// Default `syncProjects` for conformers (e.g. test mocks) that don't track a
+    /// removable registry: register each project. `NIODeployServer` overrides this
+    /// with a true replace-all that also drops removed slugs. TKT-055 (Phase 2).
+    func syncProjects(_ projects: [ProjectConfig]) {
+        for project in projects {
+            registerProject(project)
+        }
+    }
 }

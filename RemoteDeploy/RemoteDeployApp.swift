@@ -112,6 +112,14 @@ final class ServiceContainer: ObservableObject {
     /// Persistent storage for project configurations.
     let projectStore: any ProjectStoring
 
+    /// Thread-safe single source of truth for app settings (settings.json).
+    /// Read directly by the API; the menu bar saves route through it. TKT-055.
+    let settingsStore: SettingsStore
+
+    /// Live, non-persisted runtime status (Tailscale connectivity) the API status
+    /// endpoint reports. Written by AppDelegate's poll. TKT-055.
+    let runtimeStatus: RuntimeStatusStore
+
     /// TLS certificate loader and renewal checker.
     let certificateProvider: any CertificateProviding
 
@@ -161,6 +169,8 @@ final class ServiceContainer: ObservableObject {
         self.manifestGenerator = manifestGen
         self.installPageGenerator = installPageGen
         self.projectStore = UserDefaultsProjectStore()
+        self.settingsStore = SettingsStore()
+        self.runtimeStatus = RuntimeStatusStore()
         self.certificateProvider = TailscaleCertificateProvider()
         self.installTracker = ServerInstallTracker()
         self.notificationManager = NotificationManager.shared
@@ -224,50 +234,6 @@ extension AppState {
     }
 }
 
-// MARK: - AppState Bridge
-
-/// Thread-safe bridge for reading AppState values from NIO's event loop.
-/// Captures the AppState reference on the MainActor and provides
-/// Sendable closures that read values synchronously.
-final class AppStateBridge: @unchecked Sendable {
-    private let _snapshot: () -> (hostname: String, tailscaleConnected: Bool, serverPort: Int, certPath: String, keyPath: String, pushConfig: PushNotificationConfig, buildStatus: BuildStatus)
-
-    @MainActor
-    init(appState: AppState, buildManager: BuildManager) {
-        // Capture both references. Closures will be called from NIO threads but
-        // the fields we read are simple value types so reading is safe.
-        nonisolated(unsafe) let state = appState
-        nonisolated(unsafe) let manager = buildManager
-        self._snapshot = {
-            (state.hostname, state.tailscaleConnected, state.serverPort, state.certPath, state.keyPath, state.pushNotificationConfig, manager.buildStatus)
-        }
-    }
-
-    func snapshot() -> (hostname: String, tailscaleConnected: Bool, serverPort: Int) {
-        let s = _snapshot()
-        return (s.hostname, s.tailscaleConnected, s.serverPort)
-    }
-
-    func buildStatusInfo() -> BuildStatusInfo {
-        let s = _snapshot()
-        switch s.buildStatus {
-        case .idle:
-            return BuildStatusInfo(state: "idle")
-        case .building(let progress):
-            return BuildStatusInfo(state: "building", message: progress)
-        case .success(let ipaPath):
-            return BuildStatusInfo(state: "success", message: ipaPath)
-        case .failure(let error):
-            return BuildStatusInfo(state: "failure", message: error)
-        }
-    }
-
-    func settings() -> SettingsData {
-        let s = _snapshot()
-        return SettingsData(serverPort: s.serverPort, hostname: s.hostname, certPath: s.certPath, keyPath: s.keyPath, pushNotificationConfig: s.pushConfig)
-    }
-}
-
 // MARK: - Notification Names
 
 extension Notification.Name {
@@ -282,4 +248,13 @@ extension Notification.Name {
     static let refreshTailscaleStatus = Notification.Name("RemoteDeploy.refreshTailscaleStatus")
     /// Posted from the Server settings tab to stop and restart the HTTPS server.
     static let restartServerRequested = Notification.Name("RemoteDeploy.restartServerRequested")
+    /// Posted by the project store after any successful create/update/delete, by
+    /// any writer (API on a NIO thread, menu bar on main). AppDelegate observes
+    /// this to refresh the menu bar's projection and re-sync the server's slug
+    /// registry. TKT-055 (Phase 2): the store is the single source of truth.
+    static let projectsDidChange = Notification.Name("RemoteDeploy.projectsDidChange")
+    /// Posted by the SettingsStore after any successful settings write, by any
+    /// writer (API on a NIO thread, menu bar on main). AppDelegate observes this
+    /// to refresh AppState's settings projection. TKT-055 (Phase 2).
+    static let settingsDidChange = Notification.Name("RemoteDeploy.settingsDidChange")
 }

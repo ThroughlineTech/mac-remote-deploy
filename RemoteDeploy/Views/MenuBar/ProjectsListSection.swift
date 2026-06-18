@@ -45,14 +45,10 @@ struct ProjectsListSection: View {
         }
     }
 
-    /// Removes a project from the store, app state, and deploy server.
+    /// Removes a project. TKT-055: write only the store; the .projectsDidChange
+    /// observer refreshes appState.projects, re-syncs the deploy-server slug
+    /// registry, and normalizes the selection.
     private func removeProject(_ project: RemoteDeployShared.ProjectConfig) {
         try? serviceContainer.projectStore.delete(projectID: project.id)
-        appState.projects.removeAll { $0.id == project.id }
-        serviceContainer.deployServer.unregisterProject(slug: project.urlSlug)
-        if appState.selectedProjectID == project.id {
-            appState.selectedProjectID = appState.projects.first?.id
-        }
-        NotificationCenter.default.post(name: .saveSettingsRequested, object: nil)
     }
 }
