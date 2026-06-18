@@ -583,7 +583,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // paired-device token validation.
         let auth = output.auth
         nioServer.webSocketAuthenticator = { headers in
-            auth.authenticate(headers: headers) != nil
+            auth.authenticateWebSocket(headers: headers) != nil
         }
     }
 

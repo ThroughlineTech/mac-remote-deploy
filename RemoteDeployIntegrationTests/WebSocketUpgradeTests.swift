@@ -65,7 +65,7 @@ final class WebSocketUpgradeTests: XCTestCase {
         server.apiRouter = output.router
         let auth = output.auth
         server.webSocketAuthenticator = { headers in
-            auth.authenticate(headers: headers) != nil
+            auth.authenticateWebSocket(headers: headers) != nil
         }
 
         let trustAllDelegate = TrustAllWSCertsDelegate()
@@ -194,6 +194,59 @@ final class WebSocketUpgradeTests: XCTestCase {
         let text = receivedText ?? ""
         XCTAssertTrue(text.contains("buildlog"), "Expected frame to carry the broadcast type, got: \(text)")
         XCTAssertTrue(text.contains("hello from the server"), "Expected frame to carry the payload, got: \(text)")
+
+        task.cancel(with: .normalClosure, reason: nil)
+    }
+
+    /// TKT-058: a browser-style upgrade that carries the bearer token in the
+    /// Sec-WebSocket-Protocol subprotocol (no Authorization header) succeeds and
+    /// receives broadcasts. This is the path browsers must use.
+    func testSubprotocolUpgradeAcceptsAndBroadcastsFlow() async throws {
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
+
+        let token = try pairTestDevice()
+
+        let wsURL = URL(string: "wss://localhost:\(serverPort!)/api/v1/ws")!
+        // No Authorization header: the token rides in the subprotocol list, just
+        // like the PWA's `new WebSocket(url, ['bearer', token])`.
+        let task = session.webSocketTask(with: wsURL, protocols: ["bearer", token])
+
+        let receivedFrame = expectation(description: "WebSocket frame received")
+        var receivedText: String?
+        task.receive { result in
+            if case .success(let msg) = result {
+                switch msg {
+                case .string(let text): receivedText = text
+                case .data(let data): receivedText = String(data: data, encoding: .utf8)
+                @unknown default: break
+                }
+                receivedFrame.fulfill()
+            }
+        }
+        task.resume()
+
+        let sendExpectation = expectation(description: "subscribe sent")
+        let subscribeMsg = WSMessage(type: "subscribe", payload: "buildlog")
+        let subscribeJSON = String(data: try JSONEncoder().encode(subscribeMsg), encoding: .utf8)!
+        task.send(.string(subscribeJSON)) { error in
+            XCTAssertNil(error, "Subscribe send should not error: \(String(describing: error))")
+            sendExpectation.fulfill()
+        }
+        wait(for: [sendExpectation], timeout: 5.0)
+        Thread.sleep(forTimeInterval: 0.5)
+
+        XCTAssertGreaterThan(
+            server.webSocketManager.connectionCount,
+            0,
+            "Expected at least one WebSocket client registered after subprotocol upgrade"
+        )
+
+        server.webSocketManager.broadcast(type: "buildlog", payload: "hello over subprotocol")
+        wait(for: [receivedFrame], timeout: 5.0)
+
+        let text = receivedText ?? ""
+        XCTAssertTrue(text.contains("buildlog"), "Expected frame to carry the broadcast type, got: \(text)")
+        XCTAssertTrue(text.contains("hello over subprotocol"), "Expected frame to carry the payload, got: \(text)")
 
         task.cancel(with: .normalClosure, reason: nil)
     }
