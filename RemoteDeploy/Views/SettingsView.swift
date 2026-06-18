@@ -343,12 +343,12 @@ struct ProjectsSettingsTab: View {
                     }
                 }
                 .onDelete { indexSet in
-                    // Delete from persistent store then from appState
+                    // TKT-055: write only the store; the .projectsDidChange
+                    // observer refreshes appState.projects (the projection).
                     for index in indexSet {
                         let project = appState.projects[index]
                         try? serviceContainer.projectStore.delete(projectID: project.id)
                     }
-                    appState.projects.remove(atOffsets: indexSet)
                 }
             }
 
@@ -369,14 +369,10 @@ struct ProjectsSettingsTab: View {
             ProjectFormView(
                 project: $editingProject,
                 onSave: { savedProject in
-                    // Persist to store
+                    // TKT-055: the store is the single source of truth. Persist;
+                    // the .projectsDidChange observer refreshes the projection
+                    // and re-syncs the server's slug registry.
                     try? serviceContainer.projectStore.save(project: savedProject)
-                    // Update in-memory state
-                    if let index = appState.projects.firstIndex(where: { $0.id == savedProject.id }) {
-                        appState.projects[index] = savedProject
-                    } else {
-                        appState.projects.append(savedProject)
-                    }
                     showingProjectForm = false
                 },
                 onCancel: {
@@ -384,7 +380,6 @@ struct ProjectsSettingsTab: View {
                 },
                 onDelete: { deletedProject in
                     try? serviceContainer.projectStore.delete(projectID: deletedProject.id)
-                    appState.projects.removeAll { $0.id == deletedProject.id }
                     showingProjectForm = false
                 }
             )

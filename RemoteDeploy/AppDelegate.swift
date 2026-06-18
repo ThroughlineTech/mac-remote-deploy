@@ -41,22 +41,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// side effects (Tailscale CLI, file I/O, server bind). TKT-019.
     internal var performStartupOverrideForTests: (@MainActor () async -> Void)?
 
-    // MARK: - Startup helpers
-
-    /// Directory for settings.json.
-    private static var settingsDirectory: String {
-        let appSupport = FileManager.default.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first!.path
-        return "\(appSupport)/RemoteDeploy"
-    }
-
-    /// Full path to settings.json.
-    private static var settingsFilePath: String {
-        "\(settingsDirectory)/settings.json"
-    }
-
     // MARK: - Registration
 
     /// Called by RemoteDeployApp.body to hand in the SwiftUI-owned state objects.
@@ -119,6 +103,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self,
             selector: #selector(handleRestartServerRequested),
             name: .restartServerRequested,
+            object: nil
+        )
+        // TKT-055 (Phase 2): the stores are the single source of truth. Refresh
+        // the menu bar's projections (and the server's slug registry) whenever
+        // any writer -- the API on a NIO thread or the menu bar on main --
+        // mutates the project store or settings store.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleProjectsDidChange),
+            name: .projectsDidChange,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleSettingsDidChange),
+            name: .settingsDidChange,
             object: nil
         )
 
@@ -209,8 +209,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Load persisted settings (cert paths, hostname, push config, etc.)
         loadSettings()
 
-        // Load saved projects from disk
-        loadSavedProjects()
+        // Load saved projects from the store into the menu bar projection.
+        refreshProjectsFromStore()
 
         // Configure push notifiers from saved config
         serviceContainer.configurePushNotifiers(from: appState.pushNotificationConfig)
@@ -259,17 +259,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Refreshes the menu bar's project projection and the server's slug registry
+    /// after any writer mutates the project store. Posted from arbitrary threads
+    /// (the API runs on a NIO event loop), so hop to the main actor. TKT-055.
+    @objc private func handleProjectsDidChange() {
+        Task { @MainActor [weak self] in
+            self?.refreshProjectsFromStore()
+        }
+    }
+
+    /// Refreshes AppState's settings projection after any writer mutates the
+    /// settings store. Posted from arbitrary threads; hop to the main actor.
+    /// TKT-055.
+    @objc private func handleSettingsDidChange() {
+        Task { @MainActor [weak self] in
+            self?.applySettingsFromStore()
+        }
+    }
+
     // MARK: - Loaders
 
-    /// Loads projects from the persistent store into app state.
-    private func loadSavedProjects() {
+    /// Refreshes AppState's project projection and the deploy server's slug
+    /// registry from the authoritative project store. Called at startup and
+    /// whenever any writer posts `.projectsDidChange`. TKT-055 (Phase 2): the
+    /// store is the single source of truth; `appState.projects` is a read-only
+    /// projection of it.
+    private func refreshProjectsFromStore() {
         guard let appState, let serviceContainer else { return }
         do {
             let projects = try serviceContainer.projectStore.loadProjects()
             appState.projects = projects
-            if let first = projects.first {
-                appState.selectedProjectID = first.id
+
+            // Normalize selection: keep the current project if it still exists,
+            // otherwise fall back to the first (or nil when the list is empty).
+            if let id = appState.selectedProjectID, !projects.contains(where: { $0.id == id }) {
+                appState.selectedProjectID = projects.first?.id
+            } else if appState.selectedProjectID == nil {
+                appState.selectedProjectID = projects.first?.id
             }
+
+            // Keep the install-page slug registry in sync so a project created or
+            // deleted via any path takes effect immediately (no server restart).
+            serviceContainer.deployServer.syncProjects(projects)
         } catch {
             let boundaryError = RemoteDeployError(wrapping: error)
             appState.setError(boundaryError)
@@ -283,12 +314,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             let connected = await serviceContainer.tailscaleProvider.isConnected()
             appState.tailscaleConnected = connected
+            // TKT-055: mirror the live flag into the runtime store the API reads.
+            serviceContainer.runtimeStatus.tailscaleConnected = connected
 
             if connected {
                 let hostname = try await serviceContainer.tailscaleProvider.detectHostname()
                 appState.hostname = hostname
                 let port = appState.serverPort
                 appState.serverURL = "https://\(hostname):\(port)"
+                // TKT-055: persist the detected hostname through the settings store
+                // (the single source of truth the status endpoint reports) only
+                // when it actually changed, so the 10s poll doesn't rewrite
+                // settings.json every tick.
+                if serviceContainer.settingsStore.current().hostname != hostname {
+                    var settings = serviceContainer.settingsStore.current()
+                    settings.hostname = hostname
+                    serviceContainer.settingsStore.update(settings)
+                }
             } else {
                 if let localIP = QRCodeGenerator.localIPAddress() {
                     appState.serverURL = "http://\(localIP):8080"
@@ -296,6 +338,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } catch {
             appState.tailscaleConnected = false
+            serviceContainer.runtimeStatus.tailscaleConnected = false
             if let localIP = QRCodeGenerator.localIPAddress() {
                 appState.serverURL = "http://\(localIP):8080"
             }
@@ -317,34 +360,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Settings Persistence
 
-    /// Loads settings from the JSON file on disk and applies them to AppState.
-    private func loadSettings() {
-        guard let appState else { return }
-        let path = Self.settingsFilePath
-        guard FileManager.default.fileExists(atPath: path),
-              let data = FileManager.default.contents(atPath: path) else {
-            return
-        }
-        do {
-            let settings = try JSONDecoder().decode(SettingsData.self, from: data)
-            appState.serverPort = settings.serverPort
-            appState.hostname = settings.hostname
-            appState.certPath = settings.certPath
-            appState.keyPath = settings.keyPath
-            appState.pushNotificationConfig = settings.pushNotificationConfig
-            if !settings.hostname.isEmpty {
-                appState.serverURL = "https://\(settings.hostname):\(settings.serverPort)"
-            }
-        } catch {
-            let boundaryError = RemoteDeployError(wrapping: error)
-            appState.setError(boundaryError)
-            Logger.storage.error("Failed to load settings: \(boundaryError.localizedDescription, privacy: .public)")
+    /// Applies the settings store's current values into AppState's UI projection.
+    /// TKT-055 (Phase 2): the SettingsStore is the single source of truth; this is
+    /// the read side, called at startup and whenever `.settingsDidChange` fires
+    /// (including writes made by the API).
+    private func applySettingsFromStore() {
+        guard let appState, let serviceContainer else { return }
+        let settings = serviceContainer.settingsStore.current()
+        appState.serverPort = settings.serverPort
+        appState.hostname = settings.hostname
+        appState.certPath = settings.certPath
+        appState.keyPath = settings.keyPath
+        appState.pushNotificationConfig = settings.pushNotificationConfig
+        if !settings.hostname.isEmpty {
+            appState.serverURL = "https://\(settings.hostname):\(settings.serverPort)"
         }
     }
 
-    /// Persists current AppState settings to the JSON file on disk.
+    /// Startup alias for the settings read side. Kept as `loadSettings()` so the
+    /// startup sequence reads naturally.
+    private func loadSettings() {
+        applySettingsFromStore()
+    }
+
+    /// Persists current AppState settings by writing them through the settings
+    /// store (the single writer). The store persists to disk and posts
+    /// `.settingsDidChange`. TKT-055 (Phase 2).
     private func saveSettings() {
-        guard let appState else { return }
+        guard let appState, let serviceContainer else { return }
         let settings = SettingsData(
             serverPort: appState.serverPort,
             hostname: appState.hostname,
@@ -352,23 +395,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyPath: appState.keyPath,
             pushNotificationConfig: appState.pushNotificationConfig
         )
-        do {
-            let dir = Self.settingsDirectory
-            try FileManager.default.createDirectory(
-                atPath: dir,
-                withIntermediateDirectories: true
-            )
-            let data = try JSONEncoder().encode(settings)
-            try data.write(to: URL(fileURLWithPath: Self.settingsFilePath))
-            try FileManager.default.setAttributes(
-                [.posixPermissions: 0o600],
-                ofItemAtPath: Self.settingsFilePath
-            )
-        } catch {
-            let boundaryError = RemoteDeployError(wrapping: error)
-            appState.setError(boundaryError)
-            Logger.storage.error("Failed to save settings: \(boundaryError.localizedDescription, privacy: .public)")
-        }
+        serviceContainer.settingsStore.update(settings)
     }
 
     // MARK: - Server Lifecycle
@@ -381,12 +408,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let server = serviceContainer.deployServer
 
-        for project in appState.projects {
-            server.registerProject(project)
-        }
+        server.syncProjects(appState.projects)
         server.setBaseURL(appState.serverURL)
 
-        configureAPIRouter(on: server, appState: appState, buildManager: buildManager, services: serviceContainer)
+        configureAPIRouter(on: server, buildManager: buildManager, services: serviceContainer)
 
         // TKT-027: capture the broadcaster here so the onIPADownload
         // closure can fan out install events without reaching back
@@ -446,40 +471,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Configures the API router on the deploy server by building real adapters
     /// for every injectable seam and handing them to `APIRouterFactory`.
-    private func configureAPIRouter(on server: any DeployServerProtocol, appState: AppState, buildManager: BuildManager, services: ServiceContainer) {
+    private func configureAPIRouter(on server: any DeployServerProtocol, buildManager: BuildManager, services: ServiceContainer) {
         guard let nioServer = server as? NIODeployServer else { return }
         guard let coordinator = services.buildCoordinator else {
             Logger.server.error("configureAPIRouter called before BuildCoordinator was constructed")
             return
         }
 
-        let bridge = AppStateBridge(appState: appState, buildManager: buildManager)
+        // TKT-055 (Phase 2): the API reads the stores directly -- no AppState
+        // snapshot. BuildManager remains the build-status source. Settings writes
+        // go through the SettingsStore, which posts `.settingsDidChange` so
+        // AppState's projection (and the menu bar) refresh.
+        let buildStatusProvider = BuildManagerBuildStatusProvider(buildManager: buildManager)
 
         let deps = APIRouterFactory.Dependencies(
             deviceStore: services.pairedDeviceStore,
             projectStore: services.projectStore,
             installTracker: services.installTracker,
             schemeDetector: XcodebuildSchemeDetector(),
-            statusProvider: AppStateStatusProvider(bridge: bridge, deployServer: nioServer),
+            statusProvider: ServerStatusProvider(
+                settingsStore: services.settingsStore,
+                runtimeStatus: services.runtimeStatus,
+                deployServer: nioServer,
+                buildStatusProvider: buildStatusProvider
+            ),
             buildTrigger: DirectBuildTrigger(projectStore: services.projectStore, coordinator: coordinator),
-            buildStatus: BuildManagerBuildStatusProvider(buildManager: buildManager),
+            buildStatus: buildStatusProvider,
             buildCanceler: CoordinatorBuildCanceler(coordinator: coordinator),
             buildHistory: EmptyBuildHistoryProvider(store: services.buildHistoryStore),
-            settingsProvider: AppStateBridgeSettingsProvider(bridge: bridge),
-            settingsUpdater: DeferredSettingsUpdater(
-                bridge: bridge,
-                applyOnMain: { [weak appState] settings in
-                    DispatchQueue.main.async {
-                        guard let appState else { return }
-                        appState.serverPort = settings.serverPort
-                        appState.hostname = settings.hostname
-                        appState.certPath = settings.certPath
-                        appState.keyPath = settings.keyPath
-                        appState.pushNotificationConfig = settings.pushNotificationConfig
-                        NotificationCenter.default.post(name: .saveSettingsRequested, object: nil)
-                    }
-                }
-            ),
+            settingsProvider: services.settingsStore,
+            settingsUpdater: DeferredSettingsUpdater(settingsStore: services.settingsStore),
             serverName: Host.current().localizedName ?? "Mac"
         )
 

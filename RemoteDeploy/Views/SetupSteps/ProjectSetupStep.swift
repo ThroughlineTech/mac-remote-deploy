@@ -468,17 +468,11 @@ struct ProjectSetupStep: View {
         project.teamID = teamID
 
         do {
+            // TKT-055: write only the store. The .projectsDidChange observer
+            // refreshes appState.projects and defaults the selection.
             try serviceContainer.projectStore.save(project: project)
         } catch {
             Logger.storage.error("Failed to save project: \(error.localizedDescription, privacy: .public)")
-        }
-
-        // Add to appState if not already present
-        if !appState.projects.contains(where: { $0.id == project.id }) {
-            appState.projects.append(project)
-        }
-        if appState.selectedProjectID == nil {
-            appState.selectedProjectID = project.id
         }
     }
 }

@@ -1,36 +1,33 @@
-// Real SettingsUpdating implementation. TKT-009 replaced the original
-// no-op stub with validation + in-memory application + persist-to-disk.
-// Filename is retained (originally "Deferred...") to avoid churning the pbxproj.
+// Real SettingsUpdating implementation. TKT-009 introduced validation +
+// in-memory application + persist-to-disk; TKT-055 (Phase 2) repointed the
+// apply step at the thread-safe SettingsStore (the single settings writer) and
+// dropped the AppStateBridge dependency. Filename is retained (originally
+// "Deferred...") to avoid churning the pbxproj.
 import Foundation
 import RemoteDeployShared
 
 /// Applies settings updates submitted via PUT /api/v1/settings. Validates inputs,
-/// updates the in-memory AppState on the main actor, and triggers a settings save.
+/// then writes them through the SettingsStore, which persists to disk and posts
+/// `.settingsDidChange` so AppState's UI projection refreshes.
 final class DeferredSettingsUpdater: SettingsUpdating, @unchecked Sendable {
 
-    /// Bridge used to read current settings so we can tell what's actually changing.
-    /// Optional so tests that don't exercise settings updates can instantiate a no-op.
-    private let bridge: AppStateBridge?
-
-    /// Main-actor callback that applies validated settings to AppState and persists
-    /// them to disk. Invoked from updateSettings(). Nil means validation-only (tests).
-    private let applyOnMain: (@Sendable (SettingsData) -> Void)?
+    /// The single settings writer. Nil means validation-only (the `noop()`
+    /// factory used by tests that don't exercise the apply path).
+    private let settingsStore: SettingsStore?
 
     /// Minimum valid TCP port for the HTTPS listener.
     private static let minPort = 1024
     /// Maximum valid TCP port.
     private static let maxPort = 65535
 
-    init(bridge: AppStateBridge, applyOnMain: @escaping @Sendable (SettingsData) -> Void) {
-        self.bridge = bridge
-        self.applyOnMain = applyOnMain
+    init(settingsStore: SettingsStore) {
+        self.settingsStore = settingsStore
     }
 
     /// Internal no-op init backing `noop()`. Used by tests that need a
-    /// SettingsUpdating instance but don't care about the side effects.
+    /// SettingsUpdating instance but don't care about persistence.
     private init() {
-        self.bridge = nil
-        self.applyOnMain = nil
+        self.settingsStore = nil
     }
 
     /// Factory for a no-op updater that still performs input validation.
@@ -63,8 +60,8 @@ final class DeferredSettingsUpdater: SettingsUpdating, @unchecked Sendable {
         }
 
         // --- Apply ---
-        // applyOnMain is nil for the test-only noop() factory.
-        applyOnMain?(settings)
+        // settingsStore is nil for the test-only noop() factory.
+        settingsStore?.update(settings)
         return nil
     }
 }

@@ -1,5 +1,5 @@
 // Protocol for providing the current BuildStatusInfo to API consumers.
-// Decouples BuildRouteHandler from AppStateBridge.
+// Decouples BuildRouteHandler from the concrete status source (BuildManagerBuildStatusProvider).
 import Foundation
 import RemoteDeployShared
 

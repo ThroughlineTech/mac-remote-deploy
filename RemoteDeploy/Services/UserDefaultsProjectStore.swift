@@ -40,9 +40,7 @@ final class UserDefaultsProjectStore: ProjectStoring, @unchecked Sendable {
     /// - Returns: An array of every persisted `ProjectConfig`.
     /// - Throws: If the file exists but cannot be decoded.
     public func loadProjects() throws -> [ProjectConfig] {
-        lock.lock()
-        defer { lock.unlock() }
-        return try readProjectsFromDisk()
+        try withLock { try readProjectsFromDisk() }
     }
 
     /// Saves a project configuration. If a project with the same ID already
@@ -51,18 +49,18 @@ final class UserDefaultsProjectStore: ProjectStoring, @unchecked Sendable {
     /// - Parameter project: The `ProjectConfig` to save.
     /// - Throws: If writing the JSON file to disk fails.
     public func save(project: ProjectConfig) throws {
-        lock.lock()
-        defer { lock.unlock() }
+        try withLock {
+            var projects = (try? readProjectsFromDisk()) ?? []
 
-        var projects = (try? readProjectsFromDisk()) ?? []
+            if let index = projects.firstIndex(where: { $0.id == project.id }) {
+                projects[index] = project
+            } else {
+                projects.append(project)
+            }
 
-        if let index = projects.firstIndex(where: { $0.id == project.id }) {
-            projects[index] = project
-        } else {
-            projects.append(project)
+            try writeProjectsToDisk(projects)
         }
-
-        try writeProjectsToDisk(projects)
+        notifyProjectsDidChange()
     }
 
     /// Deletes a project configuration by its unique identifier.
@@ -70,15 +68,15 @@ final class UserDefaultsProjectStore: ProjectStoring, @unchecked Sendable {
     /// - Parameter projectID: The UUID of the project to remove.
     /// - Throws: If the project does not exist or the file cannot be written.
     public func delete(projectID: UUID) throws {
-        lock.lock()
-        defer { lock.unlock() }
-
-        var projects = try readProjectsFromDisk()
-        guard let index = projects.firstIndex(where: { $0.id == projectID }) else {
-            throw ProjectStoreError.projectNotFound(projectID)
+        try withLock {
+            var projects = try readProjectsFromDisk()
+            guard let index = projects.firstIndex(where: { $0.id == projectID }) else {
+                throw ProjectStoreError.projectNotFound(projectID)
+            }
+            projects.remove(at: index)
+            try writeProjectsToDisk(projects)
         }
-        projects.remove(at: index)
-        try writeProjectsToDisk(projects)
+        notifyProjectsDidChange()
     }
 
     /// Looks up a project configuration by its unique identifier.
@@ -86,9 +84,28 @@ final class UserDefaultsProjectStore: ProjectStoring, @unchecked Sendable {
     /// - Parameter id: The UUID of the project to find.
     /// - Returns: The matching `ProjectConfig`, or `nil` if no project with that ID exists.
     public func project(withID id: UUID) -> ProjectConfig? {
+        withLock { try? readProjectsFromDisk().first(where: { $0.id == id }) }
+    }
+
+    // MARK: - Locking + change notification
+
+    /// Runs `body` while holding the file lock and releases it before returning.
+    /// Mutators post `.projectsDidChange` only AFTER this returns -- never inside
+    /// the lock -- so an observer is free to read the store back synchronously.
+    /// `NSLock` is not reentrant, so posting under the lock would deadlock such an
+    /// observer. TKT-055 (Phase 2).
+    private func withLock<T>(_ body: () throws -> T) rethrows -> T {
         lock.lock()
         defer { lock.unlock() }
-        return try? readProjectsFromDisk().first(where: { $0.id == id })
+        return try body()
+    }
+
+    /// Posts `.projectsDidChange` so observers (the menu bar projection and the
+    /// deploy-server slug registry) refresh after any write, regardless of which
+    /// path made it. NotificationCenter posting is thread-safe; the observer is
+    /// responsible for hopping to the main actor. Always called outside `withLock`.
+    private func notifyProjectsDidChange() {
+        NotificationCenter.default.post(name: .projectsDidChange, object: nil)
     }
 
     // MARK: - Private helpers
