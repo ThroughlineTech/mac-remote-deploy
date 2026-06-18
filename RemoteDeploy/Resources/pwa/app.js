@@ -65,12 +65,19 @@ function render() {
 }
 
 function renderConnect() {
+  // Pairing requires HTTPS; the server rejects /api/v1/pair over plain HTTP.
+  const insecure = location.protocol !== 'https:';
   return `
     <div class="connect-screen">
       <h1>RemoteDeploy</h1>
-      <p>Enter your API token to connect.</p>
-      <input type="password" id="token-input" placeholder="Paste your bearer token" autocomplete="off">
-      <button class="btn btn-primary" onclick="doConnect()" style="margin-top:12px">Connect</button>
+      <p>Pair this browser to connect.</p>
+      ${insecure ? `<div class="connect-warning">Pairing requires a secure connection. Open this page over HTTPS (for example <code>https://your-mac:8443/app/</code>), then pair.</div>` : ''}
+      <form class="connect-form" onsubmit="doPair(event)">
+        <input type="text" id="code-input" placeholder="Enter pairing code" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <button class="btn btn-primary" type="submit"${insecure ? ' disabled' : ''}>Pair</button>
+      </form>
+      <div id="connect-error" class="connect-error"></div>
+      <p class="connect-hint">On your Mac: Settings &gt; Devices &gt; Pair Browser to get a code.</p>
     </div>`;
 }
 
@@ -173,13 +180,34 @@ function renderSettings() {
 
 // ── Actions ─────────────────────────────────────────────────────────
 
-async function doConnect() {
-  const token = document.getElementById('token-input').value.trim();
-  if (!token) return;
-  state.token = token;
-  localStorage.setItem('rd_token', token);
-  render();
-  await loadData();
+async function doPair(event) {
+  if (event) event.preventDefault();
+  const input = document.getElementById('code-input');
+  const errEl = document.getElementById('connect-error');
+  if (errEl) errEl.textContent = '';
+  const code = input ? input.value.trim() : '';
+  if (!code) return;
+  try {
+    // The pairing code is the raw token; POST it to claim a paired-device record.
+    const res = await fetch('/api/v1/pair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: code, deviceName: 'Browser' }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      // Surface the server's reason (invalid/expired code, HTTPS required, rate limit).
+      throw new Error(body.message || `Pairing failed (HTTP ${res.status})`);
+    }
+    // Pairing succeeded: the code doubles as the bearer token from now on.
+    state.token = code;
+    localStorage.setItem('rd_token', code);
+    render();
+    await loadData();
+  } catch (e) {
+    if (errEl) errEl.textContent = e.message;
+    else alert(e.message);
+  }
 }
 
 function doDisconnect() {

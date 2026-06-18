@@ -82,6 +82,19 @@ h2 { font-size: 20px; font-weight: 600; padding: 16px 0 8px; color: var(--text2)
 }
 .connect-screen h1 { font-size: 32px; }
 .connect-screen p { color: var(--text2); margin-bottom: 24px; }
+.connect-form { width: 100%; max-width: 320px; }
+.connect-form .btn { margin-top: 12px; }
+.connect-warning {
+  width: 100%; max-width: 320px; margin-bottom: 16px; padding: 12px;
+  border-radius: 10px; background: var(--surface2);
+  color: var(--text2); font-size: 13px; line-height: 1.4; text-align: left;
+}
+.connect-warning code { font-size: 12px; word-break: break-all; }
+.connect-error {
+  width: 100%; max-width: 320px; min-height: 18px; margin-top: 12px;
+  color: var(--red); font-size: 13px;
+}
+.connect-hint { color: var(--text2); font-size: 13px; margin-top: 24px; }
 
 /* Select */
 select {
