@@ -11,33 +11,38 @@ import os
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var serviceContainer: ServiceContainer
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     var body: some View {
+        // TKT-056 (Phase 3): the data tabs read/write through the MenuBarClient.
+        // `appState.selectedSettingsTab` is pure UI navigation (which tab the
+        // menu bar asked to open); `serviceContainer` is still handed to the
+        // Projects tab for ProjectFormView's local scheme detection + path picker.
         TabView(selection: $appState.selectedSettingsTab) {
-            ServerSettingsTab(appState: appState)
-                .environmentObject(serviceContainer)
+            ServerSettingsTab()
+                .environmentObject(menuBarClient)
                 .tabItem {
                     Label("Server", systemImage: "server.rack")
                 }
                 .tag("server")
 
-            ProjectsSettingsTab(appState: appState)
+            ProjectsSettingsTab()
                 .environmentObject(serviceContainer)
+                .environmentObject(menuBarClient)
                 .tabItem {
                     Label("Projects", systemImage: "folder")
                 }
                 .tag("projects")
 
-            PushSettingsTab(appState: appState)
-                .environmentObject(serviceContainer)
+            PushSettingsTab()
+                .environmentObject(menuBarClient)
                 .tabItem {
                     Label("Notifications", systemImage: "bell")
                 }
                 .tag("notifications")
 
             PairedDevicesTab()
-                .environmentObject(serviceContainer)
-                .environmentObject(appState)
+                .environmentObject(menuBarClient)
                 .tabItem {
                     Label("Devices", systemImage: "iphone")
                 }
@@ -59,16 +64,24 @@ struct SettingsView: View {
 /// and launch-at-login preference. Grouped into visual sections with a
 /// server status card at the top. TKT-037.
 struct ServerSettingsTab: View {
-    @ObservedObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     @State private var port: String = "8443"
     @State private var hostname: String = ""
     @State private var certPath: String = ""
     @State private var keyPath: String = ""
-    @State private var isDetectingHostname = false
-    @State private var hostnameDetected = false
     @State private var launchAtLogin = false
+    /// Debounces field edits so per-keystroke typing coalesces into one PUT.
+    @State private var saveTask: Task<Void, Never>?
+
+    /// Whether the HTTPS install server is running, from the status payload.
+    private var isRunning: Bool { menuBarClient.status?.serverRunning ?? false }
+
+    /// The install URL, only meaningful when reachable over Tailscale.
+    private var serverURL: String {
+        guard let status = menuBarClient.status, status.tailscaleConnected, !status.hostname.isEmpty else { return "" }
+        return "https://\(status.hostname):\(status.serverPort)"
+    }
 
     var body: some View {
         ScrollView {
@@ -79,20 +92,20 @@ struct ServerSettingsTab: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(appState.serverRunning ? Color.green : Color.red)
+                            .fill(isRunning ? Color.green : Color.red)
                             .frame(width: 8, height: 8)
-                        Text(appState.serverRunning ? "Server Running" : "Server Stopped")
+                        Text(isRunning ? "Server Running" : "Server Stopped")
                             .font(.headline)
                         Spacer()
-                        if appState.serverRunning {
-                            Text("Port \(appState.serverPort)")
+                        if let status = menuBarClient.status, isRunning {
+                            Text("Port \(status.serverPort)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
 
-                    if !appState.serverURL.isEmpty {
-                        Text(appState.serverURL)
+                    if !serverURL.isEmpty {
+                        Text(serverURL)
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -104,7 +117,7 @@ struct ServerSettingsTab: View {
                         Button("Restart Server") {
                             NotificationCenter.default.post(name: .restartServerRequested, object: nil)
                         }
-                        .disabled(!appState.serverRunning)
+                        .disabled(!isRunning)
                     }
                 }
                 .padding(12)
@@ -125,39 +138,16 @@ struct ServerSettingsTab: View {
                             TextField("", text: $port)
                                 .frame(width: 80)
                                 .textFieldStyle(.roundedBorder)
-                                .onChange(of: port) {
-                                    if let p = Int(port) {
-                                        appState.serverPort = p
-                                        updateServerURL()
-                                        requestSaveSettings()
-                                    }
-                                }
+                                .onChange(of: port) { scheduleSave() }
                         }
 
-                        // Hostname with auto-detect button
+                        // Hostname (auto-detected server-side; editable to override)
                         HStack {
                             Text("Hostname:")
                                 .frame(width: 70, alignment: .trailing)
                             TextField("", text: $hostname)
                                 .textFieldStyle(.roundedBorder)
-                                .onChange(of: hostname) {
-                                    appState.hostname = hostname
-                                    updateServerURL()
-                                    requestSaveSettings()
-                                }
-                            Button {
-                                detectHostname()
-                            } label: {
-                                if isDetectingHostname {
-                                    ProgressView().controlSize(.small)
-                                } else if hostnameDetected {
-                                    Label("Detected", systemImage: "checkmark.circle.fill")
-                                        .foregroundColor(.green)
-                                } else {
-                                    Text("Auto-Detect")
-                                }
-                            }
-                            .disabled(isDetectingHostname)
+                                .onChange(of: hostname) { scheduleSave() }
                         }
                     }
                     .padding(.vertical, 4)
@@ -175,10 +165,9 @@ struct ServerSettingsTab: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .help(certPath)
                             Button("Browse...") {
-                                if let url = openFilePanel(title: "Select Certificate PEM", types: ["pem", "crt"]) {
+                                if let url = openFilePanel(title: "Select Certificate PEM") {
                                     certPath = url.path
-                                    appState.certPath = url.path
-                                    requestSaveSettings()
+                                    scheduleSave()
                                 }
                             }
                         }
@@ -191,10 +180,9 @@ struct ServerSettingsTab: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .help(keyPath)
                             Button("Browse...") {
-                                if let url = openFilePanel(title: "Select Private Key PEM", types: ["pem", "key"]) {
+                                if let url = openFilePanel(title: "Select Private Key PEM") {
                                     keyPath = url.path
-                                    appState.keyPath = url.path
-                                    requestSaveSettings()
+                                    scheduleSave()
                                 }
                             }
                         }
@@ -215,12 +203,15 @@ struct ServerSettingsTab: View {
             .padding()
         }
         .frame(maxHeight: .infinity, alignment: .top)
-        .onAppear {
-            // Load current values from appState
-            port = String(appState.serverPort)
-            hostname = appState.hostname
-            certPath = appState.certPath
-            keyPath = appState.keyPath
+        .task {
+            // Load current values from the server via the client.
+            await menuBarClient.refreshSettings()
+            if let settings = menuBarClient.settings {
+                port = String(settings.serverPort)
+                hostname = settings.hostname
+                certPath = settings.certPath
+                keyPath = settings.keyPath
+            }
             launchAtLogin = isLaunchAtLoginEnabled()
         }
     }
@@ -235,45 +226,27 @@ struct ServerSettingsTab: View {
         keyPath.isEmpty ? "No key selected" : URL(fileURLWithPath: keyPath).lastPathComponent
     }
 
-    /// Auto-detects the Tailscale hostname using the provider service.
-    /// Shows a brief checkmark confirmation on success.
-    private func detectHostname() {
-        isDetectingHostname = true
-        hostnameDetected = false
-        Task {
-            do {
-                let detected = try await serviceContainer.tailscaleProvider.detectHostname()
-                hostname = detected
-                appState.hostname = detected
-                updateServerURL()
-                requestSaveSettings()
-                hostnameDetected = true
-                // Reset the checkmark after 3 seconds
-                Task {
-                    try? await Task.sleep(for: .seconds(3))
-                    hostnameDetected = false
-                }
-            } catch {
-                Logger.tailscale.error("Hostname detection failed: \(error.localizedDescription, privacy: .public)")
+    /// Persists the server fields through the API client after a short debounce
+    /// so rapid typing (and a cert + key pick in quick succession) coalesce into
+    /// one write. The server's settings write brings HTTPS up once certs exist.
+    private func scheduleSave() {
+        saveTask?.cancel()
+        let portValue = Int(port)
+        let host = hostname, cert = certPath, key = keyPath
+        saveTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await menuBarClient.applySettings { settings in
+                if let portValue { settings.serverPort = portValue }
+                settings.hostname = host
+                settings.certPath = cert
+                settings.keyPath = key
             }
-            isDetectingHostname = false
         }
-    }
-
-    /// Updates the server URL from hostname and port.
-    private func updateServerURL() {
-        if !appState.hostname.isEmpty {
-            appState.serverURL = "https://\(appState.hostname):\(appState.serverPort)"
-        }
-    }
-
-    /// Posts a notification to request settings persistence.
-    private func requestSaveSettings() {
-        NotificationCenter.default.post(name: .saveSettingsRequested, object: nil)
     }
 
     /// Presents an NSOpenPanel configured for selecting a single file.
-    private func openFilePanel(title: String, types: [String]) -> URL? {
+    private func openFilePanel(title: String) -> URL? {
         let panel = NSOpenPanel()
         panel.title = title
         panel.allowedContentTypes = []
@@ -312,8 +285,9 @@ struct ServerSettingsTab: View {
 
 /// Lists configured projects with add, edit, and delete controls.
 struct ProjectsSettingsTab: View {
-    @ObservedObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    // serviceContainer is still in the environment for ProjectFormView's local
+    // scheme detection + native path picker (no API endpoint for those).
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     /// Tracks the project currently being edited in the sheet.
     @State private var editingProject: ProjectConfig = ProjectConfig(name: "", projectPath: "")
@@ -324,7 +298,7 @@ struct ProjectsSettingsTab: View {
         VStack {
             // Project list with selection highlighting
             List {
-                ForEach(appState.projects) { project in
+                ForEach(menuBarClient.projects) { project in
                     HStack {
                         VStack(alignment: .leading) {
                             Text(project.name)
@@ -343,12 +317,9 @@ struct ProjectsSettingsTab: View {
                     }
                 }
                 .onDelete { indexSet in
-                    // TKT-055: write only the store; the .projectsDidChange
-                    // observer refreshes appState.projects (the projection).
-                    for index in indexSet {
-                        let project = appState.projects[index]
-                        try? serviceContainer.projectStore.delete(projectID: project.id)
-                    }
+                    // TKT-056 (Phase 3): delete via the API client.
+                    let toDelete = indexSet.map { menuBarClient.projects[$0] }
+                    Task { for project in toDelete { await menuBarClient.deleteProject(project.id) } }
                 }
             }
 
@@ -369,17 +340,22 @@ struct ProjectsSettingsTab: View {
             ProjectFormView(
                 project: $editingProject,
                 onSave: { savedProject in
-                    // TKT-055: the store is the single source of truth. Persist;
-                    // the .projectsDidChange observer refreshes the projection
-                    // and re-syncs the server's slug registry.
-                    try? serviceContainer.projectStore.save(project: savedProject)
+                    // TKT-056 (Phase 3): create vs. update through the API client.
+                    let isExisting = menuBarClient.projects.contains { $0.id == savedProject.id }
+                    Task {
+                        if isExisting {
+                            await menuBarClient.updateProject(savedProject)
+                        } else {
+                            await menuBarClient.createProject(savedProject)
+                        }
+                    }
                     showingProjectForm = false
                 },
                 onCancel: {
                     showingProjectForm = false
                 },
                 onDelete: { deletedProject in
-                    try? serviceContainer.projectStore.delete(projectID: deletedProject.id)
+                    Task { await menuBarClient.deleteProject(deletedProject.id) }
                     showingProjectForm = false
                 }
             )
@@ -392,14 +368,15 @@ struct ProjectsSettingsTab: View {
 /// Per-provider push notification configuration with enable toggles,
 /// credential fields, test buttons, and help popovers.
 struct PushSettingsTab: View {
-    @ObservedObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     @State private var config = PushNotificationConfig()
     /// Error message from a failed test notification.
     @State private var testError: String?
     /// Whether a test notification is in progress.
     @State private var isSendingTest = false
+    /// Debounces credential typing into one settings write.
+    @State private var saveTask: Task<Void, Never>?
 
     var body: some View {
         ScrollView {
@@ -456,8 +433,11 @@ struct PushSettingsTab: View {
             }
             .padding()
         }
-        .onAppear {
-            config = appState.pushNotificationConfig
+        .task {
+            await menuBarClient.refreshSettings()
+            if let settings = menuBarClient.settings {
+                config = settings.pushNotificationConfig
+            }
         }
         .onChange(of: config.prowlEnabled) { syncConfig() }
         .onChange(of: config.prowlAPIKey) { syncConfig() }
@@ -472,11 +452,17 @@ struct PushSettingsTab: View {
         .onChange(of: config.notifyOnBuildFailure) { syncConfig() }
     }
 
-    /// Syncs config to appState, reconfigures push notifiers, and requests save.
+    /// Persists the push config through the API client after a short debounce.
+    /// The server's settings write reconfigures its push notifiers (AppDelegate
+    /// observes `.settingsDidChange`). TKT-056 (Phase 3).
     private func syncConfig() {
-        appState.pushNotificationConfig = config
-        serviceContainer.configurePushNotifiers(from: config)
-        NotificationCenter.default.post(name: .saveSettingsRequested, object: nil)
+        saveTask?.cancel()
+        let snapshot = config
+        saveTask = Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            await menuBarClient.applySettings { $0.pushNotificationConfig = snapshot }
+        }
     }
 
     /// Sends a test notification for the given provider.

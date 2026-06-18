@@ -1,48 +1,58 @@
-// Build controls section of the menu bar popover: project picker, build
-// configuration picker, Build & Deploy button, last build/install info,
-// and View Build Log link. Extracted from MenuBarView in TKT-012.
+// Build controls section of the menu bar popover: build configuration picker,
+// Build & Deploy / Cancel button, last build/install info, and View Build Log
+// link. Extracted from MenuBarView in TKT-012.
+//
+// TKT-056 (Phase 3): trigger/cancel and all build state flow through the
+// MenuBarClient (the menu bar's own API client) -- the same endpoints the web
+// and iOS clients use -- instead of BuildManager/BuildCoordinator in process.
 import SwiftUI
 import RemoteDeployShared
 
 struct BuildControlsSection: View {
-    @EnvironmentObject var appState: AppState
-    @EnvironmentObject var serviceContainer: ServiceContainer
-    @EnvironmentObject var buildManager: BuildManager
+    @EnvironmentObject var menuBarClient: MenuBarClient
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Picker("Configuration:", selection: $appState.buildConfiguration) {
+            Picker("Configuration:", selection: $menuBarClient.buildConfiguration) {
                 Text("Debug").tag("Debug")
                 Text("Release").tag("Release")
             }
             .pickerStyle(.segmented)
             .font(.subheadline)
 
-            Button {
-                performBuild()
-            } label: {
-                HStack {
-                    if buildManager.isBuilding {
+            if menuBarClient.isBuilding {
+                Button(role: .destructive) {
+                    cancelBuild()
+                } label: {
+                    HStack {
                         ProgressView()
                             .controlSize(.small)
                             .padding(.trailing, 2)
-                        Text("Building...")
-                    } else {
+                        Text("Cancel Build")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            } else {
+                Button {
+                    performBuild()
+                } label: {
+                    HStack {
                         Image(systemName: "hammer.fill")
                         Text("Build & Deploy")
                     }
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
+                .buttonStyle(.borderedProminent)
+                .disabled(menuBarClient.selectedProject == nil)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(appState.selectedProject == nil || buildManager.isBuilding)
 
-            if let result = buildManager.lastBuildResult {
+            if let result = menuBarClient.lastBuildResult {
                 lastBuildInfoView(result)
             }
 
-            if let install = appState.lastInstall {
+            if let install = menuBarClient.lastInstall {
                 lastInstallInfoView(install)
             }
 
@@ -62,32 +72,24 @@ struct BuildControlsSection: View {
             }
             .buttonStyle(.plain)
         }
-        // TKT-025: Keep the project picker's selection in sync with the
-        // current projects list. If `selectedProjectID` holds a UUID that
-        // no longer matches any project (project deleted, state loaded
-        // out of sync, view re-rendered during a startup settle window),
-        // normalize it to the first available project. Without this,
-        // SwiftUI logs:
-        //   Picker: the selection "Optional(...)" is invalid and does
-        //   not have an associated tag, this will give undefined results.
-        .onChange(of: appState.projects) { _, newProjects in
-            if let id = appState.selectedProjectID,
-               !newProjects.contains(where: { $0.id == id }) {
-                appState.selectedProjectID = newProjects.first?.id
-            } else if appState.selectedProjectID == nil, let first = newProjects.first {
-                appState.selectedProjectID = first.id
-            }
+    }
+
+    /// Kicks off a build for the currently selected project via the API -- the
+    /// same path the web and iOS clients use.
+    func performBuild() {
+        guard let project = menuBarClient.selectedProject else { return }
+        Task {
+            await menuBarClient.triggerBuild(
+                projectID: project.id,
+                configuration: menuBarClient.buildConfiguration
+            )
         }
     }
 
-    /// Kicks off a build for the currently selected project via the
-    /// BuildCoordinator -- the same view-independent path the API uses. TKT-054.
-    func performBuild() {
-        guard let project = appState.selectedProject else { return }
-        serviceContainer.buildCoordinator?.triggerBuild(
-            projectID: project.id,
-            configuration: appState.buildConfiguration
-        )
+    /// Cancels the in-progress build via the API.
+    func cancelBuild() {
+        guard let project = menuBarClient.selectedProject else { return }
+        Task { await menuBarClient.cancelBuild(projectID: project.id) }
     }
 
     private func lastBuildInfoView(_ result: BuildResult) -> some View {

@@ -5,8 +5,12 @@ import Foundation
 
 /// Scrollable, color-coded build log output. Displayed as a sheet or standalone window.
 /// Auto-scrolls to the bottom as new output arrives. Provides "Clear" and "Copy" buttons.
+///
+/// TKT-056 (Phase 3): the log streams live over the WebSocket via the
+/// MenuBarClient, the same channel the web and iOS clients consume -- instead of
+/// reading BuildManager's in-process accumulated log.
 struct BuildLogView: View {
-    @EnvironmentObject var buildManager: BuildManager
+    @EnvironmentObject var menuBarClient: MenuBarClient
 
     /// Anchor ID for programmatic scrolling to the bottom of the log.
     private let bottomAnchorID = "log-bottom"
@@ -37,19 +41,19 @@ struct BuildLogView: View {
             // Copy entire log to clipboard
             Button {
                 NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(buildManager.buildLog, forType: .string)
+                NSPasteboard.general.setString(logLines.joined(separator: "\n"), forType: .string)
             } label: {
                 Label("Copy", systemImage: "doc.on.doc")
             }
-            .disabled(buildManager.buildLog.isEmpty)
+            .disabled(logLines.isEmpty)
 
             // Clear the log contents
             Button {
-                buildManager.clearLog()
+                menuBarClient.webSocket.clearLog()
             } label: {
                 Label("Clear", systemImage: "trash")
             }
-            .disabled(buildManager.buildLog.isEmpty)
+            .disabled(logLines.isEmpty)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -63,7 +67,7 @@ struct BuildLogView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    // Split the log into lines and render each with color coding
+                    // Render each streamed log line with color coding
                     ForEach(Array(logLines.enumerated()), id: \.offset) { _, line in
                         Text(line)
                             .font(.system(.caption, design: .monospaced))
@@ -82,8 +86,8 @@ struct BuildLogView: View {
                 .padding(.vertical, 8)
             }
             .background(Color(nsColor: .textBackgroundColor))
-            // Auto-scroll to bottom whenever the log text changes
-            .onChange(of: buildManager.buildLog) {
+            // Auto-scroll to bottom whenever a new line arrives
+            .onChange(of: logLines.count) {
                 withAnimation {
                     proxy.scrollTo(bottomAnchorID, anchor: .bottom)
                 }
@@ -96,9 +100,9 @@ struct BuildLogView: View {
 
     // MARK: - Helpers
 
-    /// Splits the full log string into individual lines.
+    /// The live log lines streamed over the WebSocket.
     private var logLines: [String] {
-        buildManager.buildLog.components(separatedBy: .newlines)
+        menuBarClient.buildLogLines
     }
 
     /// Returns a color based on the content of a log line.

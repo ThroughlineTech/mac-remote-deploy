@@ -19,6 +19,7 @@ final class AppDelegateStartupTests: XCTestCase {
     private var appState: AppState!
     private var serviceContainer: ServiceContainer!
     private var buildManager: BuildManager!
+    private var menuBarClient: MenuBarClient!
     private var startupCallCount: Int!
 
     override func setUp() async throws {
@@ -27,6 +28,7 @@ final class AppDelegateStartupTests: XCTestCase {
         appState = AppState()
         serviceContainer = ServiceContainer()
         buildManager = BuildManager()
+        menuBarClient = MenuBarClient()
         startupCallCount = 0
 
         // Test seam: increments on each performStartup invocation. The real
@@ -41,6 +43,7 @@ final class AppDelegateStartupTests: XCTestCase {
         appState = nil
         serviceContainer = nil
         buildManager = nil
+        menuBarClient = nil
         startupCallCount = nil
         try await super.tearDown()
     }
@@ -65,7 +68,8 @@ final class AppDelegateStartupTests: XCTestCase {
         delegate.register(
             appState: appState,
             serviceContainer: serviceContainer,
-            buildManager: buildManager
+            buildManager: buildManager,
+            menuBarClient: menuBarClient
         )
 
         // Then the OS fires applicationDidFinishLaunching. Its dispatch path
@@ -95,7 +99,8 @@ final class AppDelegateStartupTests: XCTestCase {
         delegate.register(
             appState: appState,
             serviceContainer: serviceContainer,
-            buildManager: buildManager
+            buildManager: buildManager,
+            menuBarClient: menuBarClient
         )
 
         await drainMainQueue()
@@ -123,12 +128,14 @@ final class AppDelegateStartupTests: XCTestCase {
         delegate.register(
             appState: appState,
             serviceContainer: serviceContainer,
-            buildManager: buildManager
+            buildManager: buildManager,
+            menuBarClient: menuBarClient
         )
         delegate.register(
             appState: appState,
             serviceContainer: serviceContainer,
-            buildManager: buildManager
+            buildManager: buildManager,
+            menuBarClient: menuBarClient
         )
 
         await drainMainQueue()
