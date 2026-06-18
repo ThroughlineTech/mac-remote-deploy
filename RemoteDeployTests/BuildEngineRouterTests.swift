@@ -2,7 +2,7 @@
 // projects are routed to the correct engine. TKT-048.
 import XCTest
 import os
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class BuildEngineRouterTests: XCTestCase {
 

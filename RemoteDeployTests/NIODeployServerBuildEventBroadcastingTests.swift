@@ -2,7 +2,7 @@
 // Drives the extension methods against an unstarted NIODeployServer
 // whose WebSocketManager is wired to an EmbeddedChannel subscriber.
 // TKT-027.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import NIO

@@ -2,7 +2,7 @@
 // pairing, cert provisioning, and IPA import over the API after the process
 // split: POST /api/v1/pair/pending, POST/GET /api/v1/tailscale/cert, and
 // POST /api/v1/projects/:id/ipa.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import NIOHTTP1

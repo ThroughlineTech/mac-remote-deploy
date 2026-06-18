@@ -11,7 +11,7 @@
 // WebSocketUpgradeTests for context.
 import XCTest
 import RemoteDeployShared
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class BuildManagerWebSocketIntegrationTests: XCTestCase {
 

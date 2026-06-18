@@ -1,5 +1,5 @@
 // Tests for StatusRouteHandler — thin wrapper around StatusProviding.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

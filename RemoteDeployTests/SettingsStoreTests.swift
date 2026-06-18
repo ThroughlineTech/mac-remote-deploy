@@ -1,7 +1,7 @@
 // Tests for SettingsStore, the thread-safe single source of truth for settings.
 // TKT-055 (Phase 2).
 import XCTest
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import RemoteDeployShared
 
 final class SettingsStoreTests: XCTestCase {

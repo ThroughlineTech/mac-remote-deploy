@@ -10,7 +10,7 @@
 //
 // Each test takes 1-3 seconds because xcodebuild has to load and validate the
 // project before it can produce a destination/scheme error.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import RemoteDeployShared
 import XCTest
 import Foundation

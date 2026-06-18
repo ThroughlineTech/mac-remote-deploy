@@ -1,5 +1,5 @@
 import XCTest
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class ProjectConfigTests: XCTestCase {
 

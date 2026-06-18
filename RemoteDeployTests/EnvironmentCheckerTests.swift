@@ -2,7 +2,7 @@
 // host environment, so results depend on what's installed. The tests verify
 // the detection logic itself rather than asserting specific tool presence. TKT-048.
 import XCTest
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class EnvironmentCheckerTests: XCTestCase {
 

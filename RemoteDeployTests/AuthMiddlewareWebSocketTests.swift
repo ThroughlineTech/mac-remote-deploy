@@ -5,7 +5,7 @@
 // it. TKT-058.
 import XCTest
 import RemoteDeployShared
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class AuthMiddlewareWebSocketTests: XCTestCase {
 

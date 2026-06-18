@@ -1,5 +1,5 @@
 // Tests for InstallsRouteHandler — list endpoint with limit query parameter handling.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

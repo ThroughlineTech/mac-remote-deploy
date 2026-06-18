@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  com.remotedeploy.app.plist — LaunchAgent that keeps RemoteDeploy running.
+  com.remotedeploy.app.plist - LaunchAgent for the RemoteDeploy MENU BAR CLIENT.
+
+  TKT-060 (Phase 6): after the process split, RemoteDeploy.app is the pure menu
+  bar client; the backend is the separate com.remotedeploy.server agent. This
+  agent just launches the menu bar UI at login. It binds no ports. Quitting the
+  menu bar (Cmd-Q) is respected and does NOT stop the server.
 
   Installed to ~/Library/LaunchAgents/ by ./deploy.sh. Do not edit the copy in
   the repo expecting it to take effect; re-run ./deploy.sh to reinstall.
 
   Behavior:
-    - RunAtLoad: starts RemoteDeploy at login / when the agent is bootstrapped.
+    - RunAtLoad: starts the menu bar at login / when the agent is bootstrapped.
     - KeepAlive (SuccessfulExit=false): restarts ONLY after a crash. A clean
-      quit (Cmd-Q, or the in-app self-deploy quitting itself) is respected, so
-      this does not fight RemoteDeploy's own self-deploy relaunch.
+      quit is respected.
 
   Points at the installed bundle in /Applications, so it has no dependency on
   the source repo or any Xcode/DerivedData folder.

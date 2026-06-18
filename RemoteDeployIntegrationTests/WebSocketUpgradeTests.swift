@@ -11,7 +11,7 @@
 // a helper to keep the cleanup commit self-contained.
 import XCTest
 import RemoteDeployShared
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class WebSocketUpgradeTests: XCTestCase {
 

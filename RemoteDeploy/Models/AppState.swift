@@ -51,11 +51,9 @@ final class AppState: ObservableObject {
 }
 
 // MARK: - BuildConfigProviding
-
-/// AppState publishes every field a build needs (settings projection + runtime
-/// serverRunning + derived serverURL), so it is the live server/TLS config source
-/// the BuildCoordinator reads on the main actor. TKT-054 (Phase 1). TKT-055
-/// (Phase 2): the settings fields are now a projection of the SettingsStore (the
-/// single writer), kept in sync via `.settingsDidChange`, so this is no longer a
-/// divergent cache -- serverRunning/serverURL remain inherently runtime values.
-extension AppState: BuildConfigProviding {}
+//
+// TKT-060 (Phase 6): AppState is compiled into BOTH the menu bar (UI state) and
+// the headless server (the BuildCoordinator's config holder). `BuildConfigProviding`
+// is a server-only protocol, so the conformance lives in the server target
+// (RemoteDeployServer/AppState+BuildConfig.swift) -- keeping the menu bar copy of
+// AppState free of any server dependency.

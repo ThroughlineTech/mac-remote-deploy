@@ -1,7 +1,7 @@
 // Tests for APIRouter — focuses on routing, auth gating, CORS preflight,
 // method-not-allowed paths, and malformed UUID handling. Per-handler behavior
 // is covered in the dedicated *RouteHandlerTests files.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import NIOHTTP1

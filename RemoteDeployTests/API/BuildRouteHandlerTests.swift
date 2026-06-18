@@ -1,5 +1,5 @@
 // Tests for BuildRouteHandler — trigger, status, cancel, history endpoints.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

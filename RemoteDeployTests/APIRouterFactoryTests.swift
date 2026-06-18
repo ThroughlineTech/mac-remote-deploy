@@ -4,7 +4,7 @@
 // dispatches a request through the router, and asserts both the response and that the
 // expected mock was invoked. These exist as a safety net for TKT-004's refactor and as
 // templates that TKT-003 will expand into comprehensive coverage.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import NIOHTTP1

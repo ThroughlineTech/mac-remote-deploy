@@ -1,5 +1,5 @@
 // Tests for ProjectsRouteHandler — full CRUD coverage with happy paths and errors.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

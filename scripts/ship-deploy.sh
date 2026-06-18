@@ -67,6 +67,7 @@ fi
 # Patterns are extended regex, anchored to the start of the path.
 host_patterns=(
     '^RemoteDeploy/'
+    '^RemoteDeployServer/'
     '^Packages/'
     '^RemoteDeploy\.xcodeproj/'
     '^project\.yml$'

@@ -17,18 +17,37 @@ packages:
     from: "2.26.0"
 
 targets:
+  # TKT-060 (Phase 6): the menu bar CLIENT. It starts no server -- it talks to the
+  # headless RemoteDeployServer over loopback. Sources are an explicit, narrow set:
+  # the @main app + delegate, AppState + model shims, all Views, the loopback
+  # client, and the few AppKit-bound local helpers (notifications, QR, push
+  # notifier clients). It deliberately excludes API/**, Managers/**, the server-side
+  # Services/**, and the server Protocols/**, and drops the NIO package deps.
   RemoteDeploy:
     type: application
     platform: macOS
     deploymentTarget:
       macOS: "14.0"
     sources:
-      - path: RemoteDeploy
-        excludes:
-          - "Resources/pwa/**"
-      - path: RemoteDeploy/Resources/pwa
-        buildPhase: resources
-        type: folder
+      - path: RemoteDeploy/RemoteDeployApp.swift
+      - path: RemoteDeploy/MenuBarAppDelegate.swift
+      - path: RemoteDeploy/Logging.swift
+      - path: RemoteDeploy/Models
+      - path: RemoteDeploy/Views
+      - path: RemoteDeploy/Services/MenuBarClient.swift
+      - path: RemoteDeploy/Services/NotificationManager.swift
+      - path: RemoteDeploy/Services/QRCodeGenerator.swift
+      - path: RemoteDeploy/Services/ProwlNotifier.swift
+      - path: RemoteDeploy/Services/PushoverNotifier.swift
+      - path: RemoteDeploy/Services/NtfyNotifier.swift
+      - path: RemoteDeploy/Services/LoopbackTokenStore.swift
+      # Dual-compiled local introspection (dependency-free): the setup wizard's
+      # ProjectSetupStep shows Expo env warnings. Runs in the user session.
+      - path: RemoteDeploy/Services/EnvironmentChecker.swift
+      - path: RemoteDeploy/Protocols/PushNotifying.swift
+      - path: RemoteDeploy/Assets.xcassets
+      - path: RemoteDeploy/Info.plist
+      - path: RemoteDeploy/RemoteDeploy.entitlements
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.remotedeploy.app
@@ -42,6 +61,49 @@ targets:
         PRODUCT_NAME: RemoteDeploy
         COMBINE_HIDPI_IMAGES: true
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path/../Frameworks"
+    dependencies:
+      - package: RemoteDeployShared
+        product: RemoteDeployShared
+
+  # TKT-060 (Phase 6): the headless backend. Owns the NIO server, build coordinator,
+  # stores, providers, Tailscale, Bonjour, cert provisioning, and IPA import. Runs
+  # as a per-user LaunchAgent (LSUIElement, no Dock/menu bar). The unit + integration
+  # test targets are hosted on this target (it holds the code they exercise).
+  RemoteDeployServer:
+    type: application
+    platform: macOS
+    deploymentTarget:
+      macOS: "14.0"
+    sources:
+      - path: RemoteDeployServer
+      - path: RemoteDeploy/API
+      - path: RemoteDeploy/Managers
+      - path: RemoteDeploy/Protocols
+      - path: RemoteDeploy/Models
+      - path: RemoteDeploy/Logging.swift
+      - path: RemoteDeploy/Services
+        excludes:
+          - "MenuBarClient.swift"
+      # Dual-compiled: pure validation logic so RemoteDeployTests (hosted here) can
+      # cover ProjectSetupValidators without pulling in the menu bar's Views.
+      - path: RemoteDeploy/Views/SetupSteps/ProjectSetupValidators.swift
+      # The server serves the PWA static files.
+      - path: RemoteDeploy/Resources/pwa
+        buildPhase: resources
+        type: folder
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.remotedeploy.server
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        SWIFT_VERSION: "5.10"
+        INFOPLIST_FILE: RemoteDeployServer/Info.plist
+        CODE_SIGN_ENTITLEMENTS: RemoteDeployServer/RemoteDeployServer.entitlements
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "Apple Development"
+        DEVELOPMENT_TEAM: RDJQ523WP4
+        PRODUCT_NAME: RemoteDeployServer
         LD_RUNPATH_SEARCH_PATHS:
           - "@executable_path/../Frameworks"
     dependencies:
@@ -97,6 +159,9 @@ targets:
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         GENERATE_INFOPLIST_FILE: "YES"
 
+  # TKT-060 (Phase 6): hosted on RemoteDeployServer -- the server target holds the
+  # code these tests exercise (API, stores, engines, coordinator, NIO). Tests
+  # `@testable import RemoteDeployServer`.
   RemoteDeployTests:
     type: bundle.unit-test
     platform: macOS
@@ -105,7 +170,7 @@ targets:
         excludes:
           - "Fixtures/**"
     dependencies:
-      - target: RemoteDeploy
+      - target: RemoteDeployServer
     settings:
       base:
         SWIFT_VERSION: "5.10"
@@ -118,7 +183,7 @@ targets:
     sources:
       - RemoteDeployIntegrationTests
     dependencies:
-      - target: RemoteDeploy
+      - target: RemoteDeployServer
     settings:
       base:
         SWIFT_VERSION: "5.10"
@@ -135,6 +200,30 @@ schemes:
     build:
       targets:
         RemoteDeploy: all
+    run:
+      config: Debug
+    # TKT-060 (Phase 6): the test targets are hosted on RemoteDeployServer, but the
+    # test action is kept here so `xcodebuild test -scheme RemoteDeploy` (used by the
+    # docs + build-release.sh) still runs the full suite; it builds the server as the
+    # test host.
+    test:
+      config: Debug
+      targets:
+        - RemoteDeployTests
+        - RemoteDeployIntegrationTests
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+
+  # TKT-060 (Phase 6): scheme for the headless backend product (build + ship), and
+  # an equivalent test action against the same suite.
+  RemoteDeployServer:
+    build:
+      targets:
+        RemoteDeployServer: all
     run:
       config: Debug
     test:

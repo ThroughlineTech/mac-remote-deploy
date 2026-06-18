@@ -2,7 +2,7 @@
 // projects trigger the zip path and iOS projects still use the IPA export path.
 // TKT-051.
 import XCTest
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class XcodeBuildEngineMacOSTests: XCTestCase {
 

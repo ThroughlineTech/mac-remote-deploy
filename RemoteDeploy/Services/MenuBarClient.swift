@@ -18,8 +18,10 @@ final class MenuBarClient: ObservableObject {
 
     /// Name of the menu bar's own paired-device record (its loopback token).
     /// Excluded from the Devices list so the user can't revoke it out from
-    /// under the running app. AppDelegate mints the record under this name.
-    static let localDeviceName = "Menu bar (local)"
+    /// under the running app. The headless server mints the record under this
+    /// name; the canonical string lives in LoopbackTokenStore so both processes
+    /// agree without the menu bar depending on server-side code. TKT-060.
+    static let localDeviceName = LoopbackTokenStore.deviceName
 
     /// Reachability of the loopback server, driven by the status poll.
     enum ConnectionState: Equatable {

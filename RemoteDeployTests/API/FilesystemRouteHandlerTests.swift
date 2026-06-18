@@ -1,6 +1,6 @@
 // Tests for FilesystemRouteHandler — directory browsing with path containment
 // guards and scheme detection delegation.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

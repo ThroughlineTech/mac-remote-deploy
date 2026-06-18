@@ -4,7 +4,7 @@
 
 import XCTest
 import RemoteDeployShared
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class HTTPServerIntegrationTests: XCTestCase {
 

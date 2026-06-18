@@ -1,4 +1,4 @@
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import Foundation
 
 /// Records process invocations for verifying ExpoBuildEngine phase sequencing.

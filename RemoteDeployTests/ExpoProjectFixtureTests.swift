@@ -1,7 +1,7 @@
 // Tests that use the ExpoTestProject fixture to verify Expo project detection
 // and validation without a real npm install. TKT-048.
 import XCTest
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 
 final class ExpoProjectFixtureTests: XCTestCase {
 

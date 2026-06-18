@@ -60,6 +60,93 @@ headless/background operation.
 
 ## Stage C - the two-target split
 
+> ### IMPLEMENTATION STATUS (2026-06-18) - STAGE C COMPLETE + GATE GREEN
+>
+> Stage C is implemented AND the C.6 gate passes (verified once
+> `/Volumes/Mac Storage` was remounted):
+> - `xcodebuild build -scheme RemoteDeployServer` -> BUILD SUCCEEDED.
+> - `xcodebuild build -scheme RemoteDeploy` (menu bar) -> BUILD SUCCEEDED.
+> - `xcodebuild test -scheme RemoteDeployServer` -> 422 unit + 21 integration
+>   tests, 0 failures (incl. new ServerLifecycleTests; Phase6EndpointsTests now
+>   hosted on RemoteDeployServer).
+> Build-fallout fix applied on resume: `EnvironmentChecker.swift` is now
+> dual-compiled into the menu bar target (ProjectSetupStep shows Expo env
+> warnings; it is a dependency-free local introspection enum).
+> Committed on branch `tkt-060-stage-c` (Stage C = commit c134e78).
+>
+> **Stage D (packaging) is also DONE** (commit on the same branch): new
+> `LaunchAgent/com.remotedeploy.server.plist` (headless backend) +
+> `com.remotedeploy.app.plist` repurposed as the menu bar client agent;
+> `build-release.sh` builds both products (`--product all|server|menubar`);
+> `deploy.sh` installs both apps + both agents (server first); `ship-deploy.sh`
+> allowlist includes `^RemoteDeployServer/`. Validated with `bash -n` + `plutil
+> -lint` + `ship-deploy --dry-run`; the full notarized release was NOT run here
+> (outward-facing + quota - it runs at deploy time).
+>
+> **Only Stage E remains - the hardware ship gate, operator-run** (this branch is
+> not merged to main yet; merge after Stage E passes):
+> 1. `./deploy.sh` (fast) or `./deploy.sh --release` to install both products.
+> 2. Confirm both agents are up:
+>    `launchctl print gui/$(id -u)/com.remotedeploy.server` and
+>    `.../com.remotedeploy.app`; server log `/tmp/remotedeploy.server.log`.
+> 3. Quit the menu bar (Cmd-Q). Confirm the web PWA / iOS companion can still
+>    list projects and run a build (server keeps serving).
+> 4. Relaunch the menu bar; confirm it reconnects (reads the loopback token) and
+>    shows live state. Re-run the Phase 5 flows (create project / edit settings /
+>    pair) to confirm no regression across the split.
+>
+> **What was implemented (new/changed/deleted files)**
+> - NEW server target dir `RemoteDeployServer/`: `main.swift` (top-level
+>   `MainActor.assumeIsolated { NSApplication + ServerLifecycle; app.run() }`,
+>   `.accessory` policy), `ServerLifecycle.swift` (the moved AppDelegate startup),
+>   `ServiceContainer.swift` (moved verbatim out of RemoteDeployApp.swift),
+>   `ServerNotifications.swift` (`.projectsDidChange` + `.settingsDidChange`),
+>   `AppState+BuildConfig.swift` (server-only `BuildConfigProviding` conformance),
+>   `Info.plist` (LSUIElement, `com.remotedeploy.server`), entitlements (network
+>   server/client + user-selected files).
+> - NEW `RemoteDeploy/Services/LoopbackTokenStore.swift` (dual-compiled): canonical
+>   device name + atomic 0600 read/write of
+>   `~/Library/Application Support/RemoteDeploy/loopback_token`.
+> - NEW `RemoteDeploy/MenuBarAppDelegate.swift`: requests notification permission,
+>   reads/applies the loopback token (re-applies on rotation), and MIRRORS
+>   `MenuBarClient.status`/`projects` into `AppState` on a 1.5s diff-guarded loop
+>   (one-time settings fetch for push config; best-effort first-run setup open).
+> - REWRITTEN `RemoteDeploy/RemoteDeployApp.swift`: slim `@main`; only `AppState` +
+>   `MenuBarClient`; `@NSApplicationDelegateAdaptor(MenuBarAppDelegate.self)`; owns
+>   only `.openSetupAssistant`.
+> - DELETED `RemoteDeploy/AppDelegate.swift` (logic split into ServerLifecycle +
+>   MenuBarAppDelegate). DELETED `RemoteDeployTests/AppDelegateStartupTests.swift`,
+>   replaced by `RemoteDeployTests/ServerLifecycleTests.swift` (run-once guard).
+> - EDITED views to drop `ServiceContainer`: `MenuBarView` (popover refresh now
+>   `menuBarClient.refreshNow()`), `SettingsView` (Restart button re-applies
+>   settings via the client; dropped the serviceContainer pass to Projects tab),
+>   `UtilitiesSection` (uses `NotificationManager.shared`). `AppState.swift` lost
+>   its `BuildConfigProviding` conformance (moved server-side).
+> - `project.yml`: narrowed `RemoteDeploy` (client; explicit source list; dropped
+>   NIO deps), added `RemoteDeployServer` target + scheme, repointed both test
+>   targets' host to `RemoteDeployServer`. 63 test files repointed
+>   `@testable import RemoteDeploy` -> `RemoteDeployServer` (whole-word sed).
+>
+> **Decisions / deviations from the original blueprint below**
+> - TEST HOST: existing test targets are hosted on `RemoteDeployServer` (NOT a new
+>   `RemoteDeployClientTests` target). `ProjectSetupValidators.swift` is
+>   DUAL-COMPILED into the server (listed explicitly in its `sources`) so
+>   `ProjectSetupValidatorsTests` + `ExpoProjectFixtureTests` compile under the
+>   server host without dragging in `Views/**`.
+> - `QRCodeGenerator` is compiled into BOTH targets (the C.5 sketch's exclusion was
+>   WRONG: `BonjourAdvertiser` and `ServerLifecycle.checkTailscaleStatus` use
+>   `QRCodeGenerator.localIPAddress()`). The server's `Services/**` excludes ONLY
+>   `MenuBarClient.swift`.
+> - MIRROR over repoint: the wizard/pairing/SetupComplete views still read
+>   `AppState` server-sourced fields; rather than repoint ~12 untestable views, the
+>   menu bar mirrors client state into AppState. Watch for mirror timing in Stage E.
+> - `reconcileHTTPS()` was made restart-on-config-diff (was start-only) so a
+>   port/cert-path change made via the menu bar's API PUT rebinds HTTPS live across
+>   the process boundary (replacing the old in-process `.restartServerRequested`).
+>   LIMITATION: a cert REPLACED at the SAME path still needs a manual relaunch.
+>
+> ---
+
 ### C.1 File categorization
 
 Data models + the API client/contract already live in the shared package

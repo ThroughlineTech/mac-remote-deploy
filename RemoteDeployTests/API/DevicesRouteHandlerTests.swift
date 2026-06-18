@@ -1,5 +1,5 @@
 // Tests for DevicesRouteHandler — list and revoke flows backed by PairedDeviceStoring.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared

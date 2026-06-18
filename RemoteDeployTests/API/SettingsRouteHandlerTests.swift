@@ -1,5 +1,5 @@
 // Tests for SettingsRouteHandler — get with secret redaction, update with validation.
-@testable import RemoteDeploy
+@testable import RemoteDeployServer
 import XCTest
 import Foundation
 import RemoteDeployShared
