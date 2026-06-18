@@ -287,10 +287,22 @@ final class NIODeployServer: DeployServerProtocol, @unchecked Sendable {
                             return ch.eventLoop.makeSucceededFuture(nil)
                         }
                         // Enforce bearer token auth using the same authenticator
-                        // the REST routes use.
+                        // the REST routes use. Browsers can't set Authorization on
+                        // a WS handshake, so the authenticator also accepts the
+                        // token via the Sec-WebSocket-Protocol subprotocol. TKT-058.
                         let headers = head.headers.map { ($0.name, $0.value) }
                         if wsAuth?(headers) == true {
-                            return ch.eventLoop.makeSucceededFuture(HTTPHeaders())
+                            var responseHeaders = HTTPHeaders()
+                            // If the client offered the bearer subprotocol, confirm
+                            // it in the 101 response; URLSession and browsers fail
+                            // the handshake unless the server selects an offered one.
+                            if let offered = head.headers.first(name: "Sec-WebSocket-Protocol"),
+                               offered.split(separator: ",")
+                                   .map({ $0.trimmingCharacters(in: .whitespaces) })
+                                   .contains("bearer") {
+                                responseHeaders.add(name: "Sec-WebSocket-Protocol", value: "bearer")
+                            }
+                            return ch.eventLoop.makeSucceededFuture(responseHeaders)
                         }
                         return ch.eventLoop.makeSucceededFuture(nil)
                     },

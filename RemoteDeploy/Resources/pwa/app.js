@@ -31,7 +31,9 @@ async function api(path, opts = {}) {
 function connectWS() {
   if (state.ws) state.ws.close();
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(`${proto}//${location.host}/api/v1/ws`);
+  // Browsers can't set Authorization on a WS handshake, so the bearer token is
+  // passed via the Sec-WebSocket-Protocol subprotocol list ("bearer, <token>").
+  const ws = new WebSocket(`${proto}//${location.host}/api/v1/ws`, ['bearer', state.token]);
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: 'subscribe', payload: 'buildlog' }));
     ws.send(JSON.stringify({ type: 'subscribe', payload: 'buildstatus' }));
