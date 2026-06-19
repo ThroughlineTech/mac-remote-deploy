@@ -2,21 +2,21 @@
   "name": "RemoteDeploy",
   "short_name": "Deploy",
   "description": "Remote iOS & macOS build and deploy control",
-  "start_url": "/app/",
-  "scope": "/app/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#161617",
   "theme_color": "#1b1b1d",
   "icons": [
     {
-      "src": "/app/icon.svg",
+      "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "/app/icon.svg",
+      "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"

@@ -144,7 +144,9 @@ final class HTTPServerIntegrationTests: XCTestCase {
         XCTAssertFalse(server.isRunning, "Server should not be running after stop")
     }
 
-    func testRootReturnsIndexPage() async throws {
+    func testRootServesPWA() async throws {
+        // TKT-064: the root URL now serves the PWA shell, not the old
+        // server-rendered project-list index page.
         try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
 
         let url = URL(string: "https://localhost:\(serverPort!)/")!
@@ -157,8 +159,31 @@ final class HTTPServerIntegrationTests: XCTestCase {
         XCTAssertTrue(contentType.contains("text/html"), "Root should return HTML, got: \(contentType)")
 
         let body = String(data: data, encoding: .utf8) ?? ""
-        XCTAssertTrue(body.contains("RemoteDeploy"), "Index page should contain 'RemoteDeploy'")
-        XCTAssertTrue(body.contains("<!DOCTYPE html>"), "Index page should be valid HTML")
+        XCTAssertTrue(body.contains("<div id=\"app\">"), "Root should serve the PWA shell")
+        XCTAssertTrue(body.contains("/app.js"), "PWA shell should load /app.js")
+        XCTAssertFalse(body.contains("Available projects:"), "Old server-rendered index must be gone")
+
+        // The stylesheet is same-origin; CSP must allow 'self' for style-src or the
+        // PWA renders unstyled (the bug TKT-064 fixes).
+        let csp = try XCTUnwrap(httpResponse.value(forHTTPHeaderField: "Content-Security-Policy"))
+        XCTAssertTrue(csp.contains("style-src 'self'"),
+                      "CSP must allow the same-origin stylesheet, got: \(csp)")
+    }
+
+    func testLegacyAppPathRedirectsToRoot() async throws {
+        // TKT-064: the PWA used to live at /app/; installed PWAs and bookmarks
+        // there must still reach it (now at the root) via a redirect.
+        try await server.start(port: serverPort, httpPort: httpPort, certPath: certPath, keyPath: keyPath)
+
+        let url = URL(string: "https://localhost:\(serverPort!)/app/")!
+        let (data, response) = try await session.data(from: url)
+
+        let httpResponse = try XCTUnwrap(response as? HTTPURLResponse)
+        XCTAssertEqual(httpResponse.statusCode, 200)
+        XCTAssertEqual(httpResponse.url?.path, "/", "/app/ should redirect to the root PWA")
+
+        let body = String(data: data, encoding: .utf8) ?? ""
+        XCTAssertTrue(body.contains("<div id=\"app\">"), "Redirected /app/ should serve the PWA shell")
     }
 
     func testProjectInstallPage() async throws {

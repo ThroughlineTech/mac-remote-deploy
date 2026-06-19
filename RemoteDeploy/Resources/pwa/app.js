@@ -120,7 +120,7 @@ function renderConnect() {
     <div class="connect-screen">
       <h1>RemoteDeploy</h1>
       <p>Pair this browser to connect.</p>
-      ${insecure ? `<div class="connect-warning">Pairing requires a secure connection. Open this page over HTTPS (for example <code>https://your-mac:8443/app/</code>), then pair.</div>` : ''}
+      ${insecure ? `<div class="connect-warning">Pairing requires a secure connection. Open this page over HTTPS (for example <code>https://your-mac:8443/</code>), then pair.</div>` : ''}
       <form class="connect-form" data-submit="pair">
         <input type="text" id="code-input" placeholder="Enter pairing code" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
         <button class="btn btn-primary" type="submit"${insecure ? ' disabled' : ''}>Pair</button>
@@ -418,7 +418,7 @@ function initEvents() {
 }
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/app/sw.js');
+  navigator.serviceWorker.register('/sw.js');
 }
 
 applyTheme();

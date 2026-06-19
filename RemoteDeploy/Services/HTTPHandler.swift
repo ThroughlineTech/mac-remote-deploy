@@ -136,25 +136,39 @@ final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler, @unchec
             return
         }
 
-        // Serve PWA static files at /app/
-        if path.hasPrefix("/app/") || path == "/app" {
-            servePWAFile(context: context, path: path)
+        // Back-compat: the PWA used to live under /app/ (TKT-061). It is now the
+        // canonical client at the site root (TKT-064); redirect old /app/ URLs
+        // (installed PWAs, bookmarks) to the matching root path.
+        if path == "/app" || path == "/app/" {
+            sendRedirect(context: context, location: "/")
+            return
+        }
+        if path.hasPrefix("/app/") {
+            sendRedirect(context: context, location: "/" + path.dropFirst("/app/".count))
             return
         }
 
-        // OTA routes are GET-only
+        // OTA + PWA routes are GET-only.
         guard head.method == .GET else {
             sendResponse(context: context, status: .methodNotAllowed, contentType: "text/plain", body: "Method Not Allowed")
             return
         }
-        let projects = server.registeredProjects()
 
-        // GET / -> Index page
+        // The PWA is served from the site root. The root document and any
+        // single-segment static asset (style.css, app.js, manifest.json, sw.js,
+        // icon.svg, ...) map to the bundled pwa/ files. Project slugs never
+        // contain a ".", so a dotted single-segment path is always a PWA asset
+        // and slug routing still wins for real slugs (which have no dot).
         if path == "/" {
-            let html = buildIndexPage(projects: projects)
-            sendResponse(context: context, status: .ok, contentType: "text/html", body: html)
+            servePWAFile(context: context, filename: "index.html")
             return
         }
+        if !path.dropFirst().contains("/") && path.contains(".") {
+            servePWAFile(context: context, filename: String(path.dropFirst()))
+            return
+        }
+
+        let projects = server.registeredProjects()
 
         // Parse /<slug>/... pattern
         let components = path.split(separator: "/", omittingEmptySubsequences: true)
@@ -251,12 +265,38 @@ final class HTTPHandler: ChannelInboundHandler, RemovableChannelHandler, @unchec
         headers.add(name: "X-Content-Type-Options", value: "nosniff")
         headers.add(name: "X-Frame-Options", value: "DENY")
         if contentType.contains("text/html") {
-            headers.add(name: "Content-Security-Policy", value: "default-src 'self'; style-src 'unsafe-inline'; connect-src 'self' wss: ws:")
+            headers.add(name: "Content-Security-Policy", value: pwaContentSecurityPolicy)
         }
 
         let responseHead = HTTPResponseHead(version: .http1_1, status: status, headers: headers)
         context.write(wrapOutboundOut(.head(responseHead)), promise: nil)
         context.write(wrapOutboundOut(.body(.byteBuffer(buffer))), promise: nil)
+        context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
+    }
+
+    /// Content-Security-Policy for HTML responses (PWA shell + OTA install pages).
+    /// Same-origin only, with two carve-outs the UI genuinely needs:
+    ///   - `style-src 'self'` so the bundled /style.css <link> actually loads
+    ///     ('unsafe-inline' alone blocks same-origin stylesheets - TKT-064),
+    ///     plus 'unsafe-inline' for the install pages' inline <style>.
+    ///   - `img-src 'self' data:` so the stylesheet's inline data: SVG icons and
+    ///     masks render (default-src 'self' would block data: images).
+    var pwaContentSecurityPolicy: String {
+        "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' wss: ws:"
+    }
+
+    /// Sends a 302 redirect to `location`. Points legacy /app/ URLs at the PWA's
+    /// canonical site-root home (TKT-064). 302 (not 301) keeps the mapping
+    /// uncached and reversible.
+    func sendRedirect(context: ChannelHandlerContext, location: String) {
+        responseStatusForLogging = .found
+        var headers = HTTPHeaders()
+        headers.add(name: "Location", value: location)
+        headers.add(name: "Content-Length", value: "0")
+        headers.add(name: "Connection", value: "close")
+        headers.add(name: "X-Content-Type-Options", value: "nosniff")
+        let responseHead = HTTPResponseHead(version: .http1_1, status: .found, headers: headers)
+        context.write(wrapOutboundOut(.head(responseHead)), promise: nil)
         context.writeAndFlush(wrapOutboundOut(.end(nil)), promise: nil)
     }
 

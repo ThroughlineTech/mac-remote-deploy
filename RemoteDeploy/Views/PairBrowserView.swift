@@ -32,9 +32,9 @@ struct PairBrowserView: View {
     /// from the server status hostname, falling back to AppState's serverURL.
     private var webURL: String {
         if let status = menuBarClient.status, !status.hostname.isEmpty {
-            return "https://\(status.hostname):\(status.serverPort)/app/"
+            return "https://\(status.hostname):\(status.serverPort)/"
         }
-        return appState.serverURL.isEmpty ? "" : "\(appState.serverURL)/app/"
+        return appState.serverURL.isEmpty ? "" : "\(appState.serverURL)/"
     }
 
     var body: some View {

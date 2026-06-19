@@ -1,11 +1,16 @@
 // Service worker for RemoteDeploy PWA.
-// Caches the app shell only as an OFFLINE FALLBACK. The shell is served
-// network-first so a server redeploy is picked up immediately for online users
-// (the previous cache-first strategy pinned a stale app.js in the browser
-// forever, so PWA updates never reached users). Bump CACHE_NAME on shell
-// changes to purge the old cache on activate.
-const CACHE_NAME = 'remotedeploy-v4';
-const SHELL_FILES = ['/app/', '/app/style.css', '/app/app.js', '/app/manifest.json'];
+// The PWA is served at the site root (TKT-064), so this worker's scope is "/" --
+// it sees every same-origin request. It therefore manages ONLY the known app
+// shell assets (network-first, cached as an offline fallback); API calls, the
+// per-project OTA install pages, and .ipa/.zip downloads are left entirely to
+// the network and are never cached. Bump CACHE_NAME on shell changes to purge
+// the old cache on activate.
+const CACHE_NAME = 'remotedeploy-v5';
+const SHELL_FILES = [
+  '/', '/style.css', '/app.js', '/projectform.js', '/settingsform.js',
+  '/manifest.json', '/icon.svg',
+];
+const SHELL = new Set(SHELL_FILES);
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -24,20 +29,22 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // API calls always go to the network.
-  if (event.request.url.includes('/api/')) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-  // Shell: network-first so deploys propagate; refresh the cache on each
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  // Only manage same-origin app-shell assets. Everything else (API calls, OTA
+  // install pages at /<slug>/, .ipa/.zip downloads) falls through to the default
+  // network handling so we never cache large binaries or stale install pages.
+  if (url.origin !== location.origin || !SHELL.has(url.pathname)) return;
+  // Shell: network-first so a redeploy propagates; refresh the cache on each
   // success and fall back to the cached copy only when offline.
   event.respondWith(
-    fetch(event.request)
+    fetch(req)
       .then((response) => {
         const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
         return response;
       })
-      .catch(() => caches.match(event.request))
+      .catch(() => caches.match(req))
   );
 });

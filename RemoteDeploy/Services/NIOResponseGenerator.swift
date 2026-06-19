@@ -9,51 +9,6 @@ import NIOHTTP1
 
 extension HTTPHandler {
 
-    /// Builds a simple HTML index page listing all registered projects with links to their
-    /// install pages.
-    ///
-    /// - Parameter projects: Dictionary of slug -> ProjectConfig for all registered projects.
-    /// - Returns: A complete HTML string for the index page.
-    func buildIndexPage(projects: [String: ProjectConfig]) -> String {
-        var rows = ""
-        for (slug, project) in projects.sorted(by: { $0.key < $1.key }) {
-            let safeName = htmlEscape(project.name)
-            let safeBundleID = htmlEscape(project.bundleID)
-            let safeSlug = htmlEscape(slug)
-            rows += "<li><a href=\"/\(safeSlug)/\">\(safeName)</a> -- \(safeBundleID)</li>\n"
-        }
-
-        if rows.isEmpty {
-            rows = "<li>No projects configured.</li>"
-        }
-
-        return """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>RemoteDeploy</title>
-            <style>
-                body { font-family: -apple-system, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
-                h1 { color: #333; }
-                ul { list-style: none; padding: 0; }
-                li { padding: 12px 0; border-bottom: 1px solid #eee; }
-                a { color: #007AFF; text-decoration: none; font-weight: 500; }
-                a:hover { text-decoration: underline; }
-            </style>
-        </head>
-        <body>
-            <h1>RemoteDeploy</h1>
-            <p>Available projects:</p>
-            <ul>
-                \(rows)
-            </ul>
-        </body>
-        </html>
-        """
-    }
-
     /// Serves the HTML install page for a project at GET /<slug>/.
     /// For iOS projects, shows an itms-services install page.
     /// For macOS projects, shows a direct download page linking to app.zip.
@@ -189,14 +144,13 @@ extension HTTPHandler {
 
     /// Serves PWA static files from the app bundle's Resources/pwa directory.
     ///
-    /// Maps /app/ to index.html, /app/style.css to style.css, etc.
+    /// Maps a site-root filename to a bundled pwa/ file ("" or "/" -> index.html).
     /// Files are loaded from the main bundle's resource path.
     ///
     /// - Parameter context: The channel handler context to write the response to.
-    /// - Parameter path: The URL path (e.g., "/app/", "/app/style.css").
-    func servePWAFile(context: ChannelHandlerContext, path: String) {
-        // Map the URL path to a filename
-        var filename = String(path.dropFirst("/app/".count))
+    /// - Parameter filename: The site-root file name (e.g. "index.html", "style.css").
+    func servePWAFile(context: ChannelHandlerContext, filename rawFilename: String) {
+        var filename = rawFilename
         if filename.isEmpty || filename == "/" {
             filename = "index.html"
         }
@@ -245,7 +199,7 @@ extension HTTPHandler {
         headers.add(name: "X-Content-Type-Options", value: "nosniff")
         headers.add(name: "X-Frame-Options", value: "DENY")
         if contentType.contains("text/html") {
-            headers.add(name: "Content-Security-Policy", value: "default-src 'self'; style-src 'unsafe-inline'; connect-src 'self' wss: ws:")
+            headers.add(name: "Content-Security-Policy", value: pwaContentSecurityPolicy)
         }
 
         let responseHead = HTTPResponseHead(version: .http1_1, status: .ok, headers: headers)
