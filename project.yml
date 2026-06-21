@@ -134,7 +134,6 @@ targets:
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         SWIFT_VERSION: "5.10"
         INFOPLIST_FILE: RemoteDeployCompanion/Info.plist
-        CODE_SIGN_ENTITLEMENTS: RemoteDeployCompanion/RemoteDeployCompanion.entitlements
         GENERATE_INFOPLIST_FILE: "YES"
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
