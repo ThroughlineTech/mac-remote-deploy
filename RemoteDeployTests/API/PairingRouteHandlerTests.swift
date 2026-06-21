@@ -53,6 +53,48 @@ final class PairingRouteHandlerTests: XCTestCase {
         XCTAssertEqual(store.lastSavedDevice?.pushEndpoint, "https://push.example.com/abc")
     }
 
+    // MARK: - pair() dedupe (TKT-066)
+
+    func test_pair_revokesOlderRecordsWithSameName() {
+        let (handler, store) = makeHandler()
+        // Pre-existing orphans for the same device name, plus an unrelated device
+        // and the loopback record -- both of which must survive.
+        store.devices = [
+            PairedDevice(name: "iPhone", tokenHash: "old-a"),
+            PairedDevice(name: "iPhone", tokenHash: "old-b"),
+            PairedDevice(name: "iPad", tokenHash: "ipad"),
+            PairedDevice(name: LoopbackTokenStore.deviceName, tokenHash: "loopback"),
+        ]
+
+        let token = registerAndReturnToken(handler)
+        let body = try! APITestSupport.encoder().encode(PairRequest(token: token, deviceName: "iPhone"))
+        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: body)
+        let response = handler.pair(req)
+
+        XCTAssertEqual(response.status, .created)
+        // Both old "iPhone" orphans gone; the new record, the iPad, and the
+        // loopback record remain.
+        XCTAssertEqual(store.devices.count, 3)
+        XCTAssertFalse(store.devices.contains { $0.tokenHash == "old-a" })
+        XCTAssertFalse(store.devices.contains { $0.tokenHash == "old-b" })
+        XCTAssertTrue(store.devices.contains { $0.name == "iPad" })
+        XCTAssertTrue(store.devices.contains { $0.name == LoopbackTokenStore.deviceName })
+        XCTAssertTrue(store.devices.contains { $0.tokenHash == JSONPairedDeviceStore.hashToken(token) })
+    }
+
+    func test_pair_doesNotRevokeDifferentlyNamedDevices() {
+        let (handler, store) = makeHandler()
+        store.devices = [PairedDevice(name: "Dan's iPad", tokenHash: "ipad")]
+
+        let token = registerAndReturnToken(handler)
+        let body = try! APITestSupport.encoder().encode(PairRequest(token: token, deviceName: "iPhone"))
+        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: body)
+        _ = handler.pair(req)
+
+        XCTAssertEqual(store.deleteCallCount, 0, "A differently-named device must not be revoked")
+        XCTAssertEqual(store.devices.count, 2)
+    }
+
     // MARK: - pair() failure paths
 
     func test_pair_returns400ForMalformedBody() {

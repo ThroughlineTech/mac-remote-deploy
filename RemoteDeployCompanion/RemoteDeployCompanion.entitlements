@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- TKT-066: pin an explicit, stable keychain access group so the saved
+         pairing credential (KeychainStore) survives app reinstalls / re-signs.
+         $(AppIdentifierPrefix) resolves to the team id (stable: RDJQ523WP4), so
+         this equals the previous implicit application-identifier group -- no
+         migration needed for existing items, but it is now guaranteed stable
+         across builds instead of relying on the default. -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.remotedeploy.companion</string>
+    </array>
+</dict>
+</plist>

@@ -195,9 +195,37 @@ final class PairingRouteHandler: @unchecked Sendable {
             return .error(status: .internalServerError, message: "Failed to save paired device")
         }
 
+        // TKT-066: collapse repeated re-pairs of the same device into one record.
+        revokeStaleRecords(matching: device)
+
         resetRateLimitOnSuccess()
         let response = PairResponse(serverName: serverName, paired: true)
         return .json(response, status: .created)
+    }
+
+    /// Revokes older paired-device records that share the freshly paired device's
+    /// name. Without this, re-pairing the same phone (e.g. after reinstalling the
+    /// companion app, which can drop its saved Keychain token) leaves the previous
+    /// record behind -- a growing pile of orphaned, still-valid tokens (TKT-066).
+    /// The loopback "Menu bar (local)" record is never touched.
+    ///
+    /// Limitation: iOS 16+ reports a generic model name ("iPhone") for
+    /// `UIDevice.current.name` unless the app holds a special entitlement, so two
+    /// distinct devices with the same name would evict each other. Acceptable for
+    /// this single-user tool; revisit if multi-device-same-name support is needed.
+    private func revokeStaleRecords(matching device: PairedDevice) {
+        guard let existing = try? deviceStore.loadDevices() else { return }
+        for old in existing
+        where old.id != device.id
+            && old.name == device.name
+            && old.name != LoopbackTokenStore.deviceName {
+            do {
+                try deviceStore.delete(deviceID: old.id)
+                Logger.pairing.info("Revoked stale paired-device record on re-pair of '\(old.name, privacy: .public)'")
+            } catch {
+                Logger.pairing.error("Failed to revoke stale paired-device record: \(error.localizedDescription, privacy: .public)")
+            }
+        }
     }
 
     /// DELETE /api/v1/pair — Unpair the calling device.
