@@ -28,11 +28,6 @@ final class ConnectionManager: ObservableObject {
     /// Error message for display.
     @Published var error: String?
 
-    /// TKT-066 diagnostic: the keychain save/read status from the last restore
-    /// attempt, surfaced on the pairing screen to pinpoint the re-pair-on-cold-
-    /// start bug. Empty until a restore is attempted.
-    @Published var restoreDiagnostic: String = ""
-
     /// The API client for making requests to the server.
     private(set) var apiClient: APIClient?
 
@@ -86,13 +81,10 @@ final class ConnectionManager: ObservableObject {
         }
         #endif
 
-        // NOTE: restore is intentionally NOT kicked off from init(). The keychain
-        // read is gated by LAContext.evaluatePolicy (Face ID / passcode, TKT-022),
-        // and firing that from init -- before the scene is reliably interactive --
-        // can fail with `notInteractive`, present no prompt, and silently drop to
-        // the pairing screen with no retry. The app now calls
-        // `restoreConnectionIfNeeded()` once the scene is `.active`, and again on
-        // each foreground while still disconnected (see RemoteDeployCompanionApp).
+        // NOTE: restore runs when the scene becomes `.active` (see
+        // RemoteDeployCompanionApp), not from init(). That keeps it off the init
+        // path and gives a natural retry path -- `restoreConnectionIfNeeded()` is
+        // re-called on each foreground while still disconnected.
     }
 
     /// Restores the saved connection when appropriate. Safe to call repeatedly:
@@ -106,19 +98,14 @@ final class ConnectionManager: ObservableObject {
         guard !isConnected, !isRestoring else { return }
         guard KeychainStore.hasStoredCredentials() else {
             logger.info("restore: no saved credentials; showing pairing screen")
-            restoreDiagnostic = KeychainStore.diagnosticSummary()
             return
         }
         isRestoring = true
         defer { isRestoring = false }
         await restoreConnection()
-        if !isConnected {
-            restoreDiagnostic = KeychainStore.diagnosticSummary()
-        }
     }
 
-    /// Attempts to connect using saved Keychain credentials. Async because the
-    /// keychain read is gated by LAContext.evaluatePolicy (Face ID / passcode).
+    /// Attempts to connect using saved Keychain credentials.
     func restoreConnection() async {
         guard let saved = await KeychainStore.load() else {
             // We only get here when hasStoredCredentials() said an item exists,
