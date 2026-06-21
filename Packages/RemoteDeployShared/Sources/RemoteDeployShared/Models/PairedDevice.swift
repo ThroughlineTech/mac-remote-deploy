@@ -21,12 +21,21 @@ public struct PairedDevice: Codable, Identifiable, Sendable {
     /// Optional push notification endpoint for sending build status to this device.
     public var pushEndpoint: String?
 
-    public init(id: UUID = UUID(), name: String, tokenHash: String, pairedAt: Date = Date(), lastSeen: Date = Date(), pushEndpoint: String? = nil) {
+    /// Stable per-install identifier reported by the companion (a UUID it keeps in
+    /// its Keychain across reinstalls). Used to collapse repeated re-pairs of the
+    /// SAME physical device into one record without ever evicting a *different*
+    /// device that happens to share the generic iOS name "iPhone" (TKT-065/TKT-069).
+    /// Nil for the loopback record and for browser/PWA clients, which are never
+    /// deduplicated.
+    public var installID: String?
+
+    public init(id: UUID = UUID(), name: String, tokenHash: String, pairedAt: Date = Date(), lastSeen: Date = Date(), pushEndpoint: String? = nil, installID: String? = nil) {
         self.id = id
         self.name = name
         self.tokenHash = tokenHash
         self.pairedAt = pairedAt
         self.lastSeen = lastSeen
         self.pushEndpoint = pushEndpoint
+        self.installID = installID
     }
 }

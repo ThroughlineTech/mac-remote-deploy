@@ -159,8 +159,13 @@ public final class APIClient: @unchecked Sendable {
     // MARK: - Pairing
 
     /// Completes pairing with the server.
-    public func completePairing(deviceName: String) async throws -> PairResponse {
-        let request = PairRequest(token: token, deviceName: deviceName)
+    ///
+    /// - Parameter installID: A stable per-install identifier (a UUID the companion
+    ///   persists in its Keychain). Lets the Mac collapse re-pairs of the same
+    ///   device without evicting a different device that shares the generic iOS
+    ///   name. Omitted by browser/PWA clients.
+    public func completePairing(deviceName: String, installID: String? = nil) async throws -> PairResponse {
+        let request = PairRequest(token: token, deviceName: deviceName, installID: installID)
         return try await post("/api/v1/pair", body: request, authenticated: false)
     }
 

@@ -185,7 +185,8 @@ final class PairingRouteHandler: @unchecked Sendable {
         let device = PairedDevice(
             name: pairRequest.deviceName,
             tokenHash: tokenHash,
-            pushEndpoint: pairRequest.pushEndpoint
+            pushEndpoint: pairRequest.pushEndpoint,
+            installID: pairRequest.installID
         )
 
         do {
@@ -195,7 +196,8 @@ final class PairingRouteHandler: @unchecked Sendable {
             return .error(status: .internalServerError, message: "Failed to save paired device")
         }
 
-        // TKT-066: collapse repeated re-pairs of the same device into one record.
+        // TKT-066/TKT-069: collapse repeated re-pairs of the same device into one
+        // record (keyed on a stable installID, never the device name).
         revokeStaleRecords(matching: device)
 
         resetRateLimitOnSuccess()
@@ -203,25 +205,29 @@ final class PairingRouteHandler: @unchecked Sendable {
         return .json(response, status: .created)
     }
 
-    /// Revokes older paired-device records that share the freshly paired device's
-    /// name. Without this, re-pairing the same phone (e.g. after reinstalling the
-    /// companion app, which can drop its saved Keychain token) leaves the previous
-    /// record behind -- a growing pile of orphaned, still-valid tokens (TKT-066).
-    /// The loopback "Menu bar (local)" record is never touched.
+    /// Revokes older paired-device records that belong to the SAME physical install
+    /// as the freshly paired device, identified by a stable `installID`. Without
+    /// this, re-pairing the same phone (e.g. after reinstalling the companion app,
+    /// which can drop its saved Keychain token) leaves the previous record behind --
+    /// a growing pile of orphaned, still-valid tokens (TKT-066).
     ///
-    /// Limitation: iOS 16+ reports a generic model name ("iPhone") for
-    /// `UIDevice.current.name` unless the app holds a special entitlement, so two
-    /// distinct devices with the same name would evict each other. Acceptable for
-    /// this single-user tool; revisit if multi-device-same-name support is needed.
+    /// Matching is keyed strictly on `installID`, NOT the device name. iOS 16+
+    /// reports a generic model name ("iPhone") for every device unless the app holds
+    /// a special entitlement, so a name-based match evicted *distinct* devices that
+    /// shared that name -- which broke delegated "Pair Another Device" pairing by
+    /// revoking the first phone the moment a second phone paired (TKT-069).
+    ///
+    /// A device with no `installID` (the loopback "Menu bar (local)" record, browser
+    /// /PWA clients, or an older companion build) is never a dedupe source or target:
+    /// we simply leave any orphan in place rather than risk evicting a live device.
     private func revokeStaleRecords(matching device: PairedDevice) {
+        guard let installID = device.installID else { return }
         guard let existing = try? deviceStore.loadDevices() else { return }
         for old in existing
-        where old.id != device.id
-            && old.name == device.name
-            && old.name != LoopbackTokenStore.deviceName {
+        where old.id != device.id && old.installID == installID {
             do {
                 try deviceStore.delete(deviceID: old.id)
-                Logger.pairing.info("Revoked stale paired-device record on re-pair of '\(old.name, privacy: .public)'")
+                Logger.pairing.info("Revoked stale paired-device record on re-pair of install '\(installID, privacy: .public)' ('\(old.name, privacy: .public)')")
             } catch {
                 Logger.pairing.error("Failed to revoke stale paired-device record: \(error.localizedDescription, privacy: .public)")
             }

@@ -117,6 +117,11 @@ final class MenuBarClient: ObservableObject {
     private var pollTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
+    /// Paired-device ids known as of the last successful `refreshDevices()`. Nil
+    /// until the first fetch, so the initial population never fires a "new device"
+    /// notification for devices that were already paired before launch.
+    private var knownDeviceIDs: Set<UUID>?
+
     /// How often the status poll runs while the popover/app is alive.
     private let pollInterval: Duration = .seconds(3)
 
@@ -171,6 +176,8 @@ final class MenuBarClient: ObservableObject {
         await refreshProjects()
         await refreshInstalls()
         await refreshBuildHistory()
+        // Keep the Devices list live and surface out-of-band pairings (TKT-070).
+        await refreshDevices()
     }
 
     func refreshStatus() async {
@@ -289,11 +296,30 @@ final class MenuBarClient: ObservableObject {
     // MARK: - Devices
 
     /// Fetches paired devices into `devices`, excluding the menu bar's own
-    /// loopback record. Called by the Devices tab on appear.
+    /// loopback record. Called by the Devices tab on appear AND on every status
+    /// poll (see `refreshAll`), so a device that pairs out-of-band -- e.g. via a
+    /// phone's "Pair Another Device" flow -- shows up on the Mac within a poll
+    /// interval instead of only when the Devices tab is reopened (TKT-070).
+    ///
+    /// Any device that appears since the last successful fetch also fires a
+    /// desktop notification, so the Mac surfaces an out-of-band pairing even when
+    /// no window is open. The first fetch only seeds the baseline (no alerts for
+    /// devices already paired before launch).
     func refreshDevices() async {
-        if let fetched = await perform({ try await $0.listDevices() }) {
-            devices = fetched.filter { $0.name != Self.localDeviceName }
+        guard let fetched = await perform({ try await $0.listDevices() }) else { return }
+        let visible = fetched.filter { $0.name != Self.localDeviceName }
+
+        if let known = knownDeviceIDs {
+            for device in visible where !known.contains(device.id) {
+                NotificationManager.shared.postNotification(
+                    title: "New Device Paired",
+                    body: "\(device.name) can now control builds.",
+                    identifier: "device-paired-\(device.id.uuidString)"
+                )
+            }
         }
+        knownDeviceIDs = Set(visible.map(\.id))
+        devices = visible
     }
 
     func revokeDevice(id: UUID) async {

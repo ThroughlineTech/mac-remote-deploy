@@ -25,6 +25,7 @@ final class KeychainStore {
 
     private static let serviceKey = "com.remotedeploy.companion"
     private static let credentialsKey = "credentials"
+    private static let installIDKey = "install_id"
 
     // Legacy keys — retained for the one-time migration from the pre-TKT-020 format.
     private static let legacyURLKey = "server_url"
@@ -51,7 +52,34 @@ final class KeychainStore {
     /// `save()` and `clear()` keep it in sync.
     private static let lockedCache = OSAllocatedUnfairLock<CachedCredentials?>(initialState: nil)
 
+    /// In-memory cache of the stable install id once read/generated.
+    private static let lockedInstallID = OSAllocatedUnfairLock<String?>(initialState: nil)
+
     // MARK: - Public API
+
+    /// A stable per-install identifier for this companion. Generated once (a random
+    /// UUID) and persisted in the Keychain, which survives app reinstalls on iOS, so
+    /// the Mac can tell a reinstall of THIS device apart from a genuinely different
+    /// device when collapsing duplicate paired-device records. Distinct physical
+    /// devices get distinct ids, so "Pair Another Device" keeps both phones paired
+    /// (TKT-065/TKT-069). Deliberately NOT cleared by `clear()` (unpair): identity is
+    /// per-install, not per-pairing, so an unpair/re-pair of the same phone still
+    /// collapses to one record. Never prompts (no auth gate on the item).
+    static func installID() -> String {
+        if let cached = lockedInstallID.withLock({ $0 }) { return cached }
+
+        if let data = getData(key: installIDKey),
+           let existing = String(data: data, encoding: .utf8),
+           !existing.isEmpty {
+            lockedInstallID.withLock { $0 = existing }
+            return existing
+        }
+
+        let generated = UUID().uuidString
+        setData(key: installIDKey, data: Data(generated.utf8))
+        lockedInstallID.withLock { $0 = generated }
+        return generated
+    }
 
     /// Saves the server connection details to the Keychain as a single JSON blob
     /// and populates the in-memory cache. Synchronous; safe to call from any thread.

@@ -10,11 +10,17 @@ public struct PairRequest: Codable, Sendable {
     public var deviceName: String
     /// Optional push endpoint for receiving build notifications.
     public var pushEndpoint: String?
+    /// Stable per-install identifier for the device being paired. Lets the Mac tell
+    /// a reinstall of THIS device apart from a genuinely different device when
+    /// deciding whether to collapse duplicate records. Optional: browser/PWA clients
+    /// and older companion builds omit it (and are then never auto-deduplicated).
+    public var installID: String?
 
-    public init(token: String, deviceName: String, pushEndpoint: String? = nil) {
+    public init(token: String, deviceName: String, pushEndpoint: String? = nil, installID: String? = nil) {
         self.token = token
         self.deviceName = deviceName
         self.pushEndpoint = pushEndpoint
+        self.installID = installID
     }
 }
 

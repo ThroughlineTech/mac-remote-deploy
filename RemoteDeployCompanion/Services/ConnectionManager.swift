@@ -148,10 +148,13 @@ final class ConnectionManager: ObservableObject {
 
         let client = APIClient(baseURL: baseURL, token: token)
 
-        // Complete the pairing handshake
+        // Complete the pairing handshake. Send a stable per-install id alongside the
+        // (generic, often "iPhone") device name so the Mac collapses re-pairs of THIS
+        // device without evicting a different device that shares the name (TKT-069).
         let deviceName = UIDevice.current.name
-        logger.info("Pairing: sending pair request as '\(deviceName, privacy: .public)'")
-        let response = try await client.completePairing(deviceName: deviceName)
+        let installID = KeychainStore.installID()
+        logger.info("Pairing: sending pair request as '\(deviceName, privacy: .public)' install=\(installID.prefix(8), privacy: .public)")
+        let response = try await client.completePairing(deviceName: deviceName, installID: installID)
 
         guard response.paired else {
             logger.error("Pairing: server rejected pairing")

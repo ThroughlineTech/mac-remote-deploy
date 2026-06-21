@@ -55,44 +55,72 @@ final class PairingRouteHandlerTests: XCTestCase {
 
     // MARK: - pair() dedupe (TKT-066)
 
-    func test_pair_revokesOlderRecordsWithSameName() {
+    func test_pair_revokesOlderRecordWithSameInstallID() {
         let (handler, store) = makeHandler()
-        // Pre-existing orphans for the same device name, plus an unrelated device
-        // and the loopback record -- both of which must survive.
+        let install = "install-AAA"
+        // A prior orphan from the SAME install, plus a different device (different
+        // install) and the loopback record -- both of which must survive.
         store.devices = [
-            PairedDevice(name: "iPhone", tokenHash: "old-a"),
-            PairedDevice(name: "iPhone", tokenHash: "old-b"),
-            PairedDevice(name: "iPad", tokenHash: "ipad"),
+            PairedDevice(name: "iPhone", tokenHash: "old", installID: install),
+            PairedDevice(name: "iPad", tokenHash: "ipad", installID: "install-BBB"),
+            PairedDevice(name: LoopbackTokenStore.deviceName, tokenHash: "loopback"),
+        ]
+
+        let token = registerAndReturnToken(handler)
+        let body = try! APITestSupport.encoder().encode(
+            PairRequest(token: token, deviceName: "iPhone", installID: install)
+        )
+        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: body)
+        let response = handler.pair(req)
+
+        XCTAssertEqual(response.status, .created)
+        // The same-install orphan is gone; the other device, the loopback record,
+        // and the freshly paired device remain.
+        XCTAssertEqual(store.devices.count, 3)
+        XCTAssertFalse(store.devices.contains { $0.tokenHash == "old" })
+        XCTAssertTrue(store.devices.contains { $0.name == "iPad" })
+        XCTAssertTrue(store.devices.contains { $0.name == LoopbackTokenStore.deviceName })
+        XCTAssertTrue(store.devices.contains { $0.tokenHash == JSONPairedDeviceStore.hashToken(token) })
+    }
+
+    // TKT-069 regression: two DISTINCT phones both report the generic iOS name
+    // "iPhone" (the user-assigned name is hidden without a special entitlement).
+    // They carry different installIDs, so pairing the second must NOT evict the
+    // first -- this is exactly what "Pair Another Device" (TKT-065) depends on.
+    func test_pair_keepsDistinctDevicesWithSameNameDifferentInstallID() {
+        let (handler, store) = makeHandler()
+        store.devices = [PairedDevice(name: "iPhone", tokenHash: "phone-a", installID: "install-A")]
+
+        let token = registerAndReturnToken(handler)
+        let body = try! APITestSupport.encoder().encode(
+            PairRequest(token: token, deviceName: "iPhone", installID: "install-B")
+        )
+        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: body)
+        let response = handler.pair(req)
+
+        XCTAssertEqual(response.status, .created)
+        XCTAssertEqual(store.deleteCallCount, 0, "Distinct installIDs must coexist (TKT-065)")
+        XCTAssertTrue(store.devices.contains { $0.tokenHash == "phone-a" }, "Phone A must stay paired")
+        XCTAssertTrue(store.devices.contains { $0.tokenHash == JSONPairedDeviceStore.hashToken(token) })
+        XCTAssertEqual(store.devices.count, 2)
+    }
+
+    // A pair request with no installID (older companion build, or the browser PWA)
+    // must never revoke another record by name -- the original TKT-069 bug.
+    func test_pair_withoutInstallIDRevokesNothing() {
+        let (handler, store) = makeHandler()
+        store.devices = [
+            PairedDevice(name: "iPhone", tokenHash: "phone-a"),
             PairedDevice(name: LoopbackTokenStore.deviceName, tokenHash: "loopback"),
         ]
 
         let token = registerAndReturnToken(handler)
         let body = try! APITestSupport.encoder().encode(PairRequest(token: token, deviceName: "iPhone"))
         let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: body)
-        let response = handler.pair(req)
-
-        XCTAssertEqual(response.status, .created)
-        // Both old "iPhone" orphans gone; the new record, the iPad, and the
-        // loopback record remain.
-        XCTAssertEqual(store.devices.count, 3)
-        XCTAssertFalse(store.devices.contains { $0.tokenHash == "old-a" })
-        XCTAssertFalse(store.devices.contains { $0.tokenHash == "old-b" })
-        XCTAssertTrue(store.devices.contains { $0.name == "iPad" })
-        XCTAssertTrue(store.devices.contains { $0.name == LoopbackTokenStore.deviceName })
-        XCTAssertTrue(store.devices.contains { $0.tokenHash == JSONPairedDeviceStore.hashToken(token) })
-    }
-
-    func test_pair_doesNotRevokeDifferentlyNamedDevices() {
-        let (handler, store) = makeHandler()
-        store.devices = [PairedDevice(name: "Dan's iPad", tokenHash: "ipad")]
-
-        let token = registerAndReturnToken(handler)
-        let body = try! APITestSupport.encoder().encode(PairRequest(token: token, deviceName: "iPhone"))
-        let req = APITestSupport.makeRequest(method: .POST, uri: "/api/v1/pair", body: body)
         _ = handler.pair(req)
 
-        XCTAssertEqual(store.deleteCallCount, 0, "A differently-named device must not be revoked")
-        XCTAssertEqual(store.devices.count, 2)
+        XCTAssertEqual(store.deleteCallCount, 0, "No installID -> no revocation")
+        XCTAssertTrue(store.devices.contains { $0.tokenHash == "phone-a" })
     }
 
     // MARK: - pair() failure paths
