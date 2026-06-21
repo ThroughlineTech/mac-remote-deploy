@@ -428,6 +428,18 @@ final class ServerLifecycle: NSObject, NSApplicationDelegate {
         nioServer.webSocketAuthenticator = { headers in
             auth.authenticateWebSocket(headers: headers) != nil
         }
+
+        // Make the "buildstatus" WS channel stateful: any client that subscribes
+        // is immediately sent the current status. A client that reconnects after
+        // a build ended would otherwise miss the terminal broadcast and stay
+        // stuck on a stale "building" view (the spinning, un-cancellable "Cancel
+        // Build" button). Reads the same in-process status source as the REST
+        // poll, off the event loop -- BuildStatus is a Sendable value load.
+        nioServer.webSocketManager.setBuildStatusReplay {
+            let info = buildStatusProvider.currentBuildStatus()
+            guard let data = try? JSONEncoder().encode(info) else { return nil }
+            return String(data: data, encoding: .utf8)
+        }
     }
 
     // MARK: - Loopback token (TKT-060 Phase 6)

@@ -15,11 +15,24 @@ final class WebSocketManager: @unchecked Sendable {
         var subscriptions: Set<String>
     }
 
-    /// Lock protecting the clients dictionary.
+    /// Lock protecting the clients dictionary and `buildStatusReplay`.
     private let lock = NSLock()
 
     /// Active clients keyed by a unique connection ID.
     private var clients: [ObjectIdentifier: Client] = [:]
+
+    /// Returns the current build-status payload (a JSON-encoded
+    /// `BuildStatusInfo`, the same inner payload `broadcast(type: "buildstatus")`
+    /// carries) or nil if unavailable. Set once at server-configuration time.
+    ///
+    /// This makes `"buildstatus"` a *stateful* channel: a client that subscribes
+    /// after the last transition was broadcast -- e.g. one that reconnects once a
+    /// build has already finished -- is sent the current status immediately,
+    /// rather than waiting for a future transition it would otherwise never see.
+    /// Without it, broadcasts are fire-and-forget and a reconnecting client could
+    /// stay pinned to a stale `"building"` view forever. `"buildlog"` is left as
+    /// an append-only event stream (the client backfills it from build history).
+    private var buildStatusReplay: (@Sendable () -> String?)?
 
     /// Registers a new WebSocket connection.
     ///
@@ -41,7 +54,19 @@ final class WebSocketManager: @unchecked Sendable {
         lock.unlock()
     }
 
+    /// Installs the closure that supplies the current build status for
+    /// replay-on-subscribe. See `buildStatusReplay`.
+    func setBuildStatusReplay(_ provider: @escaping @Sendable () -> String?) {
+        lock.lock()
+        buildStatusReplay = provider
+        lock.unlock()
+    }
+
     /// Subscribes a client to a channel (e.g., "buildlog", "buildstatus").
+    ///
+    /// On subscribing to the stateful `"buildstatus"` channel, the client is
+    /// immediately sent the current status (if known) so it never sits on a
+    /// stale view of a build that already ended -- see `buildStatusReplay`.
     ///
     /// - Parameter channel: The NIO channel to subscribe.
     /// - Parameter subscription: The channel name to subscribe to.
@@ -49,7 +74,13 @@ final class WebSocketManager: @unchecked Sendable {
         let key = ObjectIdentifier(channel)
         lock.lock()
         clients[key]?.subscriptions.insert(subscription)
+        let replay = (subscription == "buildstatus") ? buildStatusReplay : nil
         lock.unlock()
+
+        // Replay outside the lock; the call hops to the channel's event loop.
+        if let replay, let payload = replay() {
+            send(text: encodeMessage(type: "buildstatus", payload: payload), to: channel)
+        }
     }
 
     /// Broadcasts a message to all clients subscribed to the given channel.
@@ -57,20 +88,31 @@ final class WebSocketManager: @unchecked Sendable {
     /// - Parameter type: The message type (matches subscription channel name).
     /// - Parameter payload: The message payload string.
     func broadcast(type: String, payload: String) {
-        let message = WSMessage(type: type, payload: payload)
-        guard let data = try? JSONEncoder().encode(message),
-              let text = String(data: data, encoding: .utf8) else { return }
+        guard let text = encodeMessage(type: type, payload: payload) else { return }
 
         lock.lock()
         let subscribers = clients.values.filter { $0.subscriptions.contains(type) }
         lock.unlock()
 
         for client in subscribers {
-            var buffer = client.channel.allocator.buffer(capacity: text.utf8.count)
-            buffer.writeString(text)
-            let frame = WebSocketFrame(fin: true, opcode: .text, data: buffer)
-            client.channel.writeAndFlush(frame, promise: nil)
+            send(text: text, to: client.channel)
         }
+    }
+
+    /// JSON-encodes a `WSMessage` to the wire string, or nil on failure.
+    private func encodeMessage(type: String, payload: String) -> String? {
+        let message = WSMessage(type: type, payload: payload)
+        guard let data = try? JSONEncoder().encode(message) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    /// Writes a pre-encoded text frame to a single channel.
+    private func send(text: String?, to channel: Channel) {
+        guard let text else { return }
+        var buffer = channel.allocator.buffer(capacity: text.utf8.count)
+        buffer.writeString(text)
+        let frame = WebSocketFrame(fin: true, opcode: .text, data: buffer)
+        channel.writeAndFlush(frame, promise: nil)
     }
 
     /// Returns the number of active connections.

@@ -126,6 +126,73 @@ final class WebSocketManagerTests: XCTestCase {
         XCTAssertEqual(manager.connectionCount, 0)
     }
 
+    // MARK: - replay-on-subscribe (stateful "buildstatus" channel)
+
+    func test_subscribeToBuildStatus_replaysCurrentStatusToNewClient() throws {
+        let manager = WebSocketManager()
+        manager.setBuildStatusReplay { "{\"state\":\"success\"}" }
+
+        let ch = makeChannel()
+        manager.addClient(ch)
+        manager.subscribe(ch, to: "buildstatus")
+
+        // Subscribing should have immediately replayed the current status,
+        // before any broadcast -- this is what lets a reconnecting client learn
+        // a build already finished instead of staying stuck on "building".
+        guard let frame = try ch.readOutbound(as: WebSocketFrame.self) else {
+            XCTFail("Expected the current status to be replayed on subscribe")
+            return
+        }
+        var data = frame.data
+        let text = data.readString(length: data.readableBytes) ?? ""
+        XCTAssertTrue(text.contains("buildstatus"))
+        XCTAssertTrue(text.contains("success"))
+
+        _ = try ch.finish()
+    }
+
+    func test_subscribeToBuildLog_doesNotReplay() throws {
+        let manager = WebSocketManager()
+        manager.setBuildStatusReplay { "{\"state\":\"success\"}" }
+
+        let ch = makeChannel()
+        manager.addClient(ch)
+        manager.subscribe(ch, to: "buildlog")
+
+        // buildlog is an append-only event stream, not a stateful channel.
+        XCTAssertNil(try ch.readOutbound(as: WebSocketFrame.self),
+                     "buildlog subscribe must not replay")
+
+        _ = try ch.finish()
+    }
+
+    func test_subscribeToBuildStatus_withoutReplayProvider_isNoOp() throws {
+        let manager = WebSocketManager()
+        // No replay provider set.
+        let ch = makeChannel()
+        manager.addClient(ch)
+        manager.subscribe(ch, to: "buildstatus")
+
+        XCTAssertNil(try ch.readOutbound(as: WebSocketFrame.self),
+                     "No replay provider -> nothing to send on subscribe")
+
+        _ = try ch.finish()
+    }
+
+    func test_subscribeToBuildStatus_replayReturningNil_isNoOp() throws {
+        let manager = WebSocketManager()
+        manager.setBuildStatusReplay { nil }
+
+        let ch = makeChannel()
+        manager.addClient(ch)
+        manager.subscribe(ch, to: "buildstatus")
+
+        XCTAssertNil(try ch.readOutbound(as: WebSocketFrame.self),
+                     "Replay returning nil -> nothing to send")
+
+        _ = try ch.finish()
+    }
+
     // MARK: - broadcast after unsubscribe (via removeClient)
 
     func test_removedClient_doesNotReceiveFurtherBroadcasts() throws {
