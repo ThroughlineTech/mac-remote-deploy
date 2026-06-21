@@ -31,6 +31,10 @@ final class ConnectionManager: ObservableObject {
     /// The API client for making requests to the server.
     private(set) var apiClient: APIClient?
 
+    /// Guards against overlapping restore attempts (the scene can fire
+    /// `.active` more than once while a Face ID / passcode prompt is up).
+    private var isRestoring = false
+
     /// The WebSocket client for live updates.
     let webSocketClient = WebSocketClient()
 
@@ -77,21 +81,46 @@ final class ConnectionManager: ObservableObject {
         }
         #endif
 
-        // Try to restore a saved connection. restoreConnection is async because
-        // it authenticates with Face ID / passcode via LAContext (TKT-022), so
-        // we kick it off in a Task and let the init return immediately. The
-        // user sees the app launch with `isConnected = false`, then once
-        // authentication succeeds the UI flips to connected state.
-        Task { [weak self] in
-            await self?.restoreConnection()
+        // NOTE: restore is intentionally NOT kicked off from init(). The keychain
+        // read is gated by LAContext.evaluatePolicy (Face ID / passcode, TKT-022),
+        // and firing that from init -- before the scene is reliably interactive --
+        // can fail with `notInteractive`, present no prompt, and silently drop to
+        // the pairing screen with no retry. The app now calls
+        // `restoreConnectionIfNeeded()` once the scene is `.active`, and again on
+        // each foreground while still disconnected (see RemoteDeployCompanionApp).
+    }
+
+    /// Restores the saved connection when appropriate. Safe to call repeatedly:
+    /// no-ops if already connected or a restore is in flight, and -- crucially --
+    /// does NOT prompt for Face ID when there are no saved credentials, so a
+    /// never-paired user goes straight to the pairing screen without a prompt.
+    /// Called on scene activation (and re-called on each foreground while
+    /// disconnected), which doubles as the retry path the old init-time call
+    /// lacked.
+    func restoreConnectionIfNeeded() async {
+        guard !isConnected, !isRestoring else { return }
+        guard KeychainStore.hasStoredCredentials() else {
+            logger.info("restore: no saved credentials; showing pairing screen")
+            return
         }
+        isRestoring = true
+        defer { isRestoring = false }
+        await restoreConnection()
     }
 
     /// Attempts to connect using saved Keychain credentials. Async because the
     /// keychain read is gated by LAContext.evaluatePolicy (Face ID / passcode).
     func restoreConnection() async {
-        guard let saved = await KeychainStore.load(),
-              let url = URL(string: saved.url) else {
+        guard let saved = await KeychainStore.load() else {
+            // We only get here when hasStoredCredentials() said an item exists,
+            // so a nil load means the Face ID / passcode auth was cancelled or
+            // the keychain read failed (the OSStatus is logged in KeychainStore).
+            // Leaving the user on the pairing screen; a foreground retries.
+            logger.error("restore: credentials present but load returned nil (auth cancelled or read failed)")
+            return
+        }
+        guard let url = URL(string: saved.url) else {
+            logger.error("restore: saved URL is invalid: \(saved.url, privacy: .public)")
             return
         }
 

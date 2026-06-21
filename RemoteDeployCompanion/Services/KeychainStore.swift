@@ -148,6 +148,34 @@ final class KeychainStore {
         #endif
     }
 
+    /// Reports whether any saved credentials exist WITHOUT prompting for Face ID
+    /// / passcode. Lets the connection layer tell "genuinely unpaired" (show the
+    /// QR screen, never prompt) apart from "paired but the read/auth failed"
+    /// (worth retrying), and avoids a spurious biometric prompt for users who
+    /// have never paired.
+    ///
+    /// `kSecUseAuthenticationUISkip` makes the keychain answer without any UI: an
+    /// ACL-protected item that exists but needs auth returns
+    /// `errSecInteractionNotAllowed`; a missing item returns `errSecItemNotFound`.
+    /// Both the blob and the legacy items are checked.
+    static func hasStoredCredentials() -> Bool {
+        if lockedCache.withLock({ $0 }) != nil { return true }
+
+        func itemExists(account: String) -> Bool {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceKey,
+                kSecAttrAccount as String: account,
+                kSecMatchLimit as String: kSecMatchLimitOne,
+                kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip,
+            ]
+            let status = SecItemCopyMatching(query as CFDictionary, nil)
+            return status == errSecSuccess || status == errSecInteractionNotAllowed
+        }
+
+        return itemExists(account: credentialsKey) || itemExists(account: legacyURLKey)
+    }
+
     /// Clears all saved server credentials (new blob + stray legacy items + cache).
     static func clear() {
         delete(key: credentialsKey)
@@ -284,7 +312,17 @@ final class KeychainStore {
         }
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        guard status == errSecSuccess, let data = result as? Data else {
+            // errSecItemNotFound (-25300) is the normal "nothing saved" case.
+            // Anything else (e.g. -34018 errSecMissingEntitlement, -25308
+            // errSecInteractionNotAllowed, -25293 errSecAuthFailed) is a real
+            // failure that previously vanished silently and dropped the user to
+            // the pairing screen -- log the status so it can be diagnosed.
+            if status != errSecItemNotFound {
+                NSLog("KeychainStore: read failed for key '\(key)' with status \(status)")
+            }
+            return nil
+        }
         return data
     }
 

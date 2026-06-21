@@ -5,6 +5,7 @@ import os
 @main
 struct RemoteDeployCompanionApp: App {
     @StateObject private var connectionManager = ConnectionManager()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -12,6 +13,16 @@ struct RemoteDeployCompanionApp: App {
                 .environmentObject(connectionManager)
                 .onOpenURL { url in
                     handleDeepLink(url)
+                }
+                // Restore the saved connection once the scene is actually
+                // interactive (initial: true covers cold launch), and retry on
+                // each foreground while still disconnected. This replaces the
+                // old restore-from-init, whose Face ID prompt could fire before
+                // the app was interactive and fail silently. restoreConnectionIfNeeded
+                // no-ops when already connected and never prompts when unpaired.
+                .onChange(of: scenePhase, initial: true) { _, phase in
+                    guard phase == .active else { return }
+                    Task { await connectionManager.restoreConnectionIfNeeded() }
                 }
         }
     }
