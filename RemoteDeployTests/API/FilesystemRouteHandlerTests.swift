@@ -147,4 +147,18 @@ final class FilesystemRouteHandlerTests: XCTestCase {
         let decoded = try? APITestSupport.decoder().decode(SchemesResponse.self, from: response.body)
         XCTAssertEqual(decoded?.schemes.count, 0)
     }
+
+    func test_detectSchemes_returns500WithMessageWhenDetectorThrows() {
+        let (handler, detector) = makeHandler()
+        detector.stubbedError = NSError(
+            domain: "Test", code: 1,
+            userInfo: [NSLocalizedDescriptionKey: "xcodebuild failed: boom"]
+        )
+        let path = fixtureDir.appendingPathComponent("MyApp.xcodeproj").path
+        let req = APITestSupport.makeRequest(method: .GET, uri: "/api/v1/filesystem/schemes?path=\(path)")
+        let response = handler.detectSchemes(req)
+        XCTAssertEqual(response.status, .internalServerError)
+        let decoded = try? APITestSupport.decoder().decode(APIError.self, from: response.body)
+        XCTAssertEqual(decoded?.message, "xcodebuild failed: boom")
+    }
 }

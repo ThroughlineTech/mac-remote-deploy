@@ -87,7 +87,13 @@ final class FilesystemRouteHandler: @unchecked Sendable {
             return .error(status: .forbidden, message: "Path must resolve to under /Users/")
         }
 
-        let schemes = schemeDetector.detectSchemes(atPath: resolvedPath)
-        return .json(SchemesResponse(schemes: schemes))
+        do {
+            let schemes = try schemeDetector.detectSchemes(atPath: resolvedPath)
+            return .json(SchemesResponse(schemes: schemes))
+        } catch {
+            // Surface the real cause (e.g. "Xcode is required... run xcode-select -s")
+            // instead of an empty list that looks like "no schemes found".
+            return .error(status: .internalServerError, message: error.localizedDescription)
+        }
     }
 }
