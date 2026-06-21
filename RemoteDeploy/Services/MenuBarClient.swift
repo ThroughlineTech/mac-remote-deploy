@@ -89,11 +89,15 @@ final class MenuBarClient: ObservableObject {
         return log.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
     }
 
-    /// Whether a build is in progress. Prefers the live WebSocket status frame,
-    /// falling back to the polled status snapshot.
+    /// Whether a build is in progress. Reconciles the live WebSocket status
+    /// frame against the polled REST snapshot via `BuildStateReconciler` so a
+    /// stale `"building"` frame (e.g. one that missed the terminal transition
+    /// across a reconnect) can never keep the spinner alive past the build.
     var isBuilding: Bool {
-        let state = webSocket.latestStatus?.state ?? status?.buildStatus.state
-        return state == "building"
+        BuildStateReconciler.isBuilding(
+            polled: status?.buildStatus.state,
+            live: webSocket.latestStatus?.state
+        )
     }
 
     /// SF Symbol for the menu bar icon, derived from the server's reported
