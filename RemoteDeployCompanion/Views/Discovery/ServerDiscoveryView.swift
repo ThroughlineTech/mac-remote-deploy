@@ -110,6 +110,19 @@ struct ServerDiscoveryView: View {
                         .foregroundColor(.red)
                         .padding(.horizontal)
                 }
+
+                // TKT-066 diagnostic: shows WHY a saved connection didn't restore
+                // (keychain save/read OSStatus). Remove once the cold-start re-pair
+                // bug is fixed.
+                if !connectionManager.restoreDiagnostic.isEmpty {
+                    Text(connectionManager.restoreDiagnostic)
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .textSelection(.enabled)
+                        .padding(.horizontal)
+                        .padding(.bottom, 8)
+                }
             }
             .navigationTitle("")
             .sheet(isPresented: $showQRScanner) {
