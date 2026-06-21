@@ -276,7 +276,6 @@
 		12046FC934885D84B1F8AE33 /* SettingsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsData.swift; sourceTree = "<group>"; };
 		1215E7E1054E070C87B1A1A9 /* BonjourAdvertiser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourAdvertiser.swift; sourceTree = "<group>"; };
 		1337E2C9EB713F2D9547F9DB /* ExpoBuildEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpoBuildEngineTests.swift; sourceTree = "<group>"; };
-		13614D32C8BE08B5E2A2FAB2 /* RemoteDeployCompanion.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RemoteDeployCompanion.entitlements; sourceTree = "<group>"; };
 		13C04B540D1201D07398DD7C /* WebSocketUpgradeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketUpgradeTests.swift; sourceTree = "<group>"; };
 		14BC1396572231AC2C50B089 /* RuntimeStatusStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeStatusStore.swift; sourceTree = "<group>"; };
 		154315BEE4F2F035E35C3097 /* RemoteDeployIntegrationTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemoteDeployIntegrationTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -950,7 +949,6 @@
 				489A6CB77F32B387688FC39D /* Assets.xcassets */,
 				186DF59BC166A3203704C627 /* Info.plist */,
 				DEBB5893B7D475E4702B2405 /* Logging.swift */,
-				13614D32C8BE08B5E2A2FAB2 /* RemoteDeployCompanion.entitlements */,
 				47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */,
 				F270FF736141F30ED08002AC /* Services */,
 				5B1B521AC7C9082F206D6434 /* Views */,
@@ -1653,7 +1651,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = RemoteDeployCompanion/RemoteDeployCompanion.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = RDJQ523WP4;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1800,7 +1797,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = RemoteDeployCompanion/RemoteDeployCompanion.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = RDJQ523WP4;
 				GENERATE_INFOPLIST_FILE = YES;
