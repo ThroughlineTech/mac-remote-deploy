@@ -123,9 +123,17 @@ final class KeychainStore {
         #else
         // Device path: authenticate once via LAContext, then read with
         // kSecUseAuthenticationContext so the keychain trusts the pre-auth'd
-        // context and doesn't prompt again.
-        guard let context = await authenticatedContext() else {
-            return nil
+        // context and doesn't prompt again. On a device with no passcode/biometrics
+        // the item was stored WITHOUT a user-presence gate, so read it directly --
+        // evaluatePolicy would just fail with passcodeNotSet and block restore.
+        let context: LAContext?
+        if deviceAuthAvailable() {
+            guard let authed = await authenticatedContext() else {
+                return nil
+            }
+            context = authed
+        } else {
+            context = nil
         }
 
         // Blob first.
@@ -229,6 +237,17 @@ final class KeychainStore {
 
     // MARK: - LAContext authentication
 
+    /// Whether the device can evaluate owner authentication (a passcode and/or
+    /// biometrics are set). When false -- e.g. an iPhone SE with no passcode and
+    /// no Touch ID -- a `.userPresence`-gated keychain item can be neither stored
+    /// (SecItemAdd fails) nor read (`evaluatePolicy` fails with `passcodeNotSet`).
+    /// In that case the credential is stored and read WITHOUT the gate, so pairing
+    /// still survives a relaunch. TKT-066.
+    static func deviceAuthAvailable() -> Bool {
+        var error: NSError?
+        return LAContext().canEvaluatePolicy(.deviceOwnerAuthentication, error: &error)
+    }
+
     /// Creates an LAContext and authenticates the user.
     ///
     /// Uses `.deviceOwnerAuthentication` — Apple's standard "biometrics first,
@@ -262,7 +281,7 @@ final class KeychainStore {
 
     /// Reads the legacy 3-item format using an authenticated LAContext so all
     /// three reads share the same auth and only show one prompt total.
-    private static func loadLegacy(context: LAContext) -> (url: String, token: String, serverName: String)? {
+    private static func loadLegacy(context: LAContext?) -> (url: String, token: String, serverName: String)? {
         guard let url = getString(key: legacyURLKey, context: context),
               let token = getString(key: legacyTokenKey, context: context),
               let name = getString(key: legacyNameKey, context: context) else {
@@ -322,7 +341,12 @@ final class KeychainStore {
         #if targetEnvironment(simulator)
         addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
         #else
-        if let access = SecAccessControlCreateWithFlags(
+        // Gate behind biometrics/passcode only when the device can evaluate it.
+        // On a device with no passcode (e.g. a bare SE), a .userPresence item
+        // can't be created at all, so store plain device-only accessibility there
+        // -- otherwise SecItemAdd fails and the pairing never persists. TKT-066.
+        if deviceAuthAvailable(),
+           let access = SecAccessControlCreateWithFlags(
             nil,
             kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
             .userPresence,
