@@ -15,9 +15,11 @@ struct PairDeviceView: View {
     @State private var qrImage: NSImage?
     /// The raw token for this pairing session (shown for manual entry fallback).
     @State private var rawToken: String = ""
-    /// Paired-device count captured before minting, so a new pairing is detected
-    /// as an increase (avoids needing the server's token-hashing in the client).
-    @State private var baselineDeviceCount = 0
+    /// Paired-device ids captured before minting. A new pairing is detected when a
+    /// device id appears that was not in this baseline -- robust to the server
+    /// deduping a same-name re-pair (which revokes the old record, so a plain
+    /// count would stay flat and never trip). TKT-066.
+    @State private var baselineDeviceIDs: Set<UUID> = []
     /// Error surfaced if minting the pairing token fails.
     @State private var errorMessage: String?
     /// Whether pairing was completed.
@@ -114,9 +116,10 @@ struct PairDeviceView: View {
     /// starts polling for completion. TKT-060 (Phase 6).
     private func startPairing() {
         Task {
-            // Baseline the device count so a new pairing shows up as an increase.
+            // Baseline the existing device ids so a new pairing is detected as a
+            // new id (not a count increase, which dedupe can mask).
             await menuBarClient.refreshDevices()
-            baselineDeviceCount = menuBarClient.devices.count
+            baselineDeviceIDs = Set(menuBarClient.devices.map(\.id))
 
             guard let pending = await menuBarClient.mintPairingToken() else {
                 errorMessage = "Could not start pairing: \(menuBarClient.lastError ?? "server unreachable")"
@@ -161,7 +164,8 @@ struct PairDeviceView: View {
                 try? await Task.sleep(for: .seconds(2))
                 if Task.isCancelled { break }
                 await menuBarClient.refreshDevices()
-                if menuBarClient.devices.count > baselineDeviceCount {
+                let newIDs = Set(menuBarClient.devices.map(\.id)).subtracting(baselineDeviceIDs)
+                if !newIDs.isEmpty {
                     withAnimation {
                         pairingComplete = true
                     }

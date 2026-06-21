@@ -15,9 +15,11 @@ struct PairBrowserView: View {
 
     /// The raw pairing code shown to the user (doubles as the browser's bearer token).
     @State private var rawToken: String = ""
-    /// Paired-device count captured before minting, so a new pairing is detected
-    /// as an increase.
-    @State private var baselineDeviceCount = 0
+    /// Paired-device ids captured before minting. A new pairing is detected when a
+    /// device id appears that was not in this baseline -- robust to the server
+    /// deduping a same-name re-pair (which revokes the old record, so a plain
+    /// count would stay flat and never trip). TKT-066.
+    @State private var baselineDeviceIDs: Set<UUID> = []
     /// Error surfaced if minting the pairing code fails.
     @State private var errorMessage: String?
     /// Whether pairing was completed.
@@ -138,7 +140,7 @@ struct PairBrowserView: View {
     private func startPairing() {
         Task {
             await menuBarClient.refreshDevices()
-            baselineDeviceCount = menuBarClient.devices.count
+            baselineDeviceIDs = Set(menuBarClient.devices.map(\.id))
 
             guard let pending = await menuBarClient.mintPairingToken() else {
                 errorMessage = "Could not start pairing: \(menuBarClient.lastError ?? "server unreachable")"
@@ -157,7 +159,8 @@ struct PairBrowserView: View {
                 try? await Task.sleep(for: .seconds(2))
                 if Task.isCancelled { break }
                 await menuBarClient.refreshDevices()
-                if menuBarClient.devices.count > baselineDeviceCount {
+                let newIDs = Set(menuBarClient.devices.map(\.id)).subtracting(baselineDeviceIDs)
+                if !newIDs.isEmpty {
                     withAnimation {
                         pairingComplete = true
                     }
