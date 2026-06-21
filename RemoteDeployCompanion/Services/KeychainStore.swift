@@ -176,6 +176,38 @@ final class KeychainStore {
         return itemExists(account: credentialsKey) || itemExists(account: legacyURLKey)
     }
 
+    // MARK: - Diagnostics (TKT-066)
+    // Persisted to UserDefaults (survives force-quit, unlike the keychain item
+    // when a write fails) so the pairing screen can show WHY a cold-start restore
+    // failed -- no Console/device logs needed. Remove once the re-pair-on-cold-
+    // start issue is resolved.
+
+    private static let diagLastSaveStatusKey = "diag.kc.lastSaveStatus"
+    private static let diagLastReadStatusKey = "diag.kc.lastReadStatus"
+
+    /// Human-readable summary of the last credential save/read OSStatus plus
+    /// whether an item is currently stored. Shown on the pairing screen.
+    static func diagnosticSummary() -> String {
+        let d = UserDefaults.standard
+        let save = d.object(forKey: diagLastSaveStatusKey) as? Int
+        let read = d.object(forKey: diagLastReadStatusKey) as? Int
+        return "kc save=\(statusName(save)) stored=\(hasStoredCredentials()) read=\(statusName(read))"
+    }
+
+    private static func statusName(_ status: Int?) -> String {
+        guard let status else { return "n/a" }
+        switch OSStatus(status) {
+        case errSecSuccess: return "ok"
+        case errSecItemNotFound: return "notFound(-25300)"
+        case errSecMissingEntitlement: return "missingEntitlement(-34018)"
+        case errSecInteractionNotAllowed: return "interactionNotAllowed(-25308)"
+        case errSecAuthFailed: return "authFailed(-25293)"
+        case errSecParam: return "param(-50)"
+        case errSecNotAvailable: return "notAvailable(-25291)"
+        default: return "\(status)"
+        }
+    }
+
     /// Clears all saved server credentials (new blob + stray legacy items + cache).
     static func clear() {
         delete(key: credentialsKey)
@@ -291,6 +323,9 @@ final class KeychainStore {
         #endif
 
         let addStatus = SecItemAdd(addQuery as CFDictionary, nil)
+        if key == credentialsKey {
+            UserDefaults.standard.set(Int(addStatus), forKey: diagLastSaveStatusKey)
+        }
         if addStatus != errSecSuccess {
             NSLog("KeychainStore: SecItemAdd failed for key '\(key)' with status \(addStatus)")
         }
@@ -312,6 +347,9 @@ final class KeychainStore {
         }
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if key == credentialsKey {
+            UserDefaults.standard.set(Int(status), forKey: diagLastReadStatusKey)
+        }
         guard status == errSecSuccess, let data = result as? Data else {
             // errSecItemNotFound (-25300) is the normal "nothing saved" case.
             // Anything else (e.g. -34018 errSecMissingEntitlement, -25308

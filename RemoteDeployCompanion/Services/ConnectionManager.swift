@@ -28,6 +28,11 @@ final class ConnectionManager: ObservableObject {
     /// Error message for display.
     @Published var error: String?
 
+    /// TKT-066 diagnostic: the keychain save/read status from the last restore
+    /// attempt, surfaced on the pairing screen to pinpoint the re-pair-on-cold-
+    /// start bug. Empty until a restore is attempted.
+    @Published var restoreDiagnostic: String = ""
+
     /// The API client for making requests to the server.
     private(set) var apiClient: APIClient?
 
@@ -101,11 +106,15 @@ final class ConnectionManager: ObservableObject {
         guard !isConnected, !isRestoring else { return }
         guard KeychainStore.hasStoredCredentials() else {
             logger.info("restore: no saved credentials; showing pairing screen")
+            restoreDiagnostic = KeychainStore.diagnosticSummary()
             return
         }
         isRestoring = true
         defer { isRestoring = false }
         await restoreConnection()
+        if !isConnected {
+            restoreDiagnostic = KeychainStore.diagnosticSummary()
+        }
     }
 
     /// Attempts to connect using saved Keychain credentials. Async because the
