@@ -154,10 +154,17 @@ final class KeychainStore {
     /// (worth retrying), and avoids a spurious biometric prompt for users who
     /// have never paired.
     ///
-    /// `kSecUseAuthenticationUISkip` makes the keychain answer without any UI: an
-    /// ACL-protected item that exists but needs auth returns
-    /// `errSecInteractionNotAllowed`; a missing item returns `errSecItemNotFound`.
-    /// Both the blob and the legacy items are checked.
+    /// Checks existence by requesting ATTRIBUTES (not the secret data). For a
+    /// `.userPresence`-protected item, attributes are readable WITHOUT
+    /// authentication, so this never prompts -- yet still detects the item.
+    ///
+    /// TKT-066: the previous implementation used `kSecUseAuthenticationUISkip`,
+    /// which does NOT return "exists but needs auth" -- it SILENTLY OMITS any
+    /// auth-protected item from the results, so the query returned
+    /// `errSecItemNotFound`. That made `hasStoredCredentials()` always report
+    /// false for the real (Face-ID-gated) credential, so `restoreConnection` was
+    /// never attempted, `load()`'s Face ID prompt never fired, and the app
+    /// re-paired on every cold start.
     static func hasStoredCredentials() -> Bool {
         if lockedCache.withLock({ $0 }) != nil { return true }
 
@@ -167,9 +174,14 @@ final class KeychainStore {
                 kSecAttrService as String: serviceKey,
                 kSecAttrAccount as String: account,
                 kSecMatchLimit as String: kSecMatchLimitOne,
-                kSecUseAuthenticationUI as String: kSecUseAuthenticationUISkip,
+                kSecReturnAttributes as String: true,
+                kSecUseAuthenticationUI as String: kSecUseAuthenticationUIFail,
             ]
-            let status = SecItemCopyMatching(query as CFDictionary, nil)
+            var result: AnyObject?
+            let status = SecItemCopyMatching(query as CFDictionary, &result)
+            // errSecSuccess: item exists (attributes returned, no auth needed).
+            // errSecInteractionNotAllowed: item exists but is auth-gated -- still
+            // proof it exists, which is all we need here.
             return status == errSecSuccess || status == errSecInteractionNotAllowed
         }
 
