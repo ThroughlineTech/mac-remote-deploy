@@ -78,14 +78,10 @@ struct QRScannerView: View {
             return
         }
 
-        struct PairingPayload: Codable {
-            var url: String
-            var token: String
-            var serverName: String
-            var localURL: String?
-        }
-
-        guard let payload = try? JSONDecoder().decode(PairingPayload.self, from: data) else {
+        // Shares the companion's single PairingPayload definition with the
+        // delegated-pairing generator (TKT-065) so the scanner and generator
+        // can never drift apart.
+        guard let payload = try? JSONDecoder().decode(QRCodeGenerator.PairingPayload.self, from: data) else {
             error = "Not a RemoteDeploy QR code"
             scannedCode = nil
             return

@@ -70,6 +70,7 @@
 		50331482B957785E259F79DF /* ServerLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80CA177B43F15DDFD80A9F63 /* ServerLifecycle.swift */; };
 		518E3FE39DC544CB4C519FF1 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = F83355A467E4060D7798083A /* main.swift */; };
 		51CD2B019CD3E856441294C1 /* LocalDeployManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82895AA4B37116B713C066EB /* LocalDeployManagerTests.swift */; };
+		530857D2DBF35EF3836CF437 /* QRCodeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 434D4DD327AA58E2EC6A0F45 /* QRCodeGenerator.swift */; };
 		540B519C7BAA9046D04E29A1 /* MockProjectStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B223A9835076867EE2BCA306 /* MockProjectStore.swift */; };
 		549B5D96666E0F7B122D8FA8 /* NIODeployServerBuildEventBroadcastingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B672B2B791A8157F8C29D9C9 /* NIODeployServerBuildEventBroadcastingTests.swift */; };
 		54E435E0B73226B00FDED0E6 /* BuildTriggering.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0D10A0A333FF7AF21EE166 /* BuildTriggering.swift */; };
@@ -82,6 +83,7 @@
 		5B1532B8D758D89C1430DE79 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7BB07446157CBE3644142C /* AboutView.swift */; };
 		5D5CB61B2CC66DE477EFD8A3 /* QRCodeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1004E77ECE48FE61F0D627DE /* QRCodeGenerator.swift */; };
 		5EE1ECC8FA02C4BF3F03B20C /* MockBuildStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE018321B14C64CF18E5C8E /* MockBuildStatusProvider.swift */; };
+		60EBF62569A404EFA859A0BC /* PairAnotherDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FC916EBAA2EE1D71235046B /* PairAnotherDeviceView.swift */; };
 		610F3644E76DFA69BE68CE2D /* RemoteDeployErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */; };
 		63BF7A70120200E8615AA9C7 /* LocalDeployManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE09A9422E571758E466A9E7 /* LocalDeployManager.swift */; };
 		6420C2DBD631B81CA3DCCE77 /* NtfyNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD406B6C198D5CCFA0C5EF03 /* NtfyNotifier.swift */; };
@@ -310,6 +312,7 @@
 		3DD292C2D8F66A015F4B9647 /* RemoteDeployServer.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RemoteDeployServer.entitlements; sourceTree = "<group>"; };
 		3F85AA5470FF16F77A1203DB /* UserDefaultsProjectStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsProjectStore.swift; sourceTree = "<group>"; };
 		401281700F480373D0BDD99D /* InstallPageGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallPageGeneratorTests.swift; sourceTree = "<group>"; };
+		434D4DD327AA58E2EC6A0F45 /* QRCodeGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeGenerator.swift; sourceTree = "<group>"; };
 		4579386F0F79FDC4139F8586 /* SettingsRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouteHandler.swift; sourceTree = "<group>"; };
 		476D45090B089408984641C6 /* HTTPHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTTPHandler.swift; sourceTree = "<group>"; };
 		47B88D940F03B38BCDC264FC /* RemoteDeployCompanionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDeployCompanionApp.swift; sourceTree = "<group>"; };
@@ -374,6 +377,7 @@
 		9C9700FCC775785F187AFE46 /* InstallsRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallsRouteHandlerTests.swift; sourceTree = "<group>"; };
 		9DF49CC1B4C8288E434E8E7C /* BuildManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildManager.swift; sourceTree = "<group>"; };
 		9FA5473810ACB2247C7D831C /* UtilitiesSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilitiesSection.swift; sourceTree = "<group>"; };
+		9FC916EBAA2EE1D71235046B /* PairAnotherDeviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairAnotherDeviceView.swift; sourceTree = "<group>"; };
 		A01D98EC64458F31242B9074 /* BuildConfigProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildConfigProviding.swift; sourceTree = "<group>"; };
 		A12C6947C128D397656B773C /* ServerStatusProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStatusProvider.swift; sourceTree = "<group>"; };
 		A2A038EE6F2D5A6C05210090 /* DirectBuildTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectBuildTrigger.swift; sourceTree = "<group>"; };
@@ -812,6 +816,7 @@
 		802438549FE3792F6B95463A /* Pairing */ = {
 			isa = PBXGroup;
 			children = (
+				9FC916EBAA2EE1D71235046B /* PairAnotherDeviceView.swift */,
 				3B2B0FECA392A23BF8455185 /* QRScannerView.swift */,
 			);
 			path = Pairing;
@@ -957,6 +962,7 @@
 				9DF49CC1B4C8288E434E8E7C /* BuildManager.swift */,
 				9796786DAAB99C929734C0A8 /* ConnectionManager.swift */,
 				1FD535B366F2DA93C36C95B3 /* KeychainStore.swift */,
+				434D4DD327AA58E2EC6A0F45 /* QRCodeGenerator.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -1413,7 +1419,9 @@
 				3A209EC90680437D5F9AD0BB /* InstallHistoryView.swift in Sources */,
 				DA4541B6B11BF92BC6A10562 /* KeychainStore.swift in Sources */,
 				08475A8BFC1FD94414F4CEC0 /* Logging.swift in Sources */,
+				60EBF62569A404EFA859A0BC /* PairAnotherDeviceView.swift in Sources */,
 				3CD7D0E088ACBC9CC482E417 /* ProjectListView.swift in Sources */,
+				530857D2DBF35EF3836CF437 /* QRCodeGenerator.swift in Sources */,
 				D84BF1DA80310136177ED71F /* QRScannerView.swift in Sources */,
 				F11BA351A6F23B6BEEE311E6 /* RemoteDeployCompanionApp.swift in Sources */,
 				1BFE1FB1B7F06EE12EDF7418 /* RemoteSettingsView.swift in Sources */,

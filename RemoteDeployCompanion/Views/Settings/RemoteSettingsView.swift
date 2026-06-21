@@ -52,6 +52,24 @@ struct RemoteSettingsView: View {
                     }
                 }
 
+                // Pair another device (delegated pairing). Only available while
+                // connected -- it mints a fresh one-time token using this phone's
+                // bearer token. TKT-065.
+                if connectionManager.isConnected {
+                    Section {
+                        NavigationLink {
+                            PairAnotherDeviceView()
+                        } label: {
+                            HStack {
+                                Image(systemName: "qrcode")
+                                Text("Pair Another Device")
+                            }
+                        }
+                    } footer: {
+                        Text("Show a QR code from this phone so another device can pair with this Mac -- no need to be at the Mac. Each device gets its own login, revocable from the Mac's Devices list.")
+                    }
+                }
+
                 // About
                 Section {
                     NavigationLink {
