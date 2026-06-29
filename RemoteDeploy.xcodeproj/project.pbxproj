@@ -25,6 +25,7 @@
 		1B4E7A7506B7B1F3237A8F0F /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07662E99BB1FD132BC8FA2F8 /* AppState.swift */; };
 		1B63A9D4EE28B3C0AB3BEB54 /* DeferredSettingsUpdaterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD5B495CA2B6248B73639CC /* DeferredSettingsUpdaterTests.swift */; };
 		1BD6CE0D7084D93B7D461EB7 /* BuildHistoryStoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF616F70E595FE3B490E962E /* BuildHistoryStoring.swift */; };
+		1BDF8A41CE40DB6D1ADDCF76 /* XcodeGenSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9740F14EBA2193009C49D7ED /* XcodeGenSupport.swift */; };
 		1BE37DC9D42E314BA7376D17 /* DeployServerProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6BAE574A21E06D86F726A7A /* DeployServerProtocol.swift */; };
 		1BFE1FB1B7F06EE12EDF7418 /* RemoteSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0E84C0CBF2FF90F199DB14 /* RemoteSettingsView.swift */; };
 		1F2E390491DA143B21297B3D /* DevicesRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = B33B98495C39EBEF05DD5F32 /* DevicesRouteHandler.swift */; };
@@ -51,6 +52,7 @@
 		3A209EC90680437D5F9AD0BB /* InstallHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C98E31F3DA0E3F06382248 /* InstallHistoryView.swift */; };
 		3BA0B04727FDB607A0147260 /* IPAImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E99FD0385C3693EC551530C6 /* IPAImporter.swift */; };
 		3BBB0A6D21E0D6880177E535 /* NtfyNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD406B6C198D5CCFA0C5EF03 /* NtfyNotifier.swift */; };
+		3BDF4C8EF4CF45C0BC839675 /* XcodeGenSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF1C1586B3F5255EF8C126D1 /* XcodeGenSupportTests.swift */; };
 		3BF9028DC12FEC5B78FFA547 /* TailscaleCertificateProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7312A739B4BCBDAD6952F65D /* TailscaleCertificateProvider.swift */; };
 		3CD7D0E088ACBC9CC482E417 /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D243FF3F39A57458A1ACE31 /* ProjectListView.swift */; };
 		3FE85CF846CBAB1C6FC0C70D /* APIRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CC97FD7353628B32967A8E8 /* APIRouter.swift */; };
@@ -372,6 +374,7 @@
 		8D2818AE9DDCDA8AA04E36AE /* StatusRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusRouteHandlerTests.swift; sourceTree = "<group>"; };
 		8F4AC77A76F91287B194A3C2 /* BuildResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildResult.swift; sourceTree = "<group>"; };
 		96C777EAE6D90D2F47C98B5E /* SettingsProviding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsProviding.swift; sourceTree = "<group>"; };
+		9740F14EBA2193009C49D7ED /* XcodeGenSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeGenSupport.swift; sourceTree = "<group>"; };
 		9796786DAAB99C929734C0A8 /* ConnectionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionManager.swift; sourceTree = "<group>"; };
 		98A1A0B4BD27AD91950B3A1F /* XcodeBuildEngineMacOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildEngineMacOSTests.swift; sourceTree = "<group>"; };
 		994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteDeployErrorTests.swift; sourceTree = "<group>"; };
@@ -441,6 +444,7 @@
 		DE9094F0FF10504FDD5727F0 /* PairingRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingRouteHandler.swift; sourceTree = "<group>"; };
 		DEBB5893B7D475E4702B2405 /* Logging.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logging.swift; sourceTree = "<group>"; };
 		DEFE237F3F6262EABFA04D8A /* SettingsRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRouteHandlerTests.swift; sourceTree = "<group>"; };
+		DF1C1586B3F5255EF8C126D1 /* XcodeGenSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeGenSupportTests.swift; sourceTree = "<group>"; };
 		DF1E54C911A24AC15A89473F /* BuildResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildResultTests.swift; sourceTree = "<group>"; };
 		DFA64AF243B1B954F7E07EBD /* EnvironmentCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentCheckerTests.swift; sourceTree = "<group>"; };
 		DFCF285B7BC297408F3A3170 /* ManifestGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManifestGeneratorTests.swift; sourceTree = "<group>"; };
@@ -647,6 +651,7 @@
 				A12C6947C128D397656B773C /* ServerStatusProvider.swift */,
 				F4FAF9054B0659F3E0A3E195 /* TailscaleCertProvisioner.swift */,
 				26764D2F19DE6861C9012BC2 /* XcodebuildSchemeDetector.swift */,
+				9740F14EBA2193009C49D7ED /* XcodeGenSupport.swift */,
 			);
 			path = API;
 			sourceTree = "<group>";
@@ -814,6 +819,7 @@
 				C2BF1ACA1CB561C7EB44AF02 /* XcodeBuildEngineFailureTests.swift */,
 				98A1A0B4BD27AD91950B3A1F /* XcodeBuildEngineMacOSTests.swift */,
 				A34B971FF3418170F156A17B /* XcodeBuildEngineXcodeGenTests.swift */,
+				DF1C1586B3F5255EF8C126D1 /* XcodeGenSupportTests.swift */,
 				5CCDEDFEDA2820CD165CA1DD /* API */,
 				D1B31D03DE6F82D06FB3BB47 /* Mocks */,
 				B9D763DC9E6CC3D9291D0423 /* Support */,
@@ -1287,6 +1293,7 @@
 				B610804D9636E80A171AB7B6 /* UserDefaultsProjectStore.swift in Sources */,
 				19E0D4802BA5C072B1822DE5 /* WebSocketHandler.swift in Sources */,
 				252D2D2758A6EC4FFBAD8C1F /* XcodeBuildEngine.swift in Sources */,
+				1BDF8A41CE40DB6D1ADDCF76 /* XcodeGenSupport.swift in Sources */,
 				456F68B375A47189B4309CE1 /* XcodebuildSchemeDetector.swift in Sources */,
 				518E3FE39DC544CB4C519FF1 /* main.swift in Sources */,
 			);
@@ -1404,6 +1411,7 @@
 				7F9E3B7969B0ACB56181995E /* XcodeBuildEngineFailureTests.swift in Sources */,
 				6B71D3F6F95BC06818D40B02 /* XcodeBuildEngineMacOSTests.swift in Sources */,
 				E9313DA3D9BE68B6F469BE4D /* XcodeBuildEngineXcodeGenTests.swift in Sources */,
+				3BDF4C8EF4CF45C0BC839675 /* XcodeGenSupportTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

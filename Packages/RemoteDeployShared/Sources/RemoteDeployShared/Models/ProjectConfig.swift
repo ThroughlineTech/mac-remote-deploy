@@ -59,6 +59,21 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
     /// use the default "/Applications/" path.
     public var localDeployPath: String?
 
+    /// When true, pass `-allowProvisioningUpdates` to xcodebuild so it can
+    /// register the App ID + capabilities and build a managed signing profile
+    /// from the command line. Required for projects whose bundle ID / entitlements
+    /// (Push, Associated Domains, iCloud) are not already provisioned -- without
+    /// it xcodebuild falls back to a wildcard profile that lacks them. Defaults to
+    /// true (mirrors Xcode's automatic signing). TKT-072.
+    public var allowProvisioningUpdates: Bool
+
+    /// Optional absolute path to a specific Xcode's developer directory (the value
+    /// for `DEVELOPER_DIR`, e.g. "/Applications/Xcode-beta.app/Contents/Developer").
+    /// Nil means auto-resolve the active/most-suitable Xcode. Use this to pin a
+    /// project to a specific toolchain (e.g. a beta needed for a newer iOS SDK).
+    /// TKT-072.
+    public var developerDir: String?
+
     /// Creates a new project config with sensible defaults.
     public init(name: String, projectPath: String) {
         self.id = UUID()
@@ -82,6 +97,8 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
         self.expoAppDirectory = nil
         self.localDeploy = false
         self.localDeployPath = nil
+        self.allowProvisioningUpdates = true
+        self.developerDir = nil
     }
 
     /// Decodes with backward compatibility — older saved configs without a platform field default to "iOS".
@@ -104,5 +121,8 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
         expoAppDirectory = try container.decodeIfPresent(String.self, forKey: .expoAppDirectory)
         localDeploy = try container.decodeIfPresent(Bool.self, forKey: .localDeploy) ?? false
         localDeployPath = try container.decodeIfPresent(String.self, forKey: .localDeployPath)
+        // TKT-072: default true so existing saved configs keep automatic signing.
+        allowProvisioningUpdates = try container.decodeIfPresent(Bool.self, forKey: .allowProvisioningUpdates) ?? true
+        developerDir = try container.decodeIfPresent(String.self, forKey: .developerDir)
     }
 }

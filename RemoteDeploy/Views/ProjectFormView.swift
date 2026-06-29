@@ -131,6 +131,27 @@ struct ProjectFormView: View {
                     .help("URL path for this project (e.g., 'rejog' serves at /rejog/)")
             }
 
+            // MARK: - Advanced (TKT-072)
+            Section("Advanced") {
+                Toggle("Allow provisioning updates", isOn: $project.allowProvisioningUpdates)
+                    .help("Pass -allowProvisioningUpdates so xcodebuild can register the App ID "
+                        + "and build a managed signing profile from the command line. Leave on "
+                        + "unless this project must use a fixed, pre-installed profile.")
+
+                HStack {
+                    TextField("Xcode (optional)", text: Binding(
+                        get: { project.developerDir ?? "" },
+                        set: { project.developerDir = $0.isEmpty ? nil : $0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    Button("Choose...") {
+                        browseForXcode()
+                    }
+                }
+                .help("Pin this project to a specific Xcode's DEVELOPER_DIR (e.g. an Xcode-beta "
+                    + "needed for a newer SDK). Leave empty to auto-select the active Xcode.")
+            }
+
             // MARK: - Actions
             HStack {
                 if onDelete != nil {
@@ -161,6 +182,22 @@ struct ProjectFormView: View {
     }
 
     // MARK: - Actions
+
+    /// Opens a file dialog to pick a specific Xcode.app and stores its
+    /// `Contents/Developer` directory as the project's `developerDir` override.
+    /// TKT-072.
+    private func browseForXcode() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.application]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.message = "Select the Xcode.app to use for this project"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            project.developerDir = url.appendingPathComponent("Contents/Developer").path
+        }
+    }
 
     /// Opens a file dialog for the user to select an Xcode project directory.
     private func browseForProject() {

@@ -40,6 +40,13 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// but no full Xcode found" (inner `nil`). See `developerDirectory()`.
     private let lockedDeveloperDir = OSAllocatedUnfairLock<String??>(initialState: nil)
 
+    /// Per-build override for `DEVELOPER_DIR`, taken from the project's
+    /// `developerDir`. Set at the start of `build()` and consulted by
+    /// `applyXcodebuildEnvironment` so a project can pin a specific Xcode
+    /// (e.g. a beta for a newer SDK). Nil means auto-resolve. TKT-072. Builds are
+    /// serialized, so a single per-engine slot is sufficient.
+    private let lockedDeveloperDirOverride = OSAllocatedUnfairLock<String?>(initialState: nil)
+
     // MARK: - Protocol Properties
 
     /// The current build status (idle, building, success, or failure).
@@ -86,12 +93,17 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         // Reset cancellation flag at the start of every new build so a previous
         // cancellation doesn't carry over and immediately fail this build.
         lockedIsCancelling.withLock { $0 = false }
+        // TKT-072: pin this build to the project's chosen Xcode toolchain, if any.
+        lockedDeveloperDirOverride.withLock { $0 = project.developerDir }
         setStatus(.building(progress: "Preparing build…"))
 
-        // Regenerate the .xcodeproj from project.yml first so XcodeGen-managed
-        // projects build from their current spec rather than a stale or missing
-        // generated project. No-op for projects without a project.yml spec.
-        try regenerateXcodeGenProjectIfNeeded(at: project.projectPath)
+        // TKT-072: resolve the directory that actually holds the project (so a path
+        // pointing at a monorepo root resolves to the iOS app subdir) and regenerate
+        // the .xcodeproj from project.yml first, so XcodeGen-managed projects build
+        // from their current spec rather than a stale or missing generated project.
+        // No-op for projects without a project.yml spec.
+        let projectDir = XcodeGenSupport.resolveProjectDirectory(project.projectPath)
+        try regenerateXcodeGenProject(inDirectory: projectDir)
 
         let fm = FileManager.default
 
@@ -133,12 +145,13 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         } else if project.projectPath.hasSuffix(".xcodeproj") {
             archiveArgs += ["-project", project.projectPath]
         } else {
-            // projectPath is a directory — scan for .xcworkspace or .xcodeproj inside it
-            let contents = (try? fm.contentsOfDirectory(atPath: project.projectPath)) ?? []
+            // projectPath is a directory — scan the resolved project dir (TKT-072:
+            // may be a monorepo subdir) for .xcworkspace or .xcodeproj inside it.
+            let contents = (try? fm.contentsOfDirectory(atPath: projectDir)) ?? []
             if let ws = contents.first(where: { $0.hasSuffix(".xcworkspace") }) {
-                archiveArgs += ["-workspace", (project.projectPath as NSString).appendingPathComponent(ws)]
+                archiveArgs += ["-workspace", (projectDir as NSString).appendingPathComponent(ws)]
             } else if let proj = contents.first(where: { $0.hasSuffix(".xcodeproj") }) {
-                archiveArgs += ["-project", (project.projectPath as NSString).appendingPathComponent(proj)]
+                archiveArgs += ["-project", (projectDir as NSString).appendingPathComponent(proj)]
             } else {
                 throw BuildError.missingProjectFile(project.projectPath)
             }
@@ -164,6 +177,13 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             "-configuration", project.buildConfiguration,
             "DEVELOPMENT_TEAM=\(project.teamID)"
         ]
+
+        // TKT-072: let xcodebuild register the App ID + capabilities and build a
+        // managed profile from the CLI (needed when the bundle ID / entitlements
+        // aren't already provisioned). Mirrors Xcode's automatic signing.
+        if project.allowProvisioningUpdates {
+            archiveArgs.append("-allowProvisioningUpdates")
+        }
 
         try await runXcodebuild(arguments: Array(archiveArgs.dropFirst()))
 
@@ -195,12 +215,17 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             try exportPlist.write(toFile: exportPlistPath, atomically: true, encoding: .utf8)
 
             // -- Step 3: Export Archive → IPA --
-            let exportArgs: [String] = [
+            var exportArgs: [String] = [
                 "-exportArchive",
                 "-archivePath", archivePath,
                 "-exportOptionsPlist", exportPlistPath,
                 "-exportPath", exportDir
             ]
+            // TKT-072: also allow managed-profile updates during export so signing
+            // the IPA doesn't fall back to a wildcard profile missing entitlements.
+            if project.allowProvisioningUpdates {
+                exportArgs.append("-allowProvisioningUpdates")
+            }
 
             try await runXcodebuild(arguments: exportArgs)
 
@@ -263,11 +288,17 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// - Returns: An array of scheme name strings found in the project.
     /// - Throws: If xcodebuild fails to parse the project or the path is invalid.
     func detectSchemes(at projectPath: String) async throws -> [String] {
-        // Regenerate the .xcodeproj from project.yml first so XcodeGen-managed
-        // projects (whose generated .xcodeproj is kept out of source control)
-        // are present and current before xcodebuild reads them.
-        try regenerateXcodeGenProjectIfNeeded(at: projectPath)
-        let resolved = try resolveXcodeProject(at: projectPath)
+        // TKT-072: resolve the directory that actually holds the project (so a
+        // monorepo root resolves to the iOS app subdir) and regenerate the
+        // .xcodeproj from project.yml first, so XcodeGen-managed projects (whose
+        // generated .xcodeproj is kept out of source control) are present and
+        // current before xcodebuild reads them.
+        let isBundle = projectPath.hasSuffix(".xcodeproj") || projectPath.hasSuffix(".xcworkspace")
+        let projectDir = isBundle
+            ? (projectPath as NSString).deletingLastPathComponent
+            : XcodeGenSupport.resolveProjectDirectory(projectPath)
+        try regenerateXcodeGenProject(inDirectory: projectDir)
+        let resolved = try resolveXcodeProject(at: isBundle ? projectPath : projectDir)
         let flag = resolved.hasSuffix(".xcworkspace") ? "-workspace" : "-project"
         let args = [flag, resolved, "-list"]
 
@@ -659,93 +690,18 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
 
     // MARK: - XcodeGen Integration
 
-    /// Returns the directory that may hold an XcodeGen `project.yml` spec for the
-    /// given path. If the path is a `.xcodeproj`/`.xcworkspace` bundle, the spec
-    /// lives in the bundle's parent directory; otherwise the path is itself the
-    /// project directory.
-    private func specDirectory(for path: String) -> String {
-        if path.hasSuffix(".xcodeproj") || path.hasSuffix(".xcworkspace") {
-            return (path as NSString).deletingLastPathComponent
-        }
-        return path
-    }
-
-    /// Runs `xcodegen generate` when the project directory contains an XcodeGen
-    /// spec (`project.yml` or `project.yaml`), so the `.xcodeproj` is always
-    /// regenerated from its source of truth before xcodebuild reads it.
-    ///
-    /// XcodeGen-managed projects keep the generated `.xcodeproj` out of source
-    /// control, so without this a fresh checkout would be missing the project
-    /// entirely and an edited spec would leave a stale one. Projects with no
-    /// spec are left untouched (this is a no-op for hand-maintained projects).
-    ///
-    /// - Parameter projectPath: The project directory or a path to a bundle
-    ///   inside it.
-    /// - Throws: `BuildError.xcodegenFailed` if a spec is present but XcodeGen
-    ///   is not installed, or if `xcodegen generate` exits non-zero.
-    private func regenerateXcodeGenProjectIfNeeded(at projectPath: String) throws {
-        let dir = specDirectory(for: projectPath)
-        let fm = FileManager.default
-        guard let specName = ["project.yml", "project.yaml"].first(where: {
-            fm.fileExists(atPath: (dir as NSString).appendingPathComponent($0))
-        }) else {
-            return  // Not an XcodeGen project; nothing to regenerate.
-        }
-
-        guard let xcodegen = Self.resolveXcodeGenBinary() else {
-            throw BuildError.xcodegenFailed(
-                "found \(specName) but XcodeGen is not installed. "
-                + "Install it with: brew install xcodegen"
-            )
-        }
-
-        emitLog("Generating Xcode project from \(specName) (xcodegen)…")
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: xcodegen)
-        process.arguments = ["generate", "--spec", specName, "--quiet"]
-        process.currentDirectoryURL = URL(fileURLWithPath: dir)
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
+    /// Regenerates the `.xcodeproj` from a `project.yml` spec in `dir`, streaming
+    /// xcodegen's output to the build log. A no-op for directories with no spec.
+    /// TKT-072: delegates to the shared `XcodeGenSupport` so the build and
+    /// scheme-detection paths can't drift; wraps its error as a `BuildError`.
+    private func regenerateXcodeGenProject(inDirectory dir: String) throws {
         do {
-            try process.run()
+            try XcodeGenSupport.regenerateIfNeeded(inDirectory: dir) { [weak self] line in
+                self?.emitLog(line)
+            }
         } catch {
-            throw BuildError.xcodegenFailed(
-                "could not launch xcodegen at \(xcodegen): \(error.localizedDescription)"
-            )
+            throw BuildError.xcodegenFailed(error.localizedDescription)
         }
-        process.waitUntilExit()
-
-        let output = String(
-            data: pipe.fileHandleForReading.readDataToEndOfFile(),
-            encoding: .utf8
-        ) ?? ""
-        let lines = output.components(separatedBy: .newlines)
-            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
-        for line in lines {
-            emitLog(line)
-        }
-
-        guard process.terminationStatus == 0 else {
-            let tail = lines.last ?? ""
-            throw BuildError.xcodegenFailed(
-                "xcodegen generate failed (exit \(process.terminationStatus)): \(tail)"
-            )
-        }
-    }
-
-    /// Resolves the `xcodegen` executable, preferring the standard Homebrew
-    /// install locations (the app runs under launchd with a minimal PATH that
-    /// usually omits `/opt/homebrew/bin`) and falling back to a PATH lookup.
-    private static func resolveXcodeGenBinary() -> String? {
-        let fm = FileManager.default
-        let candidates = ["/opt/homebrew/bin/xcodegen", "/usr/local/bin/xcodegen"]
-        if let hit = candidates.first(where: { fm.isExecutableFile(atPath: $0) }) {
-            return hit
-        }
-        return runCapturingTrimmed("/usr/bin/which", ["xcodegen"])
     }
 
     // MARK: - Toolchain Resolution
@@ -754,8 +710,19 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// so xcodebuild works regardless of what `xcode-select` points at. When no
     /// full Xcode can be located the environment is left untouched and the
     /// caller surfaces the resulting xcrun error (see `xcodebuildFailureHint`).
+    ///
+    /// TKT-072: a valid per-project override (`developerDir`) wins over the
+    /// auto-resolved toolchain, so a project can pin a specific Xcode. An override
+    /// that doesn't contain `xcodebuild` is ignored in favor of auto-resolution.
     private func applyXcodebuildEnvironment(to process: Process) {
-        guard let devDir = developerDirectory() else { return }
+        let override = lockedDeveloperDirOverride.withLock { $0 }
+        let devDir: String?
+        if let override, FileManager.default.isExecutableFile(atPath: override + "/usr/bin/xcodebuild") {
+            devDir = override
+        } else {
+            devDir = developerDirectory()
+        }
+        guard let devDir else { return }
         var env = ProcessInfo.processInfo.environment
         env["DEVELOPER_DIR"] = devDir
         process.environment = env

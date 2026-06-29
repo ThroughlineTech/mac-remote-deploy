@@ -17,6 +17,10 @@ enum SchemeDetectionError: LocalizedError {
     case launchFailed(String)
     /// xcodebuild ran but exited non-zero; carries a summary of its stderr.
     case xcodebuildFailed(status: Int32, message: String)
+    /// No `.xcodeproj`/`.xcworkspace` (and no XcodeGen `project.yml`) was found. TKT-072.
+    case noProjectFound(String)
+    /// An XcodeGen `project.yml` was present but generation failed. TKT-072.
+    case xcodegenFailed(String)
 
     var errorDescription: String? {
         switch self {
@@ -29,6 +33,11 @@ enum SchemeDetectionError: LocalizedError {
             return message.isEmpty
                 ? "xcodebuild failed (exit \(status))."
                 : "xcodebuild failed: \(message)"
+        case .noProjectFound(let path):
+            return "No Xcode project found at \(path). Expected a .xcodeproj, .xcworkspace, "
+                + "or an XcodeGen project.yml (directly or one level below)."
+        case .xcodegenFailed(let detail):
+            return detail
         }
     }
 }
@@ -36,17 +45,37 @@ enum SchemeDetectionError: LocalizedError {
 /// Detects Xcode schemes by invoking `xcodebuild -list` and parsing its output.
 final class XcodebuildSchemeDetector: SchemeDetecting, @unchecked Sendable {
 
-    /// Detects schemes at the given project path by running `xcodebuild -list -project <path>`.
+    /// Detects schemes at the given path by running `xcodebuild -list`.
     ///
-    /// - Parameter atPath: Absolute path to a `.xcodeproj` (or `.xcworkspace`) directory.
+    /// TKT-072: the path may be a `.xcodeproj`/`.xcworkspace` bundle, the directory
+    /// containing one, an XcodeGen project directory (whose `.xcodeproj` is
+    /// regenerated from `project.yml` first), or a monorepo root one level above
+    /// the iOS app. This makes freshly-cloned XcodeGen projects detectable without
+    /// a checked-in `.xcodeproj`.
+    ///
+    /// - Parameter atPath: Absolute path to a project bundle or a directory.
     /// - Returns: Parsed scheme names. Empty only when xcodebuild succeeds but the project has no schemes.
-    /// - Throws: `SchemeDetectionError` when no Xcode is available or xcodebuild fails.
+    /// - Throws: `SchemeDetectionError` when no Xcode/project is available, generation fails, or xcodebuild fails.
     func detectSchemes(atPath path: String) throws -> [String] {
+        let isBundle = path.hasSuffix(".xcodeproj") || path.hasSuffix(".xcworkspace")
+        let projectDir = isBundle
+            ? (path as NSString).deletingLastPathComponent
+            : XcodeGenSupport.resolveProjectDirectory(path)
+
+        // Regenerate the .xcodeproj from project.yml if this is an XcodeGen project.
+        do {
+            try XcodeGenSupport.regenerateIfNeeded(inDirectory: projectDir)
+        } catch {
+            throw SchemeDetectionError.xcodegenFailed(error.localizedDescription)
+        }
+
+        let (flag, projectArg) = try Self.resolveProjectArgument(path: path, projectDir: projectDir, isBundle: isBundle)
+
         let developerDir = try Self.resolveDeveloperDir()
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: developerDir + "/usr/bin/xcodebuild")
-        process.arguments = ["-list", "-project", path]
+        process.arguments = ["-list", flag, projectArg]
         // Pin the chosen toolchain so the shim/subprocesses don't fall back to the active dir.
         var env = ProcessInfo.processInfo.environment
         env["DEVELOPER_DIR"] = developerDir
@@ -86,6 +115,28 @@ final class XcodebuildSchemeDetector: SchemeDetecting, @unchecked Sendable {
 
         let output = String(data: outData, encoding: .utf8) ?? ""
         return Self.parseSchemes(from: output)
+    }
+
+    /// Resolves which `-project`/`-workspace` argument to pass `xcodebuild -list`.
+    /// A bundle path is used directly; a directory is scanned for a `.xcworkspace`
+    /// (preferred) or `.xcodeproj`. Throws `.noProjectFound` when neither exists.
+    /// TKT-072.
+    static func resolveProjectArgument(
+        path: String,
+        projectDir: String,
+        isBundle: Bool
+    ) throws -> (flag: String, path: String) {
+        if isBundle {
+            return (path.hasSuffix(".xcworkspace") ? "-workspace" : "-project", path)
+        }
+        let contents = (try? FileManager.default.contentsOfDirectory(atPath: projectDir)) ?? []
+        if let workspace = contents.first(where: { $0.hasSuffix(".xcworkspace") }) {
+            return ("-workspace", (projectDir as NSString).appendingPathComponent(workspace))
+        }
+        if let project = contents.first(where: { $0.hasSuffix(".xcodeproj") }) {
+            return ("-project", (projectDir as NSString).appendingPathComponent(project))
+        }
+        throw SchemeDetectionError.noProjectFound(path)
     }
 
     // MARK: - Developer directory resolution
