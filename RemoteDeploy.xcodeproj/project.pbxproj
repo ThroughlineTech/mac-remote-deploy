@@ -34,6 +34,7 @@
 		253A7DB9B384563DE59ABC69 /* MockSettingsProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 240066D56FA517529905F621 /* MockSettingsProvider.swift */; };
 		2559DF31B7C6BCAF0048040D /* TailscaleRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30EA96D56639E1D732F186A7 /* TailscaleRouteHandler.swift */; };
 		26BE73CD9BA9FE3DF5E6AAB4 /* NIODeployServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD3341A3C62AC82D33ED3EC /* NIODeployServer.swift */; };
+		2A2730DF55E34BFF66BE5B4E /* CertRenewalCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E95F2C442F282CC9ED848823 /* CertRenewalCoordinator.swift */; };
 		2C516E8FA9032F14E718E2C8 /* InstallsRouteHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39CE144809F554C2F2A203B9 /* InstallsRouteHandler.swift */; };
 		2F0BFA3D886DE2EBF4AC80FE /* MockBuildHistoryProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B66C9243801D8E8F27DB0DA /* MockBuildHistoryProvider.swift */; };
 		2F6A5D04517CDA2A9422332A /* PairingRouteHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7B1BFE416750BFF523C941 /* PairingRouteHandlerTests.swift */; };
@@ -139,6 +140,7 @@
 		8BC598EC063B26F6D96B5E87 /* EnvironmentCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFA64AF243B1B954F7E07EBD /* EnvironmentCheckerTests.swift */; };
 		8ED62127C80149FF39E0B4DD /* CLITailscaleProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8BAED9D174375195C18E4F6 /* CLITailscaleProvider.swift */; };
 		924D33FA3BCB64B9D50F0DEA /* ServerDiscoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E3BB3F83E718F187F52F8D9 /* ServerDiscoveryView.swift */; };
+		97A0E5FC9BB11D3C0A75A805 /* CertRenewalCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00069B504F88A826940C6CF3 /* CertRenewalCoordinatorTests.swift */; };
 		97C54ED3CCE23E513ED401C6 /* BuildManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B3CE2AFCABA2D98582244AF /* BuildManager.swift */; };
 		9B21B84DA504D8DD613216E1 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 309133F494431F7EC9140CCD /* SplashView.swift */; };
 		9B2980AF8700D6D473A0EA01 /* JSONPairedDeviceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A603BDAC28462FC549D969A /* JSONPairedDeviceStore.swift */; };
@@ -255,6 +257,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		00069B504F88A826940C6CF3 /* CertRenewalCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertRenewalCoordinatorTests.swift; sourceTree = "<group>"; };
 		00F752D5070FCC9EADFD4C90 /* RemoteDeployShared */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RemoteDeployShared; path = Packages/RemoteDeployShared; sourceTree = SOURCE_ROOT; };
 		01C75A4139B03B490C84243D /* InstallRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallRecord.swift; sourceTree = "<group>"; };
 		03D95AAD49CC7881D3034C63 /* ProjectConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectConfigTests.swift; sourceTree = "<group>"; };
@@ -447,6 +450,7 @@
 		E6BAE574A21E06D86F726A7A /* DeployServerProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeployServerProtocol.swift; sourceTree = "<group>"; };
 		E7F1A57A76A6B9A66EBAEA78 /* SettingsUpdating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsUpdating.swift; sourceTree = "<group>"; };
 		E8BAED9D174375195C18E4F6 /* CLITailscaleProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLITailscaleProvider.swift; sourceTree = "<group>"; };
+		E95F2C442F282CC9ED848823 /* CertRenewalCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertRenewalCoordinator.swift; sourceTree = "<group>"; };
 		E962C30988474B11D749B4E9 /* XcodeBuildEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildEngine.swift; sourceTree = "<group>"; };
 		E99FD0385C3693EC551530C6 /* IPAImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPAImporter.swift; sourceTree = "<group>"; };
 		EB2FFBC2D118CA1749D7EEC4 /* MenuBarAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarAppDelegate.swift; sourceTree = "<group>"; };
@@ -635,6 +639,7 @@
 			isa = PBXGroup;
 			children = (
 				66DEE1BCA4CC673435E85D42 /* BuildManagerBuildStatusProvider.swift */,
+				E95F2C442F282CC9ED848823 /* CertRenewalCoordinator.swift */,
 				B3F02E41264A49699D2B53C4 /* CoordinatorBuildCanceler.swift */,
 				C96B5D91A9A8CFF2CD0AAE46 /* DeferredSettingsUpdater.swift */,
 				A2A038EE6F2D5A6C05210090 /* DirectBuildTrigger.swift */,
@@ -782,6 +787,7 @@
 				B63610DCBE647E3A05D25B1E /* BuildEngineRouterTests.swift */,
 				2C261765B23D562C44FC9351 /* BuildManagerBroadcastTests.swift */,
 				DF1E54C911A24AC15A89473F /* BuildResultTests.swift */,
+				00069B504F88A826940C6CF3 /* CertRenewalCoordinatorTests.swift */,
 				1AD5B495CA2B6248B73639CC /* DeferredSettingsUpdaterTests.swift */,
 				DFA64AF243B1B954F7E07EBD /* EnvironmentCheckerTests.swift */,
 				1337E2C9EB713F2D9547F9DB /* ExpoBuildEngineTests.swift */,
@@ -1216,6 +1222,7 @@
 				54E435E0B73226B00FDED0E6 /* BuildTriggering.swift in Sources */,
 				8ED62127C80149FF39E0B4DD /* CLITailscaleProvider.swift in Sources */,
 				ADF20E425E4C956A4E69CEE2 /* CertProvisioning.swift in Sources */,
+				2A2730DF55E34BFF66BE5B4E /* CertRenewalCoordinator.swift in Sources */,
 				F47792BC27707D5F5AFF0A50 /* CertificateProviding.swift in Sources */,
 				FF6873133242B2437B12086C /* CoordinatorBuildCanceler.swift in Sources */,
 				68E66F7A7AB412FAFE897B31 /* DeferredSettingsUpdater.swift in Sources */,
@@ -1344,6 +1351,7 @@
 				7D66396D819A965E6D6711CB /* BuildManagerBroadcastTests.swift in Sources */,
 				754206C48F746015A018F469 /* BuildResultTests.swift in Sources */,
 				D33B964D11AF1C4F8C4CA077 /* BuildRouteHandlerTests.swift in Sources */,
+				97A0E5FC9BB11D3C0A75A805 /* CertRenewalCoordinatorTests.swift in Sources */,
 				1B63A9D4EE28B3C0AB3BEB54 /* DeferredSettingsUpdaterTests.swift in Sources */,
 				C93B7E6B4EBC92CE8557FBD4 /* DevicesRouteHandlerTests.swift in Sources */,
 				8BC598EC063B26F6D96B5E87 /* EnvironmentCheckerTests.swift in Sources */,

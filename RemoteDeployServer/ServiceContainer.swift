@@ -41,6 +41,11 @@ final class ServiceContainer: ObservableObject {
     /// TLS certificate loader and renewal checker.
     let certificateProvider: any CertificateProviding
 
+    /// Server-owned Tailscale cert provisioner (`tailscale cert`). Shared by the
+    /// API router (menu-bar-triggered provisioning) and the renewal timer so its
+    /// in-progress guard dedupes the two paths. TKT-060 / TKT-071.
+    let certProvisioner: any CertProvisioning
+
     /// Tracks IPA download events.
     let installTracker: any InstallTracking
 
@@ -89,6 +94,12 @@ final class ServiceContainer: ObservableObject {
         self.settingsStore = SettingsStore()
         self.runtimeStatus = RuntimeStatusStore()
         self.certificateProvider = TailscaleCertificateProvider()
+        // Shares the same Tailscale provider + settings store as the rest of the
+        // container so the renewal timer and the API drive one provisioner. TKT-071.
+        self.certProvisioner = TailscaleCertProvisioner(
+            tailscaleProvider: self.tailscaleProvider,
+            settingsStore: self.settingsStore
+        )
         self.installTracker = ServerInstallTracker()
         self.notificationManager = NotificationManager.shared
         self.pushNotifiers = []

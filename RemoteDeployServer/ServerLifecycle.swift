@@ -12,6 +12,7 @@
 // loopback bearer token through LoopbackTokenStore instead of an in-process object.
 import Foundation
 import AppKit
+import CryptoKit
 import os
 import RemoteDeployShared
 
@@ -36,7 +37,18 @@ final class ServerLifecycle: NSObject, NSApplicationDelegate {
         let port: Int
         let certPath: String
         let keyPath: String
+        /// SHA-256 of the cert file's contents. TKT-071: lets `reconcileHTTPS`
+        /// detect a cert REPLACED in place (e.g. an auto-renewal that rewrites the
+        /// same filename) and reload, where comparing the path alone could not.
+        /// Empty when the file is absent or unreadable.
+        let certFingerprint: String
     }
+
+    /// How often the server re-checks its TLS cert for expiry. TKT-071: the cert is
+    /// a 90-day Tailscale Let's Encrypt cert with a 7-day renewal window, so a
+    /// twice-daily check is ample headroom while keeping the (synchronous) openssl
+    /// inspection rare.
+    private static let certRenewalCheckInterval: TimeInterval = 12 * 60 * 60
 
     // MARK: - Lifecycle guards
 
@@ -152,6 +164,7 @@ final class ServerLifecycle: NSObject, NSApplicationDelegate {
         mintLoopbackToken()
 
         startStatusPolling()
+        startCertRenewalPolling()
     }
 
     // MARK: - NotificationCenter handlers
@@ -243,6 +256,36 @@ final class ServerLifecycle: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Renews the TLS cert before it expires. TKT-071: without this the 90-day
+    /// Tailscale cert silently expired and companions could no longer pair (the iOS
+    /// client rejects an expired cert during the TLS handshake; pairing requires
+    /// HTTPS, so there is no working fallback). The first check runs immediately at
+    /// startup so a server that booted with an already-expired cert self-heals,
+    /// then it re-checks every `certRenewalCheckInterval`.
+    private func startCertRenewalPolling() {
+        Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                await self?.renewCertificateIfNeeded()
+                try? await Task.sleep(for: .seconds(Self.certRenewalCheckInterval))
+            }
+        }
+    }
+
+    /// Checks the configured cert and re-provisions if it is expired or within the
+    /// renewal window. On renewal the provisioner writes the fresh cert and updates
+    /// the settings store, which posts `.settingsDidChange`; `reconcileHTTPS()` then
+    /// sees the changed fingerprint and restarts HTTPS with the renewed cert.
+    private func renewCertificateIfNeeded() async {
+        let certPath = appState.certPath
+        let certificateProvider = serviceContainer.certificateProvider
+        let provisioner = serviceContainer.certProvisioner
+        // `needsRenewal` shells out to `openssl`, so keep it off the main actor.
+        await Task.detached {
+            CertRenewalCoordinator(certificateProvider: certificateProvider, provisioner: provisioner)
+                .renewIfNeeded(certPath: certPath)
+        }.value
+    }
+
     // MARK: - Settings
 
     /// Applies the settings store's current values into the AppState config holder.
@@ -312,7 +355,7 @@ final class ServerLifecycle: NSObject, NSApplicationDelegate {
         guard !appState.serverRunning else { return }
         guard let nioServer = serviceContainer.deployServer as? NIODeployServer else { return }
 
-        let config = HTTPSConfig(port: appState.serverPort, certPath: appState.certPath, keyPath: appState.keyPath)
+        let config = currentHTTPSConfig()
 
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -352,13 +395,15 @@ final class ServerLifecycle: NSObject, NSApplicationDelegate {
     /// in-process to rebind on a port/cert change; across processes it can't reach
     /// this server, so reconcile does it: start when certs first appear, and
     /// restart when the bound port or cert/key path actually changed (a no-op write
-    /// -- e.g. the hostname poll -- does not churn the listener). A cert REPLACED
-    /// at the same path still needs a manual relaunch; that is a rare case.
+    /// -- e.g. the hostname poll -- does not churn the listener). TKT-071: the
+    /// config now carries a fingerprint of the cert contents, so a cert REPLACED at
+    /// the same path (an auto-renewal) is also detected and reloaded without a
+    /// manual relaunch.
     private func reconcileHTTPS() {
         let certsPresent = !appState.certPath.isEmpty && !appState.keyPath.isEmpty
         guard certsPresent else { return }
 
-        let desired = HTTPSConfig(port: appState.serverPort, certPath: appState.certPath, keyPath: appState.keyPath)
+        let desired = currentHTTPSConfig()
 
         guard appState.serverRunning else {
             startServer()
@@ -373,6 +418,25 @@ final class ServerLifecycle: NSObject, NSApplicationDelegate {
             self?.runningHTTPSConfig = nil
             self?.startServer()
         }
+    }
+
+    /// Snapshots the current HTTPS settings into a config, including a fingerprint of
+    /// the cert file so an in-place renewal is detected as a change. TKT-071.
+    private func currentHTTPSConfig() -> HTTPSConfig {
+        HTTPSConfig(
+            port: appState.serverPort,
+            certPath: appState.certPath,
+            keyPath: appState.keyPath,
+            certFingerprint: Self.certFingerprint(path: appState.certPath)
+        )
+    }
+
+    /// Returns a SHA-256 hex digest of the cert file's contents, or "" if the file
+    /// is missing/unreadable. Cheap on a ~3KB PEM; this is the "did the cert change"
+    /// signal `reconcileHTTPS` keys off. TKT-071.
+    private static func certFingerprint(path: String) -> String {
+        guard !path.isEmpty, let data = FileManager.default.contents(atPath: path) else { return "" }
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     // MARK: - API Router
@@ -409,11 +473,10 @@ final class ServerLifecycle: NSObject, NSApplicationDelegate {
             settingsUpdater: DeferredSettingsUpdater(settingsStore: services.settingsStore),
             serverName: Host.current().localizedName ?? "Mac",
             // TKT-060 (Phase 6): server-owned cert provisioning + IPA upload so
-            // the menu bar drives both over the API rather than in-process.
-            certProvisioner: TailscaleCertProvisioner(
-                tailscaleProvider: services.tailscaleProvider,
-                settingsStore: services.settingsStore
-            ),
+            // the menu bar drives both over the API rather than in-process. TKT-071:
+            // the same provisioner instance backs the renewal timer, so its
+            // in-progress guard dedupes API- and timer-triggered provisions.
+            certProvisioner: services.certProvisioner,
             ipaImporter: services.ipaImporter,
             serveDirectory: APIRouterFactory.defaultServeDirectory
         )
