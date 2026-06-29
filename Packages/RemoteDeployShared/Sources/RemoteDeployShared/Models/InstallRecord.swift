@@ -2,7 +2,7 @@ import Foundation
 
 /// Represents a single IPA download event from the built-in web server.
 /// Logged each time a device fetches an IPA for installation.
-public struct InstallRecord: Codable, Identifiable, Sendable {
+public struct InstallRecord: Codable, Identifiable, Sendable, Equatable {
     /// Unique identifier for this download event.
     public var id: UUID
 

@@ -139,9 +139,16 @@ final class MenuBarClient: ObservableObject {
     private var isActive = false
 
     init() {
-        // Forward the WebSocket's published changes (live log + status) so views
-        // that observe only this object re-render when WS frames arrive.
-        webSocket.objectWillChange
+        // Forward ONLY the WebSocket's build-status changes, not its log stream
+        // (TKT-074). Forwarding every `objectWillChange` re-rendered all views
+        // bound to this client (projects list, build controls, ...) on every
+        // streamed `buildlog` line; during a build that fired dozens of times a
+        // second. The menu bar only depends on `latestStatus` (via `isBuilding`
+        // and the backfill in `buildLogLines`), so forward that, deduped -- the
+        // build-log window observes `webSocket.buildLogLines` directly for the
+        // high-frequency log stream.
+        webSocket.$latestStatus
+            .removeDuplicates()
             .sink { [weak self] _ in self?.objectWillChange.send() }
             .store(in: &cancellables)
     }
@@ -218,22 +225,28 @@ final class MenuBarClient: ObservableObject {
         await refreshDevices()
     }
 
+    // Each poll tick reassigns these @Published projections. Guarding on equality
+    // (publish-on-change) keeps an unchanged poll from firing `objectWillChange`
+    // and re-rendering the whole menu every few seconds -- the steady-state idle
+    // case (TKT-074). The model types are Equatable.
+
     func refreshStatus() async {
         guard let client else { return }
         do {
             let status = try await client.getStatus()
-            self.status = status
-            self.connectionState = .connected
-            self.lastError = nil
+            if self.status != status { self.status = status }
+            if connectionState != .connected { connectionState = .connected }
+            if lastError != nil { lastError = nil }
         } catch {
-            self.connectionState = .disconnected
+            if connectionState != .disconnected { connectionState = .disconnected }
         }
     }
 
     func refreshProjects() async {
         guard let client else { return }
         do {
-            projects = try await client.listProjects()
+            let fetched = try await client.listProjects()
+            if projects != fetched { projects = fetched }
             normalizeSelection()
         } catch {
             recordError(error)
@@ -243,7 +256,8 @@ final class MenuBarClient: ObservableObject {
     func refreshInstalls() async {
         guard let client else { return }
         do {
-            installs = try await client.getInstalls()
+            let fetched = try await client.getInstalls()
+            if installs != fetched { installs = fetched }
         } catch {
             recordError(error)
         }
@@ -252,7 +266,8 @@ final class MenuBarClient: ObservableObject {
     func refreshBuildHistory() async {
         guard let client else { return }
         do {
-            buildHistory = try await client.getBuildHistory()
+            let fetched = try await client.getBuildHistory()
+            if buildHistory != fetched { buildHistory = fetched }
         } catch {
             recordError(error)
         }
@@ -261,11 +276,17 @@ final class MenuBarClient: ObservableObject {
     /// Keeps the build picker's selection valid: if the selected project no
     /// longer exists (or none is selected), fall back to the first project.
     private func normalizeSelection() {
+        let resolved: UUID?
         if let id = selectedProjectID, !projects.contains(where: { $0.id == id }) {
-            selectedProjectID = projects.first?.id
+            resolved = projects.first?.id
         } else if selectedProjectID == nil {
-            selectedProjectID = projects.first?.id
+            resolved = projects.first?.id
+        } else {
+            resolved = selectedProjectID
         }
+        // Publish-on-change: a steady poll leaves the selection untouched, so don't
+        // re-render the build picker every tick (TKT-074).
+        if resolved != selectedProjectID { selectedProjectID = resolved }
     }
 
     // MARK: - Project mutations
@@ -357,7 +378,9 @@ final class MenuBarClient: ObservableObject {
             }
         }
         knownDeviceIDs = Set(visible.map(\.id))
-        devices = visible
+        // Publish-on-change: the device list is stable between out-of-band
+        // pairings, so don't re-render the Devices tab on every poll (TKT-074).
+        if devices != visible { devices = visible }
     }
 
     func revokeDevice(id: UUID) async {
@@ -424,7 +447,7 @@ final class MenuBarClient: ObservableObject {
         guard let client else { return nil }
         do {
             let result = try await body(client)
-            lastError = nil
+            if lastError != nil { lastError = nil }
             return result
         } catch {
             recordError(error)
@@ -436,7 +459,7 @@ final class MenuBarClient: ObservableObject {
         guard let client else { return }
         do {
             try await body(client)
-            lastError = nil
+            if lastError != nil { lastError = nil }
         } catch {
             recordError(error)
         }

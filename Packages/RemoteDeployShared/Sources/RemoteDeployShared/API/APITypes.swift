@@ -57,7 +57,7 @@ public struct PendingPairingResponse: Codable, Sendable {
 // MARK: - Status
 
 /// Overall server status snapshot.
-public struct ServerStatus: Codable, Sendable {
+public struct ServerStatus: Codable, Sendable, Equatable {
     /// Whether the HTTPS deploy server is running.
     public var serverRunning: Bool
     /// Whether Tailscale is connected.
@@ -79,7 +79,7 @@ public struct ServerStatus: Codable, Sendable {
 }
 
 /// Lightweight build status for API responses.
-public struct BuildStatusInfo: Codable, Sendable {
+public struct BuildStatusInfo: Codable, Sendable, Equatable {
     /// One of: "idle", "building", "success", "failure".
     public var state: String
     /// Progress message when building, error summary on failure.

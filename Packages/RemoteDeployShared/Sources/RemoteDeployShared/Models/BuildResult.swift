@@ -2,7 +2,7 @@ import Foundation
 
 /// Represents the outcome of a single project build attempt.
 /// Created after each build completes (successfully or not) and stored for history.
-public struct BuildResult: Codable, Identifiable, Sendable {
+public struct BuildResult: Codable, Identifiable, Sendable, Equatable {
     /// Unique identifier for this build result.
     public var id: UUID
 

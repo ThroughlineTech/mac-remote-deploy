@@ -86,6 +86,7 @@
 		5B1532B8D758D89C1430DE79 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A7BB07446157CBE3644142C /* AboutView.swift */; };
 		5D5CB61B2CC66DE477EFD8A3 /* QRCodeGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1004E77ECE48FE61F0D627DE /* QRCodeGenerator.swift */; };
 		5EE1ECC8FA02C4BF3F03B20C /* MockBuildStatusProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FE018321B14C64CF18E5C8E /* MockBuildStatusProvider.swift */; };
+		60DB8D65E548670B6BBB1BF8 /* BuildLogClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11CA78BE2192D37725950661 /* BuildLogClassifierTests.swift */; };
 		60EBF62569A404EFA859A0BC /* PairAnotherDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FC916EBAA2EE1D71235046B /* PairAnotherDeviceView.swift */; };
 		610F3644E76DFA69BE68CE2D /* RemoteDeployErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 994AA70D4A281FC1049340A7 /* RemoteDeployErrorTests.swift */; };
 		63BF7A70120200E8615AA9C7 /* LocalDeployManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE09A9422E571758E466A9E7 /* LocalDeployManager.swift */; };
@@ -278,6 +279,7 @@
 		0FB4B831559E3CC700524CF5 /* CertificateSetupStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertificateSetupStep.swift; sourceTree = "<group>"; };
 		1004E77ECE48FE61F0D627DE /* QRCodeGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeGenerator.swift; sourceTree = "<group>"; };
 		10C0130D84B81C211BA76B3A /* BuildRouteHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildRouteHandlerTests.swift; sourceTree = "<group>"; };
+		11CA78BE2192D37725950661 /* BuildLogClassifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildLogClassifierTests.swift; sourceTree = "<group>"; };
 		12046FC934885D84B1F8AE33 /* SettingsData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsData.swift; sourceTree = "<group>"; };
 		1215E7E1054E070C87B1A1A9 /* BonjourAdvertiser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourAdvertiser.swift; sourceTree = "<group>"; };
 		1337E2C9EB713F2D9547F9DB /* ExpoBuildEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpoBuildEngineTests.swift; sourceTree = "<group>"; };
@@ -790,6 +792,7 @@
 				F056742F1EF33DD1800602E6 /* APIRouterFactoryTests.swift */,
 				6C11AA36FB6619D805839514 /* AuthMiddlewareWebSocketTests.swift */,
 				B63610DCBE647E3A05D25B1E /* BuildEngineRouterTests.swift */,
+				11CA78BE2192D37725950661 /* BuildLogClassifierTests.swift */,
 				2C261765B23D562C44FC9351 /* BuildManagerBroadcastTests.swift */,
 				DF1E54C911A24AC15A89473F /* BuildResultTests.swift */,
 				00069B504F88A826940C6CF3 /* CertRenewalCoordinatorTests.swift */,
@@ -1355,6 +1358,7 @@
 				C6D0E4C31AAFC86AE38C8A79 /* AuthMiddlewareTests.swift in Sources */,
 				57571644F73D09CF235C65BF /* AuthMiddlewareWebSocketTests.swift in Sources */,
 				19FB22C77C59BDA6B3ED3B73 /* BuildEngineRouterTests.swift in Sources */,
+				60DB8D65E548670B6BBB1BF8 /* BuildLogClassifierTests.swift in Sources */,
 				7D66396D819A965E6D6711CB /* BuildManagerBroadcastTests.swift in Sources */,
 				754206C48F746015A018F469 /* BuildResultTests.swift in Sources */,
 				D33B964D11AF1C4F8C4CA077 /* BuildRouteHandlerTests.swift in Sources */,

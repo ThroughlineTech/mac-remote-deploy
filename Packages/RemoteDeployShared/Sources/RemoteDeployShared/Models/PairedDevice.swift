@@ -2,7 +2,7 @@ import Foundation
 
 /// Represents a mobile device that has been paired with this Mac via QR code.
 /// The token is stored hashed (SHA-256) on disk; the raw token lives only on the paired device.
-public struct PairedDevice: Codable, Identifiable, Sendable {
+public struct PairedDevice: Codable, Identifiable, Sendable, Equatable {
     /// Unique identifier for this pairing.
     public var id: UUID
 
