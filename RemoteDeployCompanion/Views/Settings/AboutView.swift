@@ -45,7 +45,7 @@ struct AboutView: View {
 
             // Links
             Section("Links") {
-                Link(destination: URL(string: "https://github.com/danrichardson/mac-remote-deploy")!) {
+                Link(destination: URL(string: "https://github.com/ThroughlineTech/mac-remote-deploy")!) {
                     HStack {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                             .frame(width: 28)

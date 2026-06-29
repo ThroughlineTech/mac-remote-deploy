@@ -65,7 +65,7 @@ Before you start, you need:
 ### 1. Clone and generate the Xcode project
 
 ```bash
-git clone https://github.com/danrichardson/mac-remote-deploy.git
+git clone https://github.com/ThroughlineTech/mac-remote-deploy.git
 cd mac-remote-deploy
 xcodegen generate
 open RemoteDeploy.xcodeproj

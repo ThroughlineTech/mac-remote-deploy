@@ -616,7 +616,7 @@ struct AboutSettingsTab: View {
             // Links
             HStack(spacing: 16) {
                 LinkButton(title: "GitHub", systemImage: "chevron.left.forwardslash.chevron.right",
-                           url: "https://github.com/danrichardson/mac-remote-deploy")
+                           url: "https://github.com/ThroughlineTech/mac-remote-deploy")
                 LinkButton(title: "Deep Dive", systemImage: "doc.text.magnifyingglass",
                            url: "https://www.throughlinetech.net/deep-dives/remotedeploy")
                 LinkButton(title: "Website", systemImage: "globe",

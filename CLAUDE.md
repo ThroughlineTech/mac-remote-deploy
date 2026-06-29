@@ -1,7 +1,5 @@
-## Tickets
+Agent instructions for this repo are maintained in an agent-agnostic AGENTS.md so
+every agent (Claude Code, Codex, Copilot, Gemini, ...) reads the same file. Claude
+Code loads it via the import below.
 
-This project uses the universal ticket workflow. Slash commands are inherited from `~/.claude/commands/ticket-*.md`.
-
-- Tickets live in `tickets/` as `TKT-NNN.md`
-- Project-specific build/test/deploy commands and source paths are in `.claude/ticket-config.md`
-- Common commands: `/ticket-new`, `/ticket-list`, `/ticket-investigate`, `/ticket-approve`, `/ticket-review`, `/ticket-ship`
+@AGENTS.md
