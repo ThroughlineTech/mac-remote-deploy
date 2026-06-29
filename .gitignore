@@ -23,3 +23,14 @@ Package.resolved
 # Claude Code
 .claude/settings.local.json
 .worktrees/
+
+# Throughline Build (managed by 'build setup')
+.build/config.toml
+.build/*.md
+.build/events/
+.build/sessions/
+secrets/
+.tmp/
+Thumbs.db
+.vs/
+.idea/
