@@ -203,6 +203,7 @@
 		D9F3EE5D2B52E287B4B4B68A /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50CFE7FF32C69F7C22B6DA2 /* SettingsView.swift */; };
 		DA4541B6B11BF92BC6A10562 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FD535B366F2DA93C36C95B3 /* KeychainStore.swift */; };
 		DA5E15229456ED663B4E9A71 /* PushNotificationConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C974A193C7E7AB2406DF744 /* PushNotificationConfig.swift */; };
+		DAE4326EC14861695BFC770C /* XcodeBuildEngineTimeoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A44D0632770D0A0C80DC4F05 /* XcodeBuildEngineTimeoutTests.swift */; };
 		DB1CD0F44E34593D9D922E8C /* LoopbackTokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EE5EED0BD608E70F3362392 /* LoopbackTokenStore.swift */; };
 		DCFC603610AE21FA4C0C6C41 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DC45EC69FC912C276722300 /* MenuBarView.swift */; };
 		DF07A7E787DF509D1523565B /* NIOFoundationCompat in Frameworks */ = {isa = PBXBuildFile; productRef = F46CA21EC5ED19C592325047 /* NIOFoundationCompat */; };
@@ -391,6 +392,7 @@
 		A12C6947C128D397656B773C /* ServerStatusProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStatusProvider.swift; sourceTree = "<group>"; };
 		A2A038EE6F2D5A6C05210090 /* DirectBuildTrigger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectBuildTrigger.swift; sourceTree = "<group>"; };
 		A34B971FF3418170F156A17B /* XcodeBuildEngineXcodeGenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildEngineXcodeGenTests.swift; sourceTree = "<group>"; };
+		A44D0632770D0A0C80DC4F05 /* XcodeBuildEngineTimeoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeBuildEngineTimeoutTests.swift; sourceTree = "<group>"; };
 		A4939C91A3F5F601D634CF71 /* IPAUploadRouteHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPAUploadRouteHandler.swift; sourceTree = "<group>"; };
 		A50CFE7FF32C69F7C22B6DA2 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A5A3F9C78B3561C31FAB85D2 /* PushNotifHelpPopover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PushNotifHelpPopover.swift; sourceTree = "<group>"; };
@@ -821,6 +823,7 @@
 				C39FD4A9AE4D31361A164F71 /* XcodeBuildEngineCancelTests.swift */,
 				C2BF1ACA1CB561C7EB44AF02 /* XcodeBuildEngineFailureTests.swift */,
 				98A1A0B4BD27AD91950B3A1F /* XcodeBuildEngineMacOSTests.swift */,
+				A44D0632770D0A0C80DC4F05 /* XcodeBuildEngineTimeoutTests.swift */,
 				A34B971FF3418170F156A17B /* XcodeBuildEngineXcodeGenTests.swift */,
 				DF1C1586B3F5255EF8C126D1 /* XcodeGenSupportTests.swift */,
 				5CCDEDFEDA2820CD165CA1DD /* API */,
@@ -1414,6 +1417,7 @@
 				FC2F6D861481C7A500A68888 /* XcodeBuildEngineCancelTests.swift in Sources */,
 				7F9E3B7969B0ACB56181995E /* XcodeBuildEngineFailureTests.swift in Sources */,
 				6B71D3F6F95BC06818D40B02 /* XcodeBuildEngineMacOSTests.swift in Sources */,
+				DAE4326EC14861695BFC770C /* XcodeBuildEngineTimeoutTests.swift in Sources */,
 				E9313DA3D9BE68B6F469BE4D /* XcodeBuildEngineXcodeGenTests.swift in Sources */,
 				3BDF4C8EF4CF45C0BC839675 /* XcodeGenSupportTests.swift in Sources */,
 			);

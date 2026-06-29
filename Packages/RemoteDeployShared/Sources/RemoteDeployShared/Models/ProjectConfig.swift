@@ -74,6 +74,14 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
     /// TKT-072.
     public var developerDir: String?
 
+    /// Optional per-project override (in seconds) for the build watchdog timeout
+    /// applied to each `xcodebuild` invocation. Nil means use the engine default.
+    /// A value <= 0 disables the timeout (unbounded). Raise it for legitimately
+    /// long builds; the default exists so a hung `-allowProvisioningUpdates`
+    /// round-trip (e.g. an invalid team) is terminated instead of pinning the UI
+    /// to "building" forever. TKT-075.
+    public var buildTimeoutSeconds: Int?
+
     /// Creates a new project config with sensible defaults.
     public init(name: String, projectPath: String) {
         self.id = UUID()
@@ -99,6 +107,7 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
         self.localDeployPath = nil
         self.allowProvisioningUpdates = true
         self.developerDir = nil
+        self.buildTimeoutSeconds = nil
     }
 
     /// Decodes with backward compatibility — older saved configs without a platform field default to "iOS".
@@ -124,5 +133,7 @@ public struct ProjectConfig: Codable, Identifiable, Sendable, Equatable, Hashabl
         // TKT-072: default true so existing saved configs keep automatic signing.
         allowProvisioningUpdates = try container.decodeIfPresent(Bool.self, forKey: .allowProvisioningUpdates) ?? true
         developerDir = try container.decodeIfPresent(String.self, forKey: .developerDir)
+        // TKT-075: nil in older saved configs means "use the engine default".
+        buildTimeoutSeconds = try container.decodeIfPresent(Int.self, forKey: .buildTimeoutSeconds)
     }
 }

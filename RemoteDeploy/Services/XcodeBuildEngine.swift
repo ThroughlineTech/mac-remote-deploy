@@ -23,6 +23,19 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
     /// status with a success or unrelated failure. See TKT-016.
     private let lockedIsCancelling = OSAllocatedUnfairLock<Bool>(initialState: false)
 
+    /// Set to true by the per-invocation watchdog when an `xcodebuild` process
+    /// runs past the build timeout. Reset at the start of each `runXcodebuild`.
+    /// Mirrors `lockedIsCancelling`: the watchdog only terminates the process and
+    /// sets this flag; the terminationHandler observes it and resumes with
+    /// `BuildError.timedOut`, so there is exactly one continuation resume. TKT-075.
+    private let lockedTimedOut = OSAllocatedUnfairLock<Bool>(initialState: false)
+
+    /// Per-build override (in seconds) for the watchdog timeout, taken from the
+    /// project's `buildTimeoutSeconds`. Set at the start of `build()` and consulted
+    /// by `runXcodebuild`. Nil means use `defaultBuildTimeout`. Builds are
+    /// serialized, so a single per-engine slot is sufficient. TKT-075.
+    private let lockedTimeoutOverride = OSAllocatedUnfairLock<TimeInterval?>(initialState: nil)
+
     /// Ring buffer of the most recent stderr lines from xcodebuild. Capped at
     /// `stderrRingCapacity` entries and reset at the start of each `runXcodebuild`
     /// call. The tail of this buffer is included in `BuildError.xcodebuildFailed`'s
@@ -33,6 +46,18 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
 
     /// Maximum number of recent stderr lines retained for the failure message tail.
     private static let stderrRingCapacity = 8
+
+    /// Default watchdog timeout, in seconds, applied to each `xcodebuild`
+    /// invocation when a project doesn't override it. Generous enough for a large
+    /// clean build but bounded so a hung invocation (e.g. `-allowProvisioningUpdates`
+    /// blocking on Apple with an invalid team) can't pin the build to "building"
+    /// forever. TKT-075.
+    static let defaultBuildTimeout: TimeInterval = 20 * 60
+
+    /// The watchdog timeout (in seconds) used when a project supplies no
+    /// `buildTimeoutSeconds` override. Injectable so tests can drive the timeout
+    /// path quickly. A value <= 0 disables the timeout (unbounded).
+    private let defaultTimeout: TimeInterval
 
     /// Memoized active Xcode developer directory used to run xcodebuild via
     /// `DEVELOPER_DIR`. Computed lazily on first build/detect. The double
@@ -70,7 +95,12 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
 
     // MARK: - Init
 
-    init() {}
+    /// - Parameter timeout: Default watchdog timeout (seconds) for each xcodebuild
+    ///   invocation when a project doesn't override it via `buildTimeoutSeconds`.
+    ///   Defaults to `defaultBuildTimeout` (20 minutes). A value <= 0 disables it.
+    init(timeout: TimeInterval = XcodeBuildEngine.defaultBuildTimeout) {
+        self.defaultTimeout = timeout
+    }
 
     // MARK: - Build Pipeline
 
@@ -95,6 +125,8 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         lockedIsCancelling.withLock { $0 = false }
         // TKT-072: pin this build to the project's chosen Xcode toolchain, if any.
         lockedDeveloperDirOverride.withLock { $0 = project.developerDir }
+        // TKT-075: apply the project's per-build watchdog override, if any.
+        lockedTimeoutOverride.withLock { $0 = project.buildTimeoutSeconds.map(TimeInterval.init) }
         setStatus(.building(progress: "Preparing build…"))
 
         // TKT-072: resolve the directory that actually holds the project (so a path
@@ -350,6 +382,8 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         // TKT-045: reset the stderr ring buffer at the start of every invocation
         // so the failure message only reflects the current xcodebuild run.
         lockedRecentStderrLines.withLock { $0.removeAll(keepingCapacity: true) }
+        // TKT-075: reset the timed-out flag for this invocation.
+        lockedTimedOut.withLock { $0 = false }
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
@@ -384,8 +418,37 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             }
         }
 
+        // TKT-075: watchdog that terminates xcodebuild if it runs past the timeout.
+        // Mirrors cancelBuild(): it only claims the timeout (atomically, and only
+        // while the process is still alive) and terminates the process; the
+        // terminationHandler observes `lockedTimedOut` and resumes the continuation
+        // with BuildError.timedOut, so the continuation is resumed exactly once.
+        // `process` is captured weakly so the cycle process -> terminationHandler
+        // (which retains this watchdog) -> watchdog does not leak the Process; GCD
+        // also retains the work item until the deadline, so a strong capture would
+        // pin the Process for the full timeout after a fast build.
+        let effectiveTimeout = lockedTimeoutOverride.withLock { $0 } ?? defaultTimeout
+        let watchdog = DispatchWorkItem { [weak self, weak process] in
+            guard let self, let process else { return }
+            let claimed = self.lockedTimedOut.withLock { timedOut -> Bool in
+                guard !timedOut, process.isRunning else { return false }
+                timedOut = true
+                return true
+            }
+            guard claimed else { return }
+            let msg = "Build timed out after \(Int(effectiveTimeout))s; terminating xcodebuild."
+            self.emitLog(msg)
+            self.setStatus(.failure(error: "Build timed out after \(Int(effectiveTimeout))s."))
+            process.terminate()
+        }
+
         return try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { [weak self] proc in
+                // TKT-075: the process has exited (normally, by cancel, or by the
+                // watchdog's terminate). Stop the watchdog so it can't fire against
+                // a future build; if it already fired, `lockedTimedOut` is set and
+                // the timed-out branch below handles the resume.
+                watchdog.cancel()
                 // Drain any final bytes still buffered on the pipes before we
                 // detach the readability handlers, so the last stderr line
                 // (which on a preflight failure is usually the informative
@@ -425,6 +488,17 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
                     return
                 }
 
+                // TKT-075: the watchdog terminated this process for exceeding the
+                // timeout. Like the cancel branch, the watchdog already wrote the
+                // failure status, so don't override it with the signal/exit-code
+                // status; just finish the log stream and surface BuildError.timedOut.
+                let didTimeOut = self?.lockedTimedOut.withLock { $0 } ?? false
+                if didTimeOut {
+                    self?.finishLogContinuation()
+                    continuation.resume(throwing: BuildError.timedOut(effectiveTimeout))
+                    return
+                }
+
                 if proc.terminationReason == .uncaughtSignal {
                     // TKT-045: drain log stream symmetrically on the
                     // signal-cancellation branch.
@@ -452,6 +526,13 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
 
             do {
                 try process.run()
+                // TKT-075: arm the watchdog only after the process is actually
+                // running, and only when a positive timeout is configured (a
+                // value <= 0 means "unbounded"). If the process exits first, the
+                // terminationHandler cancels this before it fires.
+                if effectiveTimeout > 0 {
+                    DispatchQueue.global().asyncAfter(deadline: .now() + effectiveTimeout, execute: watchdog)
+                }
             } catch {
                 lockedRunningProcess.withLock { $0 = nil }
                 continuation.resume(throwing: error)
@@ -841,6 +922,9 @@ enum BuildError: LocalizedError {
     case xcodegenFailed(String)
     /// The build was cancelled (process was terminated by signal).
     case cancelled
+    /// An xcodebuild invocation ran past the watchdog timeout (in seconds) and was
+    /// terminated. Carries the timeout that was exceeded. TKT-075.
+    case timedOut(TimeInterval)
 
     var errorDescription: String? {
         switch self {
@@ -856,6 +940,8 @@ enum BuildError: LocalizedError {
             return "XcodeGen failed: \(msg)"
         case .cancelled:
             return "Build was cancelled."
+        case .timedOut(let seconds):
+            return "Build timed out after \(Int(seconds))s."
         }
     }
 }

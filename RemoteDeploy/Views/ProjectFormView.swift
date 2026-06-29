@@ -150,6 +150,16 @@ struct ProjectFormView: View {
                 }
                 .help("Pin this project to a specific Xcode's DEVELOPER_DIR (e.g. an Xcode-beta "
                     + "needed for a newer SDK). Leave empty to auto-select the active Xcode.")
+
+                // TKT-075: optional per-project override for the xcodebuild watchdog.
+                TextField("Build timeout (seconds, optional)", text: Binding(
+                    get: { project.buildTimeoutSeconds.map(String.init) ?? "" },
+                    set: { project.buildTimeoutSeconds = Int($0.trimmingCharacters(in: .whitespaces)) }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .help("Terminate each xcodebuild invocation if it runs past this many seconds, "
+                    + "instead of hanging forever (e.g. a stuck provisioning round-trip). Leave "
+                    + "empty for the default (20 minutes); set 0 to disable.")
             }
 
             // MARK: - Actions
