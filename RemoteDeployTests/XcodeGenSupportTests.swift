@@ -98,6 +98,34 @@ final class XcodeGenSupportTests: XCTestCase {
         XCTAssertNoThrow(try XcodeGenSupport.regenerateIfNeeded(inDirectory: dir))
     }
 
+    func test_resolveProjectDirectory_nonexistentSubdirFallsBackToSibling() throws {
+        // ".../repo/ios" doesn't exist; the real app is the sibling ".../repo/repo-ios".
+        let root = try mkdir("repo4")
+        let ios = try mkdir("repo4/repo-ios")
+        touch(ios, "project.yml")
+        try mkdir("repo4/repo-web")     // not buildable
+        let guessed = (root as NSString).appendingPathComponent("ios")  // never created
+        XCTAssertEqual(XcodeGenSupport.resolveProjectDirectory(guessed), ios)
+    }
+
+    func test_resolveProjectDirectory_nonexistentSubdir_ambiguousParentReturnsInput() throws {
+        let root = try mkdir("repo5")
+        let a = try mkdir("repo5/a"); touch(a, "project.yml")
+        let b = try mkdir("repo5/b"); touch(b, "project.yml")
+        let guessed = (root as NSString).appendingPathComponent("ios")
+        // Two buildable siblings -> ambiguous -> return the input unchanged.
+        XCTAssertEqual(XcodeGenSupport.resolveProjectDirectory(guessed), guessed)
+    }
+
+    func test_resolveProjectDirectory_existingEmptyDirDoesNotHijackSibling() throws {
+        // An existing-but-empty dir is more likely intentional; don't reach up to a
+        // sibling for it (only nonexistent guessed paths get the parent fallback).
+        let root = try mkdir("repo6")
+        let ios = try mkdir("repo6/repo-ios"); touch(ios, "project.yml")
+        let empty = try mkdir("repo6/empty")
+        XCTAssertEqual(XcodeGenSupport.resolveProjectDirectory(empty), empty)
+    }
+
     // MARK: - scheme detector argument resolution (Phase 1)
 
     func test_resolveProjectArgument_bundlePaths() throws {

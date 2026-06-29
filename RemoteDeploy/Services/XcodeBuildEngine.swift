@@ -103,6 +103,12 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
         // from their current spec rather than a stale or missing generated project.
         // No-op for projects without a project.yml spec.
         let projectDir = XcodeGenSupport.resolveProjectDirectory(project.projectPath)
+        // TKT-072: emit progress up front so the build log isn't blank during prep
+        // (and an early failure still shows context, not an empty log).
+        emitLog("Building \(project.scheme) [\(project.buildConfiguration)] for \(project.platform)")
+        if projectDir != project.projectPath {
+            emitLog("Resolved project directory: \(projectDir) (from \(project.projectPath))")
+        }
         try regenerateXcodeGenProject(inDirectory: projectDir)
 
         let fm = FileManager.default
@@ -185,6 +191,7 @@ final class XcodeBuildEngine: BuildEngineProtocol, @unchecked Sendable {
             archiveArgs.append("-allowProvisioningUpdates")
         }
 
+        emitLog("$ xcodebuild \(archiveArgs.dropFirst().joined(separator: " "))")
         try await runXcodebuild(arguments: Array(archiveArgs.dropFirst()))
 
         // Verify archive was created

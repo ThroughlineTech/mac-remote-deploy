@@ -249,6 +249,13 @@ final class BuildManager: ObservableObject {
             } catch {
                 let endTime = Date()
                 logTask.cancel()
+                // TKT-072: surface the failure in the build LOG, not just the status
+                // banner. An early failure (e.g. no project found during prep) emits
+                // no xcodebuild lines, so without this the "View Build Log" is blank.
+                // Append to the stored log and broadcast so live WS subscribers see it.
+                let failureLine = "Build failed: \(error.localizedDescription)"
+                buildLog += failureLine + "\n"
+                broadcaster?.broadcastBuildLog(failureLine)
                 setBuildStatus(.failure(error: error.localizedDescription))
                 let result = BuildResult(
                     id: UUID(),

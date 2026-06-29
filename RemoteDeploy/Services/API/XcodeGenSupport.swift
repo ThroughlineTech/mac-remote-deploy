@@ -72,7 +72,29 @@ enum XcodeGenSupport {
     static func resolveProjectDirectory(_ path: String) -> String {
         let dir = specDirectory(for: path)
         if isBuildableDirectory(dir) { return dir }
+        if let child = singleBuildableChild(of: dir) { return child }
 
+        // TKT-072: the path may be a nonexistent, guessed subdir (e.g. ".../repo/ios"
+        // assumed from an Expo-style layout) whose sibling is the real project
+        // (".../repo/repo-ios"). Only when the dir itself does not exist, look at its
+        // parent for a single buildable child before giving up. We do NOT do this for
+        // an existing-but-empty dir, which is more likely intentional.
+        let fm = FileManager.default
+        var isDir: ObjCBool = false
+        let exists = fm.fileExists(atPath: dir, isDirectory: &isDir) && isDir.boolValue
+        if !exists {
+            let parent = (dir as NSString).deletingLastPathComponent
+            if parent != dir, parent != "/", let sibling = singleBuildableChild(of: parent) {
+                return sibling
+            }
+        }
+        return dir
+    }
+
+    /// Returns the single buildable immediate subdirectory of `dir` (ignoring
+    /// Pods/node_modules/etc.), or nil when there are zero or more than one - so an
+    /// ambiguous parent never silently picks the wrong project.
+    private static func singleBuildableChild(of dir: String) -> String? {
         let fm = FileManager.default
         let children = ((try? fm.contentsOfDirectory(atPath: dir)) ?? [])
             .filter { !$0.hasPrefix(".") && !ignoredChildren.contains($0) }
@@ -82,7 +104,7 @@ enum XcodeGenSupport {
                 return fm.fileExists(atPath: child, isDirectory: &isDir) && isDir.boolValue
             }
         let buildable = children.filter(isBuildableDirectory)
-        return buildable.count == 1 ? buildable[0] : dir
+        return buildable.count == 1 ? buildable[0] : nil
     }
 
     /// Resolves the `xcodegen` executable, preferring the standard Homebrew
