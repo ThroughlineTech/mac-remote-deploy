@@ -48,6 +48,12 @@ final class XcodeBuildEngineFailureTests: XCTestCase {
         project.teamID = "ZZZZZZZZZZ"
         project.buildConfiguration = "Debug"
         project.exportMethod = "development"
+        // TKT-072: these tests assert a fast scheme/destination failure. With the
+        // placeholder team, `-allowProvisioningUpdates` (now on by default) makes
+        // xcodebuild block on a network round-trip to Apple to mint a managed
+        // profile before it ever reports the scheme/destination error -- which can
+        // hang the test. Disable it so the failure path stays fast and offline.
+        project.allowProvisioningUpdates = false
         return project
     }
 
