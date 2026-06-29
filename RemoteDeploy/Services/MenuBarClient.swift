@@ -122,8 +122,21 @@ final class MenuBarClient: ObservableObject {
     /// notification for devices that were already paired before launch.
     private var knownDeviceIDs: Set<UUID>?
 
-    /// How often the status poll runs while the popover/app is alive.
-    private let pollInterval: Duration = .seconds(3)
+    /// Poll cadence while the menu bar popover is OPEN: refresh everything the user
+    /// is looking at, quickly.
+    private let activePollInterval: Duration = .seconds(3)
+
+    /// Poll cadence while the popover is CLOSED: a lightweight status (+devices)
+    /// call, infrequently, so an idle background app stops hammering the server
+    /// every few seconds. The every-3s full poll kept CFNetwork busy (preventing
+    /// the Mac from idle-sleeping) and burned energy refreshing data nobody can
+    /// see. The full project/install/history refresh is skipped while closed; live
+    /// build status still arrives over the WebSocket. TKT-073.
+    private let idlePollInterval: Duration = .seconds(30)
+
+    /// True while the menu bar popover is open (set by the popover content's
+    /// appear/disappear). Drives the poll cadence above.
+    private var isActive = false
 
     init() {
         // Forward the WebSocket's published changes (live log + status) so views
@@ -148,12 +161,37 @@ final class MenuBarClient: ObservableObject {
     /// projects + installs so the menu bar reflects changes made by any client.
     private func startPolling() {
         pollTask?.cancel()
-        pollTask = Task { [weak self] in
+        pollTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            // Full refresh on every (re)start -- covers launch and popover-open so
+            // the menu is populated immediately rather than after the first sleep.
+            await self.refreshAll()
             while !Task.isCancelled {
-                await self?.refreshAll()
-                try? await Task.sleep(for: self?.pollInterval ?? .seconds(3))
+                let interval = self.isActive ? self.activePollInterval : self.idlePollInterval
+                try? await Task.sleep(for: interval)
+                if Task.isCancelled { break }
+                if self.isActive {
+                    await self.refreshAll()
+                } else {
+                    // Closed: just keep the icon current and surface out-of-band
+                    // device pairings (TKT-070) -- the rest is invisible.
+                    await self.refreshStatus()
+                    if self.connectionState == .connected { await self.refreshDevices() }
+                }
             }
         }
+    }
+
+    /// Called by the menu bar popover when it opens/closes. Open -> snap to fresh
+    /// data and switch to the fast poll; closed -> drop to the slow status poll so
+    /// the app stops working in the background. TKT-073.
+    func setActive(_ active: Bool) {
+        guard active != isActive else { return }
+        isActive = active
+        // On open, restart so the loop does an immediate full refresh and enters the
+        // fast branch. On close, the running loop notices `isActive` on its next
+        // tick and switches to the slow branch -- no restart needed.
+        if active { startPolling() }
     }
 
     func stop() {

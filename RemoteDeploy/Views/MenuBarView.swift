@@ -29,6 +29,11 @@ struct MenuBarView: View {
         }
         .padding(8)
         .frame(width: 300)
+        // TKT-073: poll the server fast only while the popover is open; when it
+        // closes, the client drops to a slow background poll so an idle menu bar
+        // app stops chewing CPU/energy and lets the Mac idle-sleep.
+        .onAppear { menuBarClient.setActive(true) }
+        .onDisappear { menuBarClient.setActive(false) }
         .onReceive(NotificationCenter.default.publisher(for: .openSetupAssistant)) { _ in
             // TKT-033: activate + order front so the setup assistant
             // window appears above other apps at launch.
